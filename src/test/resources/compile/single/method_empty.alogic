@@ -1,0 +1,11 @@
+struct s {
+  void empty() {}
+}
+
+fsm method_empty {
+  void main () {
+    s x;
+    x.empty();
+    fence;
+  }
+}

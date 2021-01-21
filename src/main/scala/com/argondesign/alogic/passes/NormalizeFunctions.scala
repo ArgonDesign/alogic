@@ -22,6 +22,8 @@ import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types.TypeUInt
 
+import scala.annotation.tailrec
+
 final class NormalizeFunctions(implicit cc: CompilerContext) extends StatelessTreeTransformer {
 
   private var selfSymbols: Option[(Symbol, Set[Symbol])] = None
@@ -162,9 +164,15 @@ final class NormalizeFunctions(implicit cc: CompilerContext) extends StatelessTr
         }
       }
 
+      @tailrec
+      def noEarlyReturn(stmts: List[Stmt]): Boolean = stmts match {
+        case _ :: Nil | Nil => true
+        case s :: ss        => if (s.neverReturns) noEarlyReturn(ss) else false
+      }
+
       if (hadError) {
         tree
-      } else if (symbol.kind.isCtrlFunc || (trimmed.body.init forall { _.neverReturns })) {
+      } else if (symbol.kind.isCtrlFunc || noEarlyReturn(trimmed.body)) {
         trimmed
       } else {
         // This is a combinational function and an intermediate statement
