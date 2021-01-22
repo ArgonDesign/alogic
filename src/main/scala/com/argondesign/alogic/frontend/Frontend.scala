@@ -185,7 +185,7 @@ class Frontend(implicit cc: CompilerContext) {
             cc.settings.importSearchDirs
           } else {
             // Relative import
-            List(Paths.get(loc.file).toAbsolutePath.getParent)
+            List(Paths.get(loc.trueFileOpt.get).toAbsolutePath.getParent)
           }
           imprt(searchPaths, path, loc, absolute)
         }

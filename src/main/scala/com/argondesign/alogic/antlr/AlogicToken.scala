@@ -21,12 +21,20 @@ class AlogicToken(
     val alogicSource: Source, // Source that this token was lexed from
     start: Int, // Start index of token in text of alogicSource
     stop: Int, // End index (inclusive) of token in text of alogicSource
-    val file: String // source file name (can be changed by #line)
+    val file: String, // source file name (can be changed by #line)
+    val trueFileName: String // source file name (not changed by #line)
   ) extends CommonToken(source, kind, channel, start, stop) {
 
   def txt = getText
 
-  lazy val loc: Loc =
-    Loc(file, getLine, alogicSource, getStartIndex, getStopIndex + 1, getStartIndex)
+  lazy val loc: Loc = Loc(
+    file,
+    getLine,
+    alogicSource,
+    getStartIndex,
+    getStopIndex + 1,
+    getStartIndex,
+    Some(trueFileName)
+  )
 
 }

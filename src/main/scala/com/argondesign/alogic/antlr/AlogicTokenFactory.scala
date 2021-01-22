@@ -29,6 +29,9 @@ class AlogicTokenFactory(val alogicSource: Source)(implicit mb: MessageBuffer)
   private var fileName: String = alogicSource.path
   private var lineOffset: Int = 0
 
+  // Need to keep the original filename as well
+  private val trueFileName: String = fileName
+
   // Preprocessor state (only implements #line)
   sealed private trait PPState
   private case object PPNormal extends PPState
@@ -67,7 +70,8 @@ class AlogicTokenFactory(val alogicSource: Source)(implicit mb: MessageBuffer)
     require(source.a.isInstanceOf[AlogicLexer])
 
     def mkToken(channel: Int): AlogicToken = {
-      val token = new AlogicToken(source, kind, channel, alogicSource, start, stop, fileName)
+      val token =
+        new AlogicToken(source, kind, channel, alogicSource, start, stop, fileName, trueFileName)
       token.setLine(adjustLine(line))
       token.setCharPositionInLine(charPositionInLine)
       if (text != null) {

@@ -9,13 +9,14 @@ package com.argondesign.alogic.core
 
 case class Loc(
     // Source location - Used to print location info in messages
-    file: String, // Source file name
+    file: String, // Source file name (respecting #line)
     line: Int, // Source line number
     // Source context - Used to retrieve source context
     source: Source, // The Source holding source file contents
     start: Int, // Start index into text of 'source'
     end: Int, // End index (exclusive) into text of 'source'
-    point: Int // Index of '^' caret in text of 'source'
+    point: Int, // Index of '^' caret in text of 'source'
+    trueFileOpt: Option[String] = None // Source file name (ignoring #line)
   ) {
   require(start <= point && point <= end, toString)
 

@@ -24,7 +24,7 @@ class AlogicParserRuleContext(parent: ParserRuleContext, invokingStateNumber: In
   lazy val loc: Loc = {
     val sLoc = start.loc
     val eLoc = stop.loc
-    Loc(sLoc.file, sLoc.line, sLoc.source, sLoc.start, eLoc.end, sLoc.point)
+    Loc(sLoc.file, sLoc.line, sLoc.source, sLoc.start, eLoc.end, sLoc.point, sLoc.trueFileOpt)
   }
 
 }
