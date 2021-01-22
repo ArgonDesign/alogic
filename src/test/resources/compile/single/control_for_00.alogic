@@ -72,4 +72,4 @@ fsm control_for_00 {
 //
 // endmodule
 // }}}
-// @stats/control_for_00.control_for_00/states: 4
+// @stats/control_for_00/states: 4

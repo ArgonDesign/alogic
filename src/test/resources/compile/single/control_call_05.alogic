@@ -51,5 +51,5 @@ fsm control_call_05 {
 //
 //  endmodule
 // }}}
-// @stats/control_call_05.control_call_05/stack-depth: 1
-// @stats/control_call_05.control_call_05/states: 2
+// @stats/control_call_05/stack-depth: 1
+// @stats/control_call_05/states: 2

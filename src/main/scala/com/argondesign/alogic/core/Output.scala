@@ -18,20 +18,19 @@ package com.argondesign.alogic.core
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.util.unreachable
 
+import java.io.File
 import java.io.PrintWriter
 
 trait Output { this: CompilerContext =>
 
-  private def getOutputWriter(
-      treeAndSuffixOrFileName: Either[(Tree, String), String]
-    ): PrintWriter = {
+  private def getOutputFile(treeAndSuffixOrFileName: Either[(Tree, String), String]): File = {
     val oPath = settings.oPath match {
       case Some(value) => value
       case None        => unreachable
     }
     val srcBase = settings.srcBase
 
-    val oFile = treeAndSuffixOrFileName match {
+    treeAndSuffixOrFileName match {
       case Left((tree: Tree, suffix)) =>
         val oDir = if (tree.loc eq Loc.synthetic) {
           oPath // Emit synthetic decls to the root output directory
@@ -56,6 +55,15 @@ trait Output { this: CompilerContext =>
       case Right(fileName) => (oPath resolve fileName).toFile
       case _               => unreachable
     }
+  }
+
+  def getOutputFileName(tree: Tree, suffix: String): String =
+    getOutputFile(Left((tree, suffix))).getCanonicalPath
+
+  private def getOutputWriter(
+      treeAndSuffixOrFileName: Either[(Tree, String), String]
+    ): PrintWriter = {
+    val oFile = getOutputFile(treeAndSuffixOrFileName)
 
     if (!oFile.exists) {
       oFile.getParentFile.mkdirs()

@@ -70,4 +70,4 @@ fsm ctrl_func_local_08 {
 //
 //  endmodule
 // }}}
-// @stats/ctrl_func_local_08.ctrl_func_local_08.main/local-bits: 4
+// @stats/ctrl_func_local_08.main/local-bits: 4

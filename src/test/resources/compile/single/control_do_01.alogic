@@ -76,4 +76,4 @@ fsm control_do_01 {
 //
 // endmodule
 // }}}
-// @stats/control_do_01.control_do_01/states: 6
+// @stats/control_do_01/states: 6

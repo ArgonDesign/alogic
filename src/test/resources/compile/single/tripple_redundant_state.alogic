@@ -58,4 +58,4 @@ fsm tripple_redundant_state {
 //
 // endmodule
 // }}}
-// @stats/tripple_redundant_state.tripple_redundant_state/states: 2
+// @stats/tripple_redundant_state/states: 2

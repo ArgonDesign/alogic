@@ -58,4 +58,4 @@ fsm control_for_08 {
 //
 // endmodule
 // }}}
-// @stats/control_for_08.control_for_08/states: 2
+// @stats/control_for_08/states: 2

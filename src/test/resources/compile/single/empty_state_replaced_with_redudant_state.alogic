@@ -45,4 +45,4 @@ fsm empty_state_replaced_with_redudant_state {
 //
 // endmodule
 // }}}
-// @stats/empty_state_replaced_with_redudant_state.empty_state_replaced_with_redudant_state/states: 2
+// @stats/empty_state_replaced_with_redudant_state/states: 2

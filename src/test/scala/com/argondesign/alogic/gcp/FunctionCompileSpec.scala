@@ -88,15 +88,32 @@ final class FunctionCompileSpec
         def select(key: String, cursor: io.circe.ACursor): io.circe.ACursor = if (key.isEmpty) {
           cursor
         } else {
-          val (first, rest) = key.span(_ != '.')
+          val (first, rest) = {
+            def splitEscaped(string: String): (String, String) = {
+              val (first, rest) = string.span(_ != '.')
+              if (first.endsWith("\\")) {
+                val (subFirst, subRest) = splitEscaped(rest.tail)
+                (first.init + "." + subFirst, subRest)
+              } else {
+                (first, rest.tail)
+              }
+            }
+            splitEscaped(key)
+          }
           val (name, idx) = first.span(_ != '[')
           val fCursor = cursor.downField(name)
-          select(rest.tail, if (idx.isEmpty) fCursor else fCursor.downN(idx.tail.init.toInt))
+          select(rest, if (idx.isEmpty) fCursor else fCursor.downN(idx.tail.init.toInt))
         }
-        val expectedValue = io.circe.parser.parse(value).fold(_ => fail, identity)
+
         select(key, json.hcursor).focus match {
-          case None       => fail(s"No entry '$key'")
-          case Some(json) => assert(json == expectedValue, s"'$key''")
+          case None => fail(s"No entry '$key'")
+          case Some(json) =>
+            if (value == "*") {
+              // Wildcard: OK
+            } else {
+              val expectedValue = io.circe.parser.parse(value).fold(_ => fail, identity)
+              assert(json === expectedValue, s"'$key''")
+            }
         }
     }
 
@@ -240,76 +257,26 @@ final class FunctionCompileSpec
              |}""".stripMargin
         }
 
-        val outputExample =
-          """`default_nettype none
-            |
-            |module example(
-            |  input  wire i,
-            |  output wire o
-            |);
-            |
-            |  //////////////////////////////////////////////////////////////////////////////
-            |  // Connections
-            |  //////////////////////////////////////////////////////////////////////////////
-            |
-            |  assign o = i;
-            |
-            |endmodule
-            |
-            |`default_nettype wire
-            |""".stripMargin
+        val response = mock[HttpResponse]
+        (response.appendHeader(_: String, _: String)).expects("Access-Control-Allow-Origin", "*")
+        (response.setContentType(_: String)).expects("application/json; charset=utf-8")
+        (response.setStatusCode(_: Int)).expects(HttpURLConnection.HTTP_OK)
+        val writer = mkWriter
+        (response.getWriter _).expects().returns(writer)
 
-        val outputManifest =
-          s"""{
-             |  "sram-sizes" : [],
-             |  "top-levels" : {
-             |    "example" : {
-             |      "alogic-name" : "example.example",
-             |      "ports" : {
-             |        "i" : {
-             |          "dir" : "in",
-             |          "flow-control" : "none"
-             |        },
-             |        "o" : {
-             |          "dir" : "out",
-             |          "flow-control" : "none"
-             |        }
-             |      },
-             |      "signals" : {
-             |        "i" : {
-             |          "port" : "i",
-             |          "component" : "payload",
-             |          "width" : 1,
-             |          "signed" : false,
-             |          "offset" : 0
-             |        },
-             |        "o" : {
-             |          "port" : "o",
-             |          "component" : "payload",
-             |          "width" : 1,
-             |          "signed" : false,
-             |          "offset" : 0
-             |        }
-             |      },
-             |      "clock" : null,
-             |      "reset" : null,
-             |      "reset-style" : "async-low"
-             |    }
-             |  },
-             |  "alogic-version" : "${BuildInfo.version}"
-             |}
-             |""".stripMargin
+        (new FunctionCompile).service(request, response)
 
-        checkOK(request) {
-          s"""{
-             |  "code": "ok",
-             |  "outputFiles": {
-             |    "out/example.v" : ${outputExample.asJson},
-             |    "out/manifest.json" : ${outputManifest.asJson}
-             |  },
-             |  "messages": []
-             |}""".stripMargin
-        }
+        val resultJson = io.circe.parser.parse(writer.getText).fold(_ => fail, identity)
+
+        checkJson(
+          resultJson,
+          Map(
+            "code" -> "\"ok\"",
+            "outputFiles.out/example\\.v" -> "*",
+            "outputFiles.out/manifest\\.json" -> "*",
+            "messages" -> "[]"
+          )
+        )
       }
 
       "valid request with type error" in {

@@ -166,15 +166,10 @@ private[frontend] object Finalize {
           case _: DescGenScope                         => unreachable // See below why
           case Desc(Sym(symbol))                       =>
             // Attach the hierarchical scope name
-            symbol.scopeName = hierarcy
+            symbol.scopeName = hierarcy.reverse
+              .dropWhile(_.kind.isPackage) // Drop leading package
               .filterNot(_.name startsWith "`") // Keep only named scopes
-              .map { symbol =>
-                symbol.desc match {
-                  case desc: DescPackage => desc.packageName
-                  case _                 => symbol.name
-                }
-              }
-              .reverse
+              .map(_.name)
               .mkString(".")
             // We will need this (directly enclosing 'gen' scopes)
             val directScopes = hierarcy.takeWhile(_.kind.isScope)

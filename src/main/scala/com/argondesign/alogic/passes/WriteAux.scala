@@ -38,7 +38,7 @@ object WriteAux extends PairsTransformerPass {
     ////////////////////////////////////////////////////////////////////////////
 
     val dict = for {
-      (Decl(eSymbol), defn: DefnEntity) <- pairs.par
+      (decl @ Decl(eSymbol), defn: DefnEntity) <- pairs.par
       if eSymbol.attr.topLevel.isSet
     } yield {
       // High level port symbols
@@ -149,7 +149,10 @@ object WriteAux extends PairsTransformerPass {
       //////////////////////////////////////////////////////////////////////////
 
       eSymbol.name -> ListMap(
-        "alogic-name" -> eSymbol.hierName,
+        "output-file" ->
+          cc.getOutputFileName(decl, ".v"), // TODO: This duplicates the call in CodeGeneration
+        "source-file" -> eSymbol.loc.file,
+        "source-name" -> eSymbol.hierName,
         "ports" -> ports,
         "signals" -> signals,
         "clock" -> (defn.clk map { _.name }).orNull,
@@ -165,7 +168,7 @@ object WriteAux extends PairsTransformerPass {
       )
     }
 
-    ListMap.from(dict)
+    ListMap.from(dict.seq.toSeq.sortBy(_._1))
   }
 
   override def process(

@@ -38,4 +38,4 @@ fsm prune_unreachable_states {
 //
 //  endmodule
 // }}}
-// @stats/prune_unreachable_states.prune_unreachable_states/states: 1
+// @stats/prune_unreachable_states/states: 1
