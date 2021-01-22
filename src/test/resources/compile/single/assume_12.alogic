@@ -1,0 +1,21 @@
+fsm assume_12 {
+  in       u8 i;
+  out wire u8 o;
+
+  void main() {
+    // Strange way of asserting that i[7:4] are zeroes, but because both
+    // sides reference i, we cannot infer the value if i.
+    assert i == {4'd0, i[3:0]};
+    o = i;
+    fence;
+  }
+}
+// @args: --no-assertions
+// @fec/golden {{{
+//  module assume_12(
+//    input   wire [7:0] i,
+//    output  wire [7:0] o
+//  );
+//    assign o = i;
+//  endmodule
+// }}}

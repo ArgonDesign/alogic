@@ -82,6 +82,34 @@ object StaticEvaluation {
       Ctx(bindings, bindings.valuesIterator.flatMap(ReadSymbols.rval).toSet)
   }
 
+  // Same as "expr exists { case ExprSym(symbol) => set(symbol) }" but faster
+  private def uses(expr: Expr, set: Set[Symbol]): Boolean = {
+    def p(expr: Expr): Boolean = expr match {
+      case _: ExprInt            => false
+      case _: ExprNum            => false
+      case ExprSym(symbol)       => set(symbol)
+      case ExprBinary(l, _, r)   => p(l) || p(r)
+      case ExprUnary(_, e)       => p(e)
+      case ExprCond(c, ts, es)   => p(c) || p(ts) || p(es)
+      case ExprCall(e, as)       => p(e) || (as exists { case Arg(e) => p(e) })
+      case ExprIndex(e, i)       => p(e) || p(i)
+      case ExprSlice(e, l, _, r) => p(e) || p(l) || p(r)
+      case ExprCat(ps)           => ps exists p
+      case ExprRep(c, e)         => p(e) || p(c)
+      case ExprSel(e, _)         => p(e)
+      case ExprCast(_, e)        => p(e)
+      case ExprOld(e)            => p(e)
+      case _: ExprType           => false
+      case _: ExprStr            => false
+      case _: ExprError          => false
+      case _: ExprDot            => unreachable
+      case _: ExprSymSel         => unreachable
+      case _: ExprIdent          => unreachable
+      case _: ExprThis           => unreachable
+    }
+    p(expr)
+  }
+
   // Given an expression that is known to be true, return a set
   // of bindings that can be inferred
   private def inferTrue(expr: Expr)(implicit cc: CompilerContext): Bindings = {
@@ -97,11 +125,13 @@ object StaticEvaluation {
               iSymbol -> (ExprInt(iSymbol.kind.isSigned, 1, 0) regularize expr.loc)
           }
           Bindings.from(self ++ implied)
-        case ExprUnary("!" | "~", expr)             => inferFalse(expr)
-        case ExprBinary(lhs, "&&" | "&", rhs)       => inferTrue(lhs) ++ inferTrue(rhs)
-        case ExprBinary(lhs, "==", ExprSym(symbol)) => Bindings.from(Iterator.single(symbol -> lhs))
-        case ExprBinary(ExprSym(symbol), "==", rhs) => Bindings.from(Iterator.single(symbol -> rhs))
-        case _                                      => Bindings.empty
+        case ExprUnary("!" | "~", expr)       => inferFalse(expr)
+        case ExprBinary(lhs, "&&" | "&", rhs) => inferTrue(lhs) ++ inferTrue(rhs)
+        case ExprBinary(lhs, "==", ExprSym(symbol)) if !uses(lhs, Set(symbol)) =>
+          Bindings.from(Iterator.single(symbol -> lhs))
+        case ExprBinary(ExprSym(symbol), "==", rhs) if !uses(rhs, Set(symbol)) =>
+          Bindings.from(Iterator.single(symbol -> rhs))
+        case _ => Bindings.empty
       }
     } else {
       Bindings.empty
@@ -129,9 +159,9 @@ object StaticEvaluation {
             Bindings.from(self ++ implied)
           case ExprUnary("!" | "~", expr)       => inferTrue(expr)
           case ExprBinary(lhs, "||" | "|", rhs) => inferFalse(lhs) ++ inferFalse(rhs)
-          case ExprBinary(lhs, "!=", ExprSym(symbol)) =>
+          case ExprBinary(lhs, "!=", ExprSym(symbol)) if !uses(lhs, Set(symbol)) =>
             Bindings.from(Iterator.single(symbol -> lhs))
-          case ExprBinary(ExprSym(symbol), "!=", rhs) =>
+          case ExprBinary(ExprSym(symbol), "!=", rhs) if !uses(rhs, Set(symbol)) =>
             Bindings.from(Iterator.single(symbol -> rhs))
           case _ => Bindings.empty
         }
@@ -197,34 +227,6 @@ object StaticEvaluation {
       cc: CompilerContext
     ): Ctx = {
     inferTransitive(curr, inferFalse(expr))
-  }
-
-  // Same as "expr exists { case ExprSym(symbol) => set(symbol) }" but faster
-  private def uses(expr: Expr, set: Set[Symbol]): Boolean = {
-    def p(expr: Expr): Boolean = expr match {
-      case _: ExprInt            => false
-      case _: ExprNum            => false
-      case ExprSym(symbol)       => set(symbol)
-      case ExprBinary(l, _, r)   => p(l) || p(r)
-      case ExprUnary(_, e)       => p(e)
-      case ExprCond(c, ts, es)   => p(c) || p(ts) || p(es)
-      case ExprCall(e, as)       => p(e) || (as exists { case Arg(e) => p(e) })
-      case ExprIndex(e, i)       => p(e) || p(i)
-      case ExprSlice(e, l, _, r) => p(e) || p(l) || p(r)
-      case ExprCat(ps)           => ps exists p
-      case ExprRep(c, e)         => p(e) || p(c)
-      case ExprSel(e, _)         => p(e)
-      case ExprCast(_, e)        => p(e)
-      case ExprOld(e)            => p(e)
-      case _: ExprType           => false
-      case _: ExprStr            => false
-      case _: ExprError          => false
-      case _: ExprDot            => unreachable
-      case _: ExprSymSel         => unreachable
-      case _: ExprIdent          => unreachable
-      case _: ExprThis           => unreachable
-    }
-    p(expr)
   }
 
   private def overwrite(
