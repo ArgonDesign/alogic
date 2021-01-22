@@ -158,7 +158,8 @@ class FunctionCompile extends HttpFunction {
                         path.toFile.isFile && !(iFileSet contains path.toFile.getCanonicalPath)
                       } map { file =>
                         file.toString.stripPrefix(sandboxDirPrefix) ->
-                          new String(Files.readAllBytes(file), StandardCharsets.UTF_8)
+                          (new String(Files.readAllBytes(file), StandardCharsets.UTF_8))
+                            .replaceAll(sandboxDirPrefix, "")
                       }
                     }
                   } else {
