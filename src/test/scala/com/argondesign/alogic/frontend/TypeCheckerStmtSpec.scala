@@ -367,8 +367,8 @@ final class TypeCheckerStmtSpec extends AnyFreeSpec with AlogicTest {
         (text, err) <- List(
           ("1 * 2", error),
           ("-(1s)", error),
-          ("@randbit()", Nil),
-          ("1 + @randbit()", Nil),
+          ("@unknownu(1)", Nil),
+          ("1 + @unknownu(1)", Nil),
           ("1 + $clog2(2)", error),
           ("$display(\"\")", Nil)
         )

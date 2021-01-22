@@ -41,13 +41,12 @@ class LivenessSpec extends AnyFreeSpec with AlogicTest {
   private def zext(n: Int, expr: Expr) =
     ExprCat(List(ExprInt(false, n, 0), expr)) regularize Loc.synthetic
 
-  private val randBitCall = {
-    val poly = cc.builtins.get("@randbit") match {
-      case SymbolTable.Local(symbol) => symbol
-
-      case _ => fail
-    }
-    ExprCall(ExprSym(poly.kind.asPolyFunc.resolve(Nil, None).get), Nil)
+  private val randBitCall = cc.builtins.get("@unknownu") pipe {
+    case SymbolTable.Local(symbol) => symbol
+    case _                         => fail
+  } pipe { poly =>
+    val args = (ArgP(Expr(1)) regularize Loc.synthetic) :: Nil
+    ExprCall(ExprSym(poly.kind.asPolyFunc.resolve(args, None).get), args)
   }
 
   private def prep(expr: Expr): Expr = {
@@ -106,13 +105,13 @@ class LivenessSpec extends AnyFreeSpec with AlogicTest {
       }
 
       "should ignore variable indices of ref" - {
-        "a[@randbit()]]" in {
+        "a[@unknownu(1)]]" in {
           killed(aRef index zext(1, randBitCall)) shouldBe SymbolBitSet.empty
         }
-        "b[@randbit()]]" in {
+        "b[@unknownu(1)]]" in {
           killed(bRef index zext(2, randBitCall)) shouldBe SymbolBitSet.empty
         }
-        "c[@randbit()]]" in {
+        "c[@unknownu(1)]]" in {
           killed(cRef index zext(7, randBitCall)) shouldBe SymbolBitSet.empty
         }
       }
@@ -188,10 +187,10 @@ class LivenessSpec extends AnyFreeSpec with AlogicTest {
       }
 
       "should ignore variable slices of ref" - {
-        "a[@randbit()+:1]" in {
+        "a[@unknownu(1)+:1]" in {
           killed(aRef.slice(zext(1, randBitCall), "+:", 1)) shouldBe SymbolBitSet.empty
         }
-        "a[@randbit()-:1]" in {
+        "a[@unknownu(1)-:1]" in {
           killed(aRef.slice(zext(1, randBitCall), "-:", 1)) shouldBe SymbolBitSet.empty
         }
       }
@@ -245,17 +244,17 @@ class LivenessSpec extends AnyFreeSpec with AlogicTest {
         }
 
         "should be pessimistic for variable indices of ref" - {
-          "a[@randbit()]]" in {
+          "a[@unknownu(1)]]" in {
             usedRval(aRef index zext(1, randBitCall)) shouldBe SymbolBitSet(
               Map(aSymbol -> BitSet(0 to 3: _*))
             )
           }
-          "b[@randbit()]]" in {
+          "b[@unknownu(1)]]" in {
             usedRval(bRef index zext(2, randBitCall)) shouldBe SymbolBitSet(
               Map(bSymbol -> BitSet(0 to 7: _*))
             )
           }
-          "c[@randbit()]]" in {
+          "c[@unknownu(1)]]" in {
             usedRval(cRef index zext(7, randBitCall)) shouldBe SymbolBitSet(
               Map(cSymbol -> BitSet(0 to 255: _*))
             )
@@ -298,12 +297,12 @@ class LivenessSpec extends AnyFreeSpec with AlogicTest {
         }
 
         "should be pessimistic for variable slices of ref" - {
-          "a[@randbit()+:1]" in {
+          "a[@unknownu(1)+:1]" in {
             usedRval(aRef.slice(zext(1, randBitCall), "+:", 1)) shouldBe {
               SymbolBitSet(Map(aSymbol -> BitSet(0 to 3: _*)))
             }
           }
-          "a[@randbit()-:1]" in {
+          "a[@unknownu(1)-:1]" in {
             usedRval(aRef.slice(zext(1, randBitCall), "-:", 1)) shouldBe {
               SymbolBitSet(Map(aSymbol -> BitSet(0 to 3: _*)))
             }

@@ -96,204 +96,6 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
       }
     }
 
-    "binary operators applied to unsized integer literals" - {
-      for {
-        (text, result, err) <- List(
-          // format: off
-          //////////////////////////////////////////////
-          // signed signed
-          //////////////////////////////////////////////
-          // Shifts
-          (" 3s <<   2s", ExprNum(true, 12), Nil),
-          (" 3s >>   2s", ExprNum(true, 0), Nil),
-          (" 3s <<<  2s", ExprNum(true, 12), Nil),
-          (" 3s >>>  2s", ExprNum(true, 0), Nil),
-          (" 3s <<  -2s", ExprError(), "Negative shift amount" :: Nil),
-          (" 3s >>  -2s", ExprError(), "Negative shift amount" :: Nil),
-          (" 3s <<< -2s", ExprError(), "Negative shift amount" :: Nil),
-          (" 3s >>> -2s", ExprError(), "Negative shift amount" :: Nil),
-          ("-3s <<   2s", ExprNum(true, -12), Nil),
-          ("-3s >>   2s", ExprError(), "'>>' is not well defined for negative unsized values" :: Nil),
-          ("-3s <<<  2s", ExprNum(true, -12), Nil),
-          ("-3s >>>  2s", ExprNum(true, -1), Nil),
-          ("-3s <<  -2s", ExprError(), "Negative shift amount" :: Nil),
-          ("-3s >>  -2s", ExprError(), "Negative shift amount" :: Nil),
-          ("-3s <<< -2s", ExprError(), "Negative shift amount" :: Nil),
-          ("-3s >>> -2s", ExprError(), "Negative shift amount" :: Nil),
-          //////////////////////////////////////////////
-          // signed unsigned
-          //////////////////////////////////////////////
-          // Shifts
-          (" 3s <<  2", ExprNum(true, 12), Nil),
-          (" 3s >>  2", ExprNum(true, 0), Nil),
-          (" 3s <<< 2", ExprNum(true, 12), Nil),
-          (" 3s >>> 2", ExprNum(true, 0), Nil),
-          ("-3s <<  2", ExprNum(true, -12), Nil),
-          ("-3s >>  2", ExprError(), "'>>' is not well defined for negative unsized values" :: Nil),
-          ("-3s <<< 2", ExprNum(true, -12), Nil),
-          ("-3s >>> 2", ExprNum(true, -1), Nil),
-          //////////////////////////////////////////////
-          // unsigned signed
-          //////////////////////////////////////////////
-          // Shifts
-          ("3 <<   2s", ExprNum(false, 12), Nil),
-          ("3 >>   2s", ExprNum(false, 0), Nil),
-          ("3 <<<  2s", ExprNum(false, 12), Nil),
-          ("3 >>>  2s", ExprNum(false, 0), Nil),
-          ("3 <<  -2s", ExprError(), "Negative shift amount" :: Nil),
-          ("3 >>  -2s", ExprError(), "Negative shift amount" :: Nil),
-          ("3 <<< -2s", ExprError(), "Negative shift amount" :: Nil),
-          ("3 >>> -2s", ExprError(), "Negative shift amount" :: Nil),
-          //////////////////////////////////////////////
-          // unsigned unsigned
-          //////////////////////////////////////////////
-          // Shifts
-          ("3 <<  2", ExprNum(false, 12), Nil),
-          ("3 >>  2", ExprNum(false, 0), Nil),
-          ("3 <<< 2", ExprNum(false, 12), Nil),
-          ("3 >>> 2", ExprNum(false, 0), Nil),
-          // format: on
-        )
-      } {
-        text in {
-          simplify(text) shouldBe result
-          checkSingleError(err)
-        }
-      }
-    }
-
-    "shifts with an unsized left hand side and a sized right hand side" - {
-      for {
-        (text, result, err) <- List(
-          // format: off
-          //////////////////////////////////////////////
-          // signed signed
-          //////////////////////////////////////////////
-          (" 3s <<   8'sd2", ExprNum(true, 12), Nil),
-          (" 3s >>   8'sd2", ExprNum(true, 0), Nil),
-          (" 3s <<<  8'sd2", ExprNum(true, 12), Nil),
-          (" 3s >>>  8'sd2", ExprNum(true, 0), Nil),
-          (" 3s <<  -8'sd2", ExprError(), "Negative shift amount" :: Nil),
-          (" 3s >>  -8'sd2", ExprError(), "Negative shift amount" :: Nil),
-          (" 3s <<< -8'sd2", ExprError(), "Negative shift amount" :: Nil),
-          (" 3s >>> -8'sd2", ExprError(), "Negative shift amount" :: Nil),
-          ("-3s <<   8'sd2", ExprNum(true, -12), Nil),
-          ("-3s >>   8'sd2", ExprError(), "'>>' is not well defined for negative unsized values" :: Nil),
-          ("-3s <<<  8'sd2", ExprNum(true, -12), Nil),
-          ("-3s >>>  8'sd2", ExprNum(true, -1), Nil),
-          ("-3s <<  -8'sd2", ExprError(), "Negative shift amount" :: Nil),
-          ("-3s >>  -8'sd2", ExprError(), "Negative shift amount" :: Nil),
-          ("-3s <<< -8'sd2", ExprError(), "Negative shift amount" :: Nil),
-          ("-3s >>> -8'sd2", ExprError(), "Negative shift amount" :: Nil),
-          //////////////////////////////////////////////
-          // signed unsigned
-          //////////////////////////////////////////////
-          (" 3s <<  8'd2", ExprNum(true, 12), Nil),
-          (" 3s >>  8'd2", ExprNum(true, 0), Nil),
-          (" 3s <<< 8'd2", ExprNum(true, 12), Nil),
-          (" 3s >>> 8'd2", ExprNum(true, 0), Nil),
-          ("-3s <<  8'd2", ExprNum(true, -12), Nil),
-          ("-3s >>  8'd2", ExprError(), "'>>' is not well defined for negative unsized values" :: Nil),
-          ("-3s <<< 8'd2", ExprNum(true, -12), Nil),
-          ("-3s >>> 8'd2", ExprNum(true, -1), Nil),
-          //////////////////////////////////////////////
-          // unsigned signed
-          //////////////////////////////////////////////
-          ("3 <<   8'sd2", ExprNum(false, 12), Nil),
-          ("3 >>   8'sd2", ExprNum(false, 0), Nil),
-          ("3 <<<  8'sd2", ExprNum(false, 12), Nil),
-          ("3 >>>  8'sd2", ExprNum(false, 0), Nil),
-          ("3 <<  -8'sd2", ExprError(), "Negative shift amount" :: Nil),
-          ("3 >>  -8'sd2", ExprError(), "Negative shift amount" :: Nil),
-          ("3 <<< -8'sd2", ExprError(), "Negative shift amount" :: Nil),
-          ("3 >>> -8'sd2", ExprError(), "Negative shift amount" :: Nil),
-          //////////////////////////////////////////////
-          // unsigned unsigned
-          //////////////////////////////////////////////
-          ("3 <<  8'd2", ExprNum(false, 12), Nil),
-          ("3 >>  8'd2", ExprNum(false, 0), Nil),
-          ("3 <<< 8'd2", ExprNum(false, 12), Nil),
-          ("3 >>> 8'd2", ExprNum(false, 0), Nil)
-          // format: on
-        )
-      } {
-        text in {
-          simplify(text) shouldBe result
-          checkSingleError(err)
-        }
-      }
-    }
-
-    "shifts with a sized left hand side and an unsized right hand side" - {
-      for {
-        (text, result, err) <- List(
-          // format: off
-          //////////////////////////////////////////////
-          // signed signed
-          //////////////////////////////////////////////
-          (" 8'sd3 <<   2s", ExprInt(true, 8,  12), Nil),
-          (" 8'sd3 >>   2s", ExprInt(true, 8,  0), Nil),
-          (" 8'sd3 <<<  2s", ExprInt(true, 8,  12), Nil),
-          (" 8'sd3 >>>  2s", ExprInt(true, 8,  0), Nil),
-          (" 8'sd3 <<  -2s", ExprError(), "Negative shift amount" :: Nil),
-          (" 8'sd3 >>  -2s", ExprError(), "Negative shift amount" :: Nil),
-          (" 8'sd3 <<< -2s", ExprError(), "Negative shift amount" :: Nil),
-          (" 8'sd3 >>> -2s", ExprError(), "Negative shift amount" :: Nil),
-          ("-8'sd3 <<   2s", ExprInt(true, 8, -12), Nil),
-          ("-8'sd3 >>   2s", ExprInt(true, 8, 63), Nil),
-          ("-8'sd3 <<<  2s", ExprInt(true, 8, -12), Nil),
-          ("-8'sd3 >>>  2s", ExprInt(true, 8, -1), Nil),
-          ("-8'sd3 <<  -2s", ExprError(), "Negative shift amount" :: Nil),
-          ("-8'sd3 >>  -2s", ExprError(), "Negative shift amount" :: Nil),
-          ("-8'sd3 <<< -2s", ExprError(), "Negative shift amount" :: Nil),
-          ("-8'sd3 >>> -2s", ExprError(), "Negative shift amount" :: Nil),
-          //////////////////////////////////////////////
-          // signed unsigned
-          //////////////////////////////////////////////
-          (" 8'sd3 <<  2", ExprInt(true, 8, 12), Nil),
-          (" 8'sd3 >>  2", ExprInt(true, 8, 0), Nil),
-          (" 8'sd3 <<< 2", ExprInt(true, 8, 12), Nil),
-          (" 8'sd3 >>> 2", ExprInt(true, 8, 0), Nil),
-          ("-8'sd3 <<  2", ExprInt(true, 8, -12), Nil),
-          ("-8'sd3 >>  2", ExprInt(true, 8, 63), Nil),
-          ("-8'sd3 <<< 2", ExprInt(true, 8, -12), Nil),
-          ("-8'sd3 >>> 2", ExprInt(true, 8, -1), Nil),
-          //////////////////////////////////////////////
-          // unsigned signed
-          //////////////////////////////////////////////
-          ("8'd3 <<   2s", ExprInt(false, 8, 12), Nil),
-          ("8'd3 >>   2s", ExprInt(false, 8, 0), Nil),
-          ("8'd3 <<<  2s", ExprInt(false, 8, 12), Nil),
-          ("8'd3 >>>  2s", ExprInt(false, 8, 0), Nil),
-          ("8'd3 <<  -2s", ExprError(), "Negative shift amount" :: Nil),
-          ("8'd3 >>  -2s", ExprError(), "Negative shift amount" :: Nil),
-          ("8'd3 <<< -2s", ExprError(), "Negative shift amount" :: Nil),
-          ("8'd3 >>> -2s", ExprError(), "Negative shift amount" :: Nil),
-          ("8'd129 <<  2s", ExprInt(false, 8, 4), Nil),
-          ("8'd129 >>  2s", ExprInt(false, 8, 32), Nil),
-          ("8'd129 <<< 2s", ExprInt(false, 8, 4), Nil),
-          ("8'd129 >>> 2s", ExprInt(false, 8, 32), Nil),
-          //////////////////////////////////////////////
-          // unsigned unsigned
-          //////////////////////////////////////////////
-          ("8'd3 <<  2", ExprInt(false, 8, 12), Nil),
-          ("8'd3 >>  2", ExprInt(false, 8, 0), Nil),
-          ("8'd3 <<< 2", ExprInt(false, 8, 12), Nil),
-          ("8'd3 >>> 2", ExprInt(false, 8, 0), Nil),
-          ("8'd129 <<  2", ExprInt(false, 8, 4), Nil),
-          ("8'd129 >>  2", ExprInt(false, 8, 32), Nil),
-          ("8'd129 <<< 2", ExprInt(false, 8, 4), Nil),
-          ("8'd129 >>> 2", ExprInt(false, 8, 32), Nil),
-          // format: on
-        )
-      } {
-        text in {
-          simplify(text) shouldBe result
-          checkSingleError(err)
-        }
-      }
-    }
-
     "unary operators applied to sized integer literals" - {
       for {
         (text, result, err) <- List(
@@ -364,7 +166,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
       }
     }
 
-    "binary operators with known operands" - {
+    "binary operators with both operands known" - {
       "+" - {
         List(
           //// Unsized
@@ -1204,6 +1006,313 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
           case (text, result) => text in { simplify(text) shouldBe result }
         }
       }
+
+      "<<" - {
+        List(
+          //// Unsized unsized
+          // - unsigned unsigned
+          (" 10  << 2 ", ExprNum(false, 40)),
+          // - unsigned signed
+          (" 10  << 2s", ExprNum(false, 40)),
+          // - signed unsigned
+          (" 10s << 2 ", ExprNum(true, 40)),
+          ("-10s << 2 ", ExprNum(true, -40)),
+          // - signed signed
+          (" 10s << 2s", ExprNum(true, 40)),
+          ("-10s << 2s", ExprNum(true, -40)),
+          //// Unsized sized
+          // - unsigned unsigned
+          (" 10  << 8'd2 ", ExprNum(false, 40)),
+          // - unsigned signed
+          (" 10  << 8'sd2", ExprNum(false, 40)),
+          // - signed unsigned
+          (" 10s << 8'd2 ", ExprNum(true, 40)),
+          ("-10s << 8'd2 ", ExprNum(true, -40)),
+          // - signed signed
+          (" 10s << 8'sd2", ExprNum(true, 40)),
+          ("-10s << 8'sd2", ExprNum(true, -40)),
+          //// Sized unsized
+          // - unsigned unsigned
+          ("  8'd10  << 2 ", ExprInt(false, 8, 40)),
+          ("-(8'd10) << 2 ", ExprInt(false, 8, 216)),
+          // - unsigned signed
+          ("  8'd10  << 2s", ExprInt(false, 8, 40)),
+          ("-(8'd10) << 2s", ExprInt(false, 8, 216)),
+          // - signed unsigned
+          ("  8'sd10 << 2 ", ExprInt(true, 8, 40)),
+          (" -8'sd10 << 2 ", ExprInt(true, 8, -40)),
+          // - signed signed
+          ("  8'sd10 << 2s", ExprInt(true, 8, 40)),
+          (" -8'sd10 << 2s", ExprInt(true, 8, -40)),
+          //// Sized sized
+          // - unsigned unsigned
+          ("  8'd10  << 8'd2 ", ExprInt(false, 8, 40)),
+          ("-(8'd10) << 8'd2 ", ExprInt(false, 8, 216)),
+          // - unsigned signed
+          ("  8'd10  << 8'sd2", ExprInt(false, 8, 40)),
+          ("-(8'd10) << 8'sd2", ExprInt(false, 8, 216)),
+          // - signed unsigned
+          ("  8'sd10 << 8'd2 ", ExprInt(true, 8, 40)),
+          (" -8'sd10 << 8'd2 ", ExprInt(true, 8, -40)),
+          // - signed signed
+          ("  8'sd10 << 8'sd2", ExprInt(true, 8, 40)),
+          (" -8'sd10 << 8'sd2", ExprInt(true, 8, -40))
+        ) foreach {
+          case (text, result) => text in { simplify(text) shouldBe result }
+        }
+      }
+
+      "<<<" - {
+        List(
+          //// Unsized unsized
+          // - unsigned unsigned
+          (" 10  <<< 2 ", ExprNum(false, 40)),
+          // - unsigned signed
+          (" 10  <<< 2s", ExprNum(false, 40)),
+          // - signed unsigned
+          (" 10s <<< 2 ", ExprNum(true, 40)),
+          ("-10s <<< 2 ", ExprNum(true, -40)),
+          // - signed signed
+          (" 10s <<< 2s", ExprNum(true, 40)),
+          ("-10s <<< 2s", ExprNum(true, -40)),
+          //// Unsized sized
+          // - unsigned unsigned
+          (" 10  <<< 8'd2 ", ExprNum(false, 40)),
+          // - unsigned signed
+          (" 10  <<< 8'sd2", ExprNum(false, 40)),
+          // - signed unsigned
+          (" 10s <<< 8'd2 ", ExprNum(true, 40)),
+          ("-10s <<< 8'd2 ", ExprNum(true, -40)),
+          // - signed signed
+          (" 10s <<< 8'sd2", ExprNum(true, 40)),
+          ("-10s <<< 8'sd2", ExprNum(true, -40)),
+          //// Sized unsized
+          // - unsigned unsigned
+          ("  8'd10  <<< 2 ", ExprInt(false, 8, 40)),
+          ("-(8'd10) <<< 2 ", ExprInt(false, 8, 216)),
+          // - unsigned signed
+          ("  8'd10  <<< 2s", ExprInt(false, 8, 40)),
+          ("-(8'd10) <<< 2s", ExprInt(false, 8, 216)),
+          // - signed unsigned
+          ("  8'sd10 <<< 2 ", ExprInt(true, 8, 40)),
+          (" -8'sd10 <<< 2 ", ExprInt(true, 8, -40)),
+          // - signed signed
+          ("  8'sd10 <<< 2s", ExprInt(true, 8, 40)),
+          (" -8'sd10 <<< 2s", ExprInt(true, 8, -40)),
+          //// Sized sized
+          // - unsigned unsigned
+          ("  8'd10  <<< 8'd2 ", ExprInt(false, 8, 40)),
+          ("-(8'd10) <<< 8'd2 ", ExprInt(false, 8, 216)),
+          // - unsigned signed
+          ("  8'd10  <<< 8'sd2", ExprInt(false, 8, 40)),
+          ("-(8'd10) <<< 8'sd2", ExprInt(false, 8, 216)),
+          // - signed unsigned
+          ("  8'sd10 <<< 8'd2 ", ExprInt(true, 8, 40)),
+          (" -8'sd10 <<< 8'd2 ", ExprInt(true, 8, -40)),
+          // - signed signed
+          ("  8'sd10 <<< 8'sd2", ExprInt(true, 8, 40)),
+          (" -8'sd10 <<< 8'sd2", ExprInt(true, 8, -40))
+        ) foreach {
+          case (text, result) => text in { simplify(text) shouldBe result }
+        }
+      }
+
+      ">>" - {
+        List(
+          //// Unsized unsized
+          // - unsigned unsigned
+          (" 10  >> 2 ", ExprNum(false, 2)),
+          // - unsigned signed
+          (" 10  >> 2s", ExprNum(false, 2)),
+          // - signed unsigned
+          (" 10s >> 2 ", ExprNum(true, 2)),
+          // - signed signed
+          (" 10s >> 2s", ExprNum(true, 2)),
+          //// Unsized sized
+          // - unsigned unsigned
+          (" 10  >> 8'd2 ", ExprNum(false, 2)),
+          // - unsigned signed
+          (" 10  >> 8'sd2", ExprNum(false, 2)),
+          // - signed unsigned
+          (" 10s >> 8'd2 ", ExprNum(true, 2)),
+          // - signed signed
+          (" 10s >> 8'sd2", ExprNum(true, 2)),
+          //// Sized unsized
+          // - unsigned unsigned
+          ("  8'd10  >> 2 ", ExprInt(false, 8, 2)),
+          ("-(8'd10) >> 2 ", ExprInt(false, 8, 61)),
+          // - unsigned signed
+          ("  8'd10  >> 2s", ExprInt(false, 8, 2)),
+          ("-(8'd10) >> 2s", ExprInt(false, 8, 61)),
+          // - signed unsigned
+          ("  8'sd10 >> 2 ", ExprInt(true, 8, 2)),
+          (" -8'sd10 >> 2 ", ExprInt(true, 8, 61)),
+          // - signed signed
+          ("  8'sd10 >> 2s", ExprInt(true, 8, 2)),
+          (" -8'sd10 >> 2s", ExprInt(true, 8, 61)),
+          //// Sized sized
+          // - unsigned unsigned
+          ("  8'd10  >> 8'd2 ", ExprInt(false, 8, 2)),
+          ("-(8'd10) >> 8'd2 ", ExprInt(false, 8, 61)),
+          // - unsigned signed
+          ("  8'd10  >> 8'sd2", ExprInt(false, 8, 2)),
+          ("-(8'd10) >> 8'sd2", ExprInt(false, 8, 61)),
+          // - signed unsigned
+          ("  8'sd10 >> 8'd2 ", ExprInt(true, 8, 2)),
+          (" -8'sd10 >> 8'd2 ", ExprInt(true, 8, 61)),
+          // - signed signed
+          ("  8'sd10 >> 8'sd2", ExprInt(true, 8, 2)),
+          (" -8'sd10 >> 8'sd2", ExprInt(true, 8, 61))
+        ) foreach {
+          case (text, result) => text in { simplify(text) shouldBe result }
+        }
+      }
+
+      ">>>" - {
+        List(
+          //// Unsized unsized
+          // - unsigned unsigned
+          (" 10  >>> 2 ", ExprNum(false, 2)),
+          // - unsigned signed
+          (" 10  >>> 2s", ExprNum(false, 2)),
+          // - signed unsigned
+          (" 10s >>> 2 ", ExprNum(true, 2)),
+          ("-10s >>> 2 ", ExprNum(true, -3)),
+          // - signed signed
+          (" 10s >>> 2s", ExprNum(true, 2)),
+          ("-10s >>> 2s", ExprNum(true, -3)),
+          //// Unsized sized
+          // - unsigned unsigned
+          (" 10  >>> 8'd2 ", ExprNum(false, 2)),
+          // - unsigned signed
+          (" 10  >>> 8'sd2", ExprNum(false, 2)),
+          // - signed unsigned
+          (" 10s >>> 8'd2 ", ExprNum(true, 2)),
+          ("-10s >>> 8'd2 ", ExprNum(true, -3)),
+          // - signed signed
+          (" 10s >>> 8'sd2", ExprNum(true, 2)),
+          ("-10s >>> 8'sd2", ExprNum(true, -3)),
+          //// Sized unsized
+          // - unsigned unsigned
+          ("  8'd10  >>> 2 ", ExprInt(false, 8, 2)),
+          ("-(8'd10) >>> 2 ", ExprInt(false, 8, 61)),
+          // - unsigned signed
+          ("  8'd10  >>> 2s", ExprInt(false, 8, 2)),
+          ("-(8'd10) >>> 2s", ExprInt(false, 8, 61)),
+          // - signed unsigned
+          ("  8'sd10 >>> 2 ", ExprInt(true, 8, 2)),
+          (" -8'sd10 >>> 2 ", ExprInt(true, 8, -3)),
+          // - signed signed
+          ("  8'sd10 >>> 2s", ExprInt(true, 8, 2)),
+          (" -8'sd10 >>> 2s", ExprInt(true, 8, -3)),
+          //// Sized sized
+          // - unsigned unsigned
+          ("  8'd10  >>> 8'd2 ", ExprInt(false, 8, 2)),
+          ("-(8'd10) >>> 8'd2 ", ExprInt(false, 8, 61)),
+          // - unsigned signed
+          ("  8'd10  >>> 8'sd2", ExprInt(false, 8, 2)),
+          ("-(8'd10) >>> 8'sd2", ExprInt(false, 8, 61)),
+          // - signed unsigned
+          ("  8'sd10 >>> 8'd2 ", ExprInt(true, 8, 2)),
+          (" -8'sd10 >>> 8'd2 ", ExprInt(true, 8, -3)),
+          // - signed signed
+          ("  8'sd10 >>> 8'sd2", ExprInt(true, 8, 2)),
+          (" -8'sd10 >>> 8'sd2", ExprInt(true, 8, -3))
+        ) foreach {
+          case (text, result) => text in { simplify(text) shouldBe result }
+        }
+      }
+    }
+
+    "shift special cases" - {
+      "zero left hand side" - {
+        List(
+          /// Unsized
+          // unsigned
+          ("0 >>  @unknownu(4)", ExprNum(false, 0)),
+          ("0 >>> @unknownu(4)", ExprNum(false, 0)),
+          ("0 <<  @unknownu(4)", ExprNum(false, 0)),
+          ("0 <<< @unknownu(4)", ExprNum(false, 0)),
+          // signed
+          ("0s >>  @unknownu(4)", ExprNum(true, 0)),
+          ("0s >>> @unknownu(4)", ExprNum(true, 0)),
+          ("0s <<  @unknownu(4)", ExprNum(true, 0)),
+          ("0s <<< @unknownu(4)", ExprNum(true, 0)),
+          // Sized
+          // unsigned
+          ("8'd0 >>  @unknownu(4)", ExprInt(false, 8, 0)),
+          ("8'd0 >>> @unknownu(4)", ExprInt(false, 8, 0)),
+          ("8'd0 <<  @unknownu(4)", ExprInt(false, 8, 0)),
+          ("8'd0 <<< @unknownu(4)", ExprInt(false, 8, 0)),
+          // signed
+          ("8'sd0 >>  @unknownu(4)", ExprInt(true, 8, 0)),
+          ("8'sd0 >>> @unknownu(4)", ExprInt(true, 8, 0)),
+          ("8'sd0 <<  @unknownu(4)", ExprInt(true, 8, 0)),
+          ("8'sd0 <<< @unknownu(4)", ExprInt(true, 8, 0))
+        ) foreach {
+          case (text, result) => text in { simplify(text) shouldBe result }
+        }
+      }
+
+      "zero right hand side" - {
+        List(
+          /// Unsized
+          // unsigned
+          "@unknownu(4) >>  0",
+          "@unknownu(4) >>> 0",
+          "@unknownu(4) <<  0",
+          "@unknownu(4) <<< 0",
+          // signed
+          "@unknownu(4) >>  0s",
+          "@unknownu(4) >>> 0s",
+          "@unknownu(4) <<  0s",
+          "@unknownu(4) <<< 0s",
+          // Sized
+          // unsigned
+          "@unknownu(4) >>  8'd0",
+          "@unknownu(4) >>> 8'd0",
+          "@unknownu(4) <<  8'd0",
+          "@unknownu(4) <<< 8'd0",
+          // signed
+          "@unknownu(4) >>  8'sd0",
+          "@unknownu(4) >>> 8'sd0",
+          "@unknownu(4) <<  8'sd0",
+          "@unknownu(4) <<< 8'sd0"
+        ) foreach { text =>
+          text in {
+            simplify(text) should matchPattern {
+              case ExprCall(ExprSym(Symbol("@unknownu")), ArgP(Expr(4)) :: Nil) =>
+            }
+          }
+        }
+      }
+
+      "shift by width" - {
+        List(
+          // unsigned unsigned
+          ("@unknownu(4) >>  8'd4", ExprInt(false, 4, 0)),
+          ("@unknownu(4) >>> 8'd4", ExprInt(false, 4, 0)),
+          ("@unknownu(4) <<  8'd4", ExprInt(false, 4, 0)),
+          ("@unknownu(4) <<< 8'd4", ExprInt(false, 4, 0)),
+          // unsigned signed
+          ("@unknownu(4) >>  8'sd4", ExprInt(false, 4, 0)),
+          ("@unknownu(4) >>> 8'sd4", ExprInt(false, 4, 0)),
+          ("@unknownu(4) <<  8'sd4", ExprInt(false, 4, 0)),
+          ("@unknownu(4) <<< 8'sd4", ExprInt(false, 4, 0)),
+          // signed unsigned
+          ("@unknowni(4) >>  8'd4", ExprInt(true, 4, 0)),
+          ("@unknowni(4) >>> 8'd4", ExprInt(true, 4, -1)),
+          ("@unknowni(4) <<  8'd4", ExprInt(true, 4, 0)),
+          ("@unknowni(4) <<< 8'd4", ExprInt(true, 4, 0)),
+          // signed signed
+          ("@unknowni(4) >>  8'sd4", ExprInt(true, 4, 0)),
+          ("@unknowni(4) >>> 8'sd4", ExprInt(true, 4, -1)),
+          ("@unknowni(4) <<  8'sd4", ExprInt(true, 4, 0)),
+          ("@unknowni(4) <<< 8'sd4", ExprInt(true, 4, 0))
+        ) foreach {
+          case (text, result) => text in { simplify(text) shouldBe result }
+        }
+      }
     }
 
     "ternary operator" - {
@@ -1212,14 +1321,14 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
           // format: off
           ("1'd0 ? 1 : 2", { case ExprNum(false, v) if v == 2                                => }, Nil),
           ("1'd1 ? 1 : 2", { case ExprNum(false, v) if v == 1                                => }, Nil),
-          ("@randbit() ? 1 : 1", { case ExprNum(false, v) if v == 1                          => }, Nil),
-          ("@randbit() ? 2 : 2", { case ExprNum(false, v) if v == 2                          => }, Nil),
-          ("@randbit() ? 8'd0 : 8'd0", { case ExprInt(false, 8, v) if v == 0                 => }, Nil),
-          ("@randbit() ? 8'd0 : 8'd1", { case ExprCond(_: ExprCall, _: ExprInt, _: ExprInt)  => }, Nil),
-          ("@randbit() ? 8'd0 : 8'sd0", { case ExprCond(_: ExprCall, _: ExprInt, _: ExprInt) => }, Nil),
+          ("@unknownu(1) ? 1 : 1", { case ExprNum(false, v) if v == 1                          => }, Nil),
+          ("@unknownu(1) ? 2 : 2", { case ExprNum(false, v) if v == 2                          => }, Nil),
+          ("@unknownu(1) ? 8'd0 : 8'd0", { case ExprInt(false, 8, v) if v == 0                 => }, Nil),
+          ("@unknownu(1) ? 8'd0 : 8'd1", { case ExprCond(_: ExprCall, _: ExprInt, _: ExprInt)  => }, Nil),
+          ("@unknownu(1) ? 8'd0 : 8'sd0", { case ExprCond(_: ExprCall, _: ExprInt, _: ExprInt) => }, Nil),
           ("1'd1 ? 1s : 0s - 2s", { case ExprNum(true, v) if v == 1                          => }, Nil),
           ("1'd1 ? 1s : 0", { case ExprNum(false, v) if v == 1                               => }, Nil),
-          ("@randbit() ? 1 - 1 : 2 - 2", { case ExprNum(false, v) if v == 0                  => }, Nil)
+          ("@unknownu(1) ? 1 - 1 : 2 - 2", { case ExprNum(false, v) if v == 0                  => }, Nil)
           // format: on
         )
       } {
@@ -1287,42 +1396,6 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
           ("x_u8   - 8'sd0",   { case ExprSym(Symbol("x_u8")) => }),
           ("x_i8   - 8'd0",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i8"))) :: Nil) => }),
           ("x_i8   - 8'sd0",   { case ExprSym(Symbol("x_i8")) => }),
-          // Shift >>
-          ("8'd0   >> x_u8",    { case ExprInt(false, 8, v) if v == 0 => }),
-          ("8'sd0  >> x_u8",    { case ExprInt(true,  8, v) if v == 0 => }),
-          ("8'd0   >> x_i8",    { case ExprInt(false, 8, v) if v == 0 => }),
-          ("8'sd0  >> x_i8",    { case ExprInt(true,  8, v) if v == 0 => }),
-          ("x_u8   >> 8'd0",    { case ExprSym(Symbol("x_u8")) => }),
-          ("x_u8   >> 8'sd0",   { case ExprSym(Symbol("x_u8")) => }),
-          ("x_i8   >> 8'd0",    { case ExprSym(Symbol("x_i8")) => }),
-          ("x_i8   >> 8'sd0",   { case ExprSym(Symbol("x_i8")) => }),
-          // Shift >>>
-          ("8'd0   >>> x_u8",   { case ExprInt(false, 8, v) if v == 0 => }),
-          ("8'sd0  >>> x_u8",   { case ExprInt(true,  8, v) if v == 0 => }),
-          ("8'd0   >>> x_i8",   { case ExprInt(false, 8, v) if v == 0 => }),
-          ("8'sd0  >>> x_i8",   { case ExprInt(true,  8, v) if v == 0 => }),
-          ("x_u8   >>> 8'd0",   { case ExprSym(Symbol("x_u8")) => }),
-          ("x_u8   >>> 8'sd0",  { case ExprSym(Symbol("x_u8")) => }),
-          ("x_i8   >>> 8'd0",   { case ExprSym(Symbol("x_i8")) => }),
-          ("x_i8   >>> 8'sd0",  { case ExprSym(Symbol("x_i8")) => }),
-          // Shift <<
-          ("8'd0   << x_u8",    { case ExprInt(false, 8, v) if v == 0 => }),
-          ("8'sd0  << x_u8",    { case ExprInt(true,  8, v) if v == 0 => }),
-          ("8'd0   << x_i8",    { case ExprInt(false, 8, v) if v == 0 => }),
-          ("8'sd0  << x_i8",    { case ExprInt(true,  8, v) if v == 0 => }),
-          ("x_u8   << 8'd0",    { case ExprSym(Symbol("x_u8")) => }),
-          ("x_u8   << 8'sd0",   { case ExprSym(Symbol("x_u8")) => }),
-          ("x_i8   << 8'd0",    { case ExprSym(Symbol("x_i8")) => }),
-          ("x_i8   << 8'sd0",   { case ExprSym(Symbol("x_i8")) => }),
-          // Shift <<<
-          ("8'd0   <<< x_u8",   { case ExprInt(false, 8, v) if v == 0 => }),
-          ("8'sd0  <<< x_u8",   { case ExprInt(true,  8, v) if v == 0 => }),
-          ("8'd0   <<< x_i8",   { case ExprInt(false, 8, v) if v == 0 => }),
-          ("8'sd0  <<< x_i8",   { case ExprInt(true,  8, v) if v == 0 => }),
-          ("x_u8   <<< 8'd0",   { case ExprSym(Symbol("x_u8")) => }),
-          ("x_u8   <<< 8'sd0",  { case ExprSym(Symbol("x_u8")) => }),
-          ("x_i8   <<< 8'd0",   { case ExprSym(Symbol("x_i8")) => }),
-          ("x_i8   <<< 8'sd0",  { case ExprSym(Symbol("x_i8")) => }),
           // Logical &&
           ("1'd1 && x_u1",    { case ExprSym(Symbol("x_u1")) => }),
           ("x_u1 && 1'd1",    { case ExprSym(Symbol("x_u1")) => }),
@@ -2409,7 +2482,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
              |    const u7  D = 3s;
              |    const i6  E = 4;
              |    const i5  F = 5s;
-             |    const u1  G = @randbit();
+             |    const u1  G = @unknownu(1);
              |    $$display("", $expr);
              |    fence;
              |  }

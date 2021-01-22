@@ -44,7 +44,15 @@ object BigIntOps {
       }
     }
 
-    def asU(width: Int): BigInt = extract(0, width)
+    def asU(width: Int): BigInt = {
+      require(width >= 0)
+      if (width == 0) 0 else extract(0, width)
+    }
+
+    def asI(width: Int): BigInt = {
+      require(width >= 0)
+      if (width == 0) 0 else extract(0, width, signed = true)
+    }
 
   }
 

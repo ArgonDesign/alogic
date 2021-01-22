@@ -3,6 +3,6 @@ network param_bad_01 {
   param bool P = i;
 }
 
-compile param_bad_01(P=@randbit()) as top;
+compile param_bad_01(P=@unknownu(1)) as top;
 
 // :3: ERROR: Default initializer of 'param' definition must be a compile time constant

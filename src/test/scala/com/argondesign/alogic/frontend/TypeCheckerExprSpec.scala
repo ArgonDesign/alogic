@@ -205,7 +205,7 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
 
         "binary ' " - {
           "LHS is const" - {
-            for (lhs <- List("i", "bool ", "@randbit()")) {
+            for (lhs <- List("i", "bool ", "@unknownu(1)")) {
               lhs in {
                 typeCheck {
                   s"""

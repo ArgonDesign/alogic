@@ -63,9 +63,6 @@ final class SimplifyExpr(implicit cc: CompilerContext)
       case "-" if bPack && kValue == 0 && lKnown =>
         if (kSigned || !tpe.isSigned) -unk else (-unk).castUnsigned
       case "-" if bPack && kValue == 0 => if (kSigned || !tpe.isSigned) unk else unk.castUnsigned
-      // Shift
-      case ">>" | ">>>" | "<<" | "<<<" if kValue == 0 =>
-        if (lKnown) ExprInt(kSigned, kWidthOpt.get, 0) else unk
       // Logical
       case "&&" if kValue == 0                => ExprInt(false, 1, 0)
       case "&&" if tpe.isPacked && width == 1 => if (tpe.isSigned) unk.castUnsigned else unk
@@ -483,44 +480,55 @@ final class SimplifyExpr(implicit cc: CompilerContext)
     ////////////////////////////////////////////////////////////////////////////
 
     case expr @ ExprBinary(lhs, op @ ("<<" | ">>" | "<<<" | ">>>"), Integral(_, _, rv)) =>
+      assert(rv >= 0, "Negative shift amount")
       if (rv == 0) {
         lhs
-      } else if (rv < 0) {
-        cc.error(expr, "Negative shift amount")
-        ExprError()
       } else {
         val shift = rv.toInt
         lhs match {
-          case ExprNum(ls, lv) =>
-            if (lv < 0 && op == ">>") {
-              cc.error(expr, "'>>' is not well defined for negative unsized values")
-              ExprError()
-            } else {
-              op pipe {
-                case "<<" | "<<<" => ExprNum(ls, lv << shift)
-                case ">>" | ">>>" => ExprNum(ls, lv >> shift)
-                case _            => unreachable
-              } withLocOf expr
-            }
-          case ExprInt(false, lw, lv) =>
+          case ExprNum(s, v) =>
+            assert(v >= 0 || op != ">>", "'>>' is not well defined for negative unsized values")
             op pipe {
-              case "<<" | "<<<" => ExprInt(false, lw, (lv << shift).extract(0, lw))
-              case ">>" | ">>>" => ExprInt(false, lw, (lv >> shift).extract(0, lw))
+              case "<<" | "<<<" => ExprNum(s, v << shift)
+              case ">>" | ">>>" => ExprNum(s, v >> shift)
               case _            => unreachable
             } withLocOf expr
-          case ExprInt(true, lw, lv) =>
+          case ExprInt(false, w, v) =>
             op pipe {
-              case "<<" | "<<<"        => ExprInt(true, lw, (lv << shift).extract(0, lw, signed = true))
-              case ">>" if shift >= lw => ExprInt(true, lw, 0)
-              case ">>"                => ExprInt(true, lw, (lv >> shift).extract(0, lw - shift))
-              case ">>>"               => ExprInt(true, lw, (lv >> shift).extract(0, lw, signed = true))
-              case _                   => unreachable
+              case "<<" | "<<<" => ExprInt(false, w, (v << shift).asU(w))
+              case ">>" | ">>>" => ExprInt(false, w, (v >> shift).asU(w))
+              case _            => unreachable
+            } withLocOf expr
+          case ExprInt(true, w, v) =>
+            op pipe {
+              case "<<" | "<<<" => ExprInt(true, w, (v << shift).asI(w))
+              case ">>>"        => ExprInt(true, w, (v >> shift).asI(w))
+              case ">>"         => ExprInt(true, w, (v >> shift).asU((w - shift) max 0))
+              case _            => unreachable
             } withLocOf expr
           case _ =>
-            // TODO: fold shifts-wider-than-width of unknown values
-            expr
+            assert(lhs.tpe.isPacked)
+            val w = lhs.tpe.width.toInt
+            if (rv >= w) {
+              // Shift by width or more
+              val s = lhs.tpe.isSigned
+              if (s && op == ">>>") {
+                ExprInt(true, w, -1) withLocOf expr
+              } else {
+                ExprInt(s, w, 0) withLocOf expr
+              }
+            } else {
+              expr
+            }
         }
       }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Fold shifts with a zero left hand side
+    ////////////////////////////////////////////////////////////////////////////
+
+    case ExprBinary(lhs @ Integral(_, _, lv), "<<" | ">>" | "<<<" | ">>>", _) if lv == 0 =>
+      lhs
 
     ////////////////////////////////////////////////////////////////////////////
     // Fold other binary expressions with known unsized operands

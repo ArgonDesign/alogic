@@ -182,7 +182,7 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
     "error for non-computable reclimit attribute" in {
       analyseCallGraph {
         s"""fsm a {
-           |  (* reclimit = @randbit() *) void main() { main(); }
+           |  (* reclimit = @unknownu(1) *) void main() { main(); }
            |}""".stripMargin
       }
       cc.messages.loneElement should beThe[Error](
@@ -291,7 +291,7 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
 
     "error for non-computable stacklimit attribute" in {
       analyseCallGraph {
-        s"""(* stacklimit = @randbit() *) fsm a {
+        s"""(* stacklimit = @unknownu(1) *) fsm a {
            |   (*reclimit = 2 *) void main() { main(); }
            |}""".stripMargin
       }

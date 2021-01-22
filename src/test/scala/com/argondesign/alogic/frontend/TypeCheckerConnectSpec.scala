@@ -79,7 +79,7 @@ final class TypeCheckerConnectSpec extends AnyFreeSpec with AlogicTest {
 //          ("$signed(2*pi2) -> po2", "Left hand side of '->' yields active logic" :: Nil),
 //          ("$display() -> po2", "Left hand side of '->' yields active logic" :: Nil),
 //          ("$finish() -> po2", "Left hand side of '->' yields active logic" :: Nil),
-//          ("@randbit() -> po2", "Left hand side of '->' yields active logic" :: Nil),
+//          ("@unknownu(1) -> po2", "Left hand side of '->' yields active logic" :: Nil),
           ("1 -> po2", "Expression on left hand side of '->' is not a valid source." :: Nil),
           (""" "hello" -> po2""", "Expression on left hand side of '->' is not a valid source." :: Nil),
 //          ("2'd1 << pi2 -> po2", "Left hand side of '->' yields active logic" :: Nil),
