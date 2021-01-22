@@ -264,6 +264,7 @@ gcfDeploy := {
     "--entry-point=com.argondesign.alogic.gcp.FunctionCompile",
     "--runtime=java11",
     "--memory=512MB",
+    "--timeout=80s",
     "--trigger-http",
     "--allow-unauthenticated",
     s"--source=${assembly.value.getParent}"

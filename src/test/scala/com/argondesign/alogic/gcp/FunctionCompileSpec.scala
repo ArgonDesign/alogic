@@ -418,7 +418,7 @@ final class FunctionCompileSpec
     }
 
     "should signal error for input file outside sandbox" - {
-      List("../top.algoic", "/top.algoci") foreach { path =>
+      List("../top.algoic", "/top.alogic") foreach { path =>
         path in {
           val request = mkRequest {
             s"""{
@@ -444,7 +444,7 @@ final class FunctionCompileSpec
           checkJson(
             resultJson,
             Map(
-              "code" -> "\"invalid-input\"",
+              "code" -> "\"ok\"",
               "outputFiles" -> "{}",
               "messages[0].file" -> "\"\"",
               "messages[0].category" -> "\"ERROR\"",
@@ -474,7 +474,7 @@ final class FunctionCompileSpec
       val writer = mkWriter
       (response.getWriter _).expects().returns(writer)
 
-      (new FunctionCompile).serviceInternal(request, response, allowInputOutsideSanbox = true)
+      (new FunctionCompile).serviceInternal(request, response, allowInputOutsideSandbox = true)
 
       val resultJson = io.circe.parser.parse(writer.getText).fold(_ => fail, identity)
 
@@ -487,6 +487,38 @@ final class FunctionCompileSpec
           "messages[0].line" -> "1",
           "messages[0].category" -> "\"ERROR\"",
           "messages[0].lines[0]" -> "\"Imported file is outside sandbox\""
+        )
+      )
+    }
+
+    "should signal timeout on long computation" in {
+      val request = mkRequest {
+        s"""{
+           |  "request" : "compile",
+           |  "inputFiles" : {
+           |    "top.alogic" : ""
+           |  },
+           |  "args" : "-o out top.alogic"
+           |}""".stripMargin
+      }
+
+      val response = mock[HttpResponse]
+      (response.appendHeader(_: String, _: String)).expects("Access-Control-Allow-Origin", "*")
+      (response.setContentType(_: String)).expects("application/json; charset=utf-8")
+      (response.setStatusCode(_: Int)).expects(HttpURLConnection.HTTP_OK)
+      val writer = mkWriter
+      (response.getWriter _).expects().returns(writer)
+
+      (new FunctionCompile).serviceInternal(request, response, timeoutMs = 0)
+
+      val resultJson = io.circe.parser.parse(writer.getText).fold(_ => fail, identity)
+
+      checkJson(
+        resultJson,
+        Map(
+          "code" -> "\"timeout\"",
+          "outputFiles" -> "{}",
+          "messages" -> "[]"
         )
       )
     }
