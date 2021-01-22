@@ -44,7 +44,7 @@ final case class Unknown(rs: Seq[Reason]) extends FinalResult[Nothing] {
 
 // An error was encountered, re-attempting the operation is futile.
 final case class Failure(ms: Seq[Message]) extends FinalResult[Nothing] {
-  require(ms.nonEmpty)
+//  require(ms.nonEmpty)
 }
 
 // Extractor for successful finished result, i.e.: Finished(_) or Complete(_)
