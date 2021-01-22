@@ -51,7 +51,7 @@ object MarkTopLevels
       } else {
         // No explicit 'compile' directives.
 
-        lazy val baseName = desc.loc.source.baseName
+        lazy val baseName = desc.loc.source.name
 
         // Gather entities defined at the top level (including parametrized
         // ones for error reporting)

@@ -417,6 +417,80 @@ final class FunctionCompileSpec
       )
     }
 
+    "should signal error for input file outside sandbox" - {
+      List("../top.algoic", "/top.algoci") foreach { path =>
+        path in {
+          val request = mkRequest {
+            s"""{
+               |  "request" : "compile",
+               |  "inputFiles" : {
+               |    "$path" : ""
+               |  },
+               |  "args" : ""
+               |}""".stripMargin
+          }
+
+          val response = mock[HttpResponse]
+          (response.appendHeader(_: String, _: String)).expects("Access-Control-Allow-Origin", "*")
+          (response.setContentType(_: String)).expects("application/json; charset=utf-8")
+          (response.setStatusCode(_: Int)).expects(HttpURLConnection.HTTP_OK)
+          val writer = mkWriter
+          (response.getWriter _).expects().returns(writer)
+
+          (new FunctionCompile).service(request, response)
+
+          val resultJson = io.circe.parser.parse(writer.getText).fold(_ => fail, identity)
+
+          checkJson(
+            resultJson,
+            Map(
+              "code" -> "\"invalid-input\"",
+              "outputFiles" -> "{}",
+              "messages[0].file" -> "\"\"",
+              "messages[0].category" -> "\"ERROR\"",
+              "messages[0].lines[0]" -> s""""Input file $path is outside sandbox""""
+            )
+          )
+        }
+      }
+    }
+
+    "should signal error for import from outside sandbox" in {
+      val request = mkRequest {
+        s"""{
+           |  "request" : "compile",
+           |  "inputFiles" : {
+           |    "top.alogic" : "import \\"../a.alogic\\" as a;",
+           |    "../a.alogic" : ""
+           |  },
+           |  "args" : "-o out top.alogic"
+           |}""".stripMargin
+      }
+
+      val response = mock[HttpResponse]
+      (response.appendHeader(_: String, _: String)).expects("Access-Control-Allow-Origin", "*")
+      (response.setContentType(_: String)).expects("application/json; charset=utf-8")
+      (response.setStatusCode(_: Int)).expects(HttpURLConnection.HTTP_OK)
+      val writer = mkWriter
+      (response.getWriter _).expects().returns(writer)
+
+      (new FunctionCompile).serviceInternal(request, response, allowInputOutsideSanbox = true)
+
+      val resultJson = io.circe.parser.parse(writer.getText).fold(_ => fail, identity)
+
+      checkJson(
+        resultJson,
+        Map(
+          "code" -> "\"ok\"",
+          "outputFiles" -> "{}",
+          "messages[0].file" -> "\"top.alogic\"",
+          "messages[0].line" -> "1",
+          "messages[0].category" -> "\"ERROR\"",
+          "messages[0].lines[0]" -> "\"Imported file is outside sandbox\""
+        )
+      )
+    }
+
   }
 
 }

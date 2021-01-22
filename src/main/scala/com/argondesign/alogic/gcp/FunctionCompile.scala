@@ -14,9 +14,10 @@ import com.argondesign.alogic.BuildInfo
 import com.argondesign.alogic.Compiler
 import com.argondesign.alogic.core.MessageBuffer
 import com.argondesign.alogic.core.Messages
-import com.argondesign.alogic.core.Source
 import com.argondesign.alogic.CommandLineInterface
 import com.argondesign.alogic.core.Loc
+import com.argondesign.alogic.core.Messages.Error
+import com.argondesign.alogic.core.Messages.Message
 import com.google.cloud.functions.HttpFunction
 import com.google.cloud.functions.HttpRequest
 import com.google.cloud.functions.HttpResponse
@@ -29,12 +30,14 @@ import java.io.File
 import java.io.PrintWriter
 import java.io.StringWriter
 import java.net.HttpURLConnection
+import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.logging.Logger
 import java.util.stream.Collectors
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
+import scala.util.chaining.scalaUtilChainingOps
 
 class FunctionCompile extends HttpFunction {
 
@@ -47,7 +50,14 @@ class FunctionCompile extends HttpFunction {
   // Placeholder in case no Origin header is present in HTTP request
   private val noOrigin = java.util.Arrays.asList("<no-origin>")
 
-  override def service(request: HttpRequest, response: HttpResponse): Unit = {
+  override def service(request: HttpRequest, response: HttpResponse): Unit =
+    serviceInternal(request, response, allowInputOutsideSanbox = false)
+
+  def serviceInternal(
+      request: HttpRequest,
+      response: HttpResponse,
+      allowInputOutsideSanbox: Boolean
+    ): Unit = {
 
     // Log a warning if invoked from outside playground
     request.getHeaders
@@ -74,7 +84,7 @@ class FunctionCompile extends HttpFunction {
         if (f.isDirectory) { f.listFiles foreach remove }
         f.delete()
       }
-      val tmpPath = Files.createTempDirectory("compile").toAbsolutePath
+      val tmpPath = Files.createTempDirectory("compile").toFile.getCanonicalFile.toPath
       try {
         f(tmpPath)
       } finally {
@@ -82,73 +92,81 @@ class FunctionCompile extends HttpFunction {
       }
     }
 
-    def handleCompile(tmpDir: Path, args: Seq[String], iFileSet: Set[String]): Unit = {
+    case class ResponseMessage(
+        file: String,
+        line: Int,
+        start: Int,
+        end: Int,
+        point: Int,
+        category: String,
+        lines: Seq[String],
+        context: String) {}
 
-      case class Message(
-          file: String,
-          line: Int,
-          start: Int,
-          end: Int,
-          point: Int,
-          category: String,
-          lines: Seq[String],
-          context: String)
+    def toResponseMessage(m: Message, sandboxDirPrefix: String): ResponseMessage = {
+      require(sandboxDirPrefix.endsWith(File.separator))
+      val sandboxDirName = sandboxDirPrefix.dropRight(File.separator.length)
+      ResponseMessage(
+        if (m.loc eq Loc.unknown) "" else m.loc.file.stripPrefix(sandboxDirPrefix),
+        m.loc.line,
+        m.loc.start,
+        m.loc.end,
+        m.loc.point,
+        m.category match {
+          // $COVERAGE-OFF$ Trivial
+          case Messages.WarningCategory => "WARNING"
+          case Messages.ErrorCategory   => "ERROR"
+          case Messages.NoteCategory    => "NOTE"
+          case Messages.FatalCategory   => "FATAL"
+          case Messages.IceCategory     => "INTERNAL COMPILER ERROR"
+          // $COVERAGE-ON$
+        },
+        m.msg map { _.replaceAll(sandboxDirPrefix, "").replaceAll(sandboxDirName, ".") },
+        m.context
+      )
+    }
 
-      case class Result(
-          code: String,
-          outputFiles: Map[String, String],
-          messages: Seq[Message])
+    case class Result(
+        code: String,
+        outputFiles: Map[String, String],
+        messages: Seq[ResponseMessage])
+
+    def handleCompile(sandboxPath: Path, args: Seq[String], iFileSet: Set[String]): Unit = {
 
       replyOk {
         implicit val messageBuffer: MessageBuffer = new MessageBuffer
 
-        val tmpDirName = tmpDir.toString
-        val tmpDirPrefix = tmpDirName + File.separator
+        val sandboxDirPrefix = sandboxPath.toString + File.separator
 
-        def messages: Seq[Message] = messageBuffer.messages map { m =>
-          Message(
-            if (m.loc eq Loc.unknown) "" else m.loc.file.stripPrefix(tmpDirPrefix),
-            m.loc.line,
-            m.loc.start,
-            m.loc.end,
-            m.loc.point,
-            m.category match {
-              // $COVERAGE-OFF$ Trivial
-              case Messages.WarningCategory => "WARNING"
-              case Messages.ErrorCategory   => "ERROR"
-              case Messages.NoteCategory    => "NOTE"
-              case Messages.FatalCategory   => "FATAL"
-              case Messages.IceCategory     => "INTERNAL COMPILER ERROR"
-              // $COVERAGE-ON$
-            },
-            m.msg map { _.replaceAll(tmpDirPrefix, "").replaceAll(tmpDirName, ".") },
-            m.context
-          )
+        def messages: Seq[ResponseMessage] = messageBuffer.messages map {
+          toResponseMessage(_, sandboxDirPrefix)
         }
 
         try {
-          Compiler.parseArgs(messageBuffer, args, Some(tmpDir)) flatMap {
+          Compiler.parseArgs(messageBuffer, args, Some(sandboxPath)) flatMap {
             case (settings, source, params) =>
-              CommandLineInterface.compile(args, settings, source, params) map { _ =>
-                val oDir = settings.oPath.get
-                // Read all output files
-                // TODO: Ignore input files if odir == tmpdir
-                val files = if (oDir.toFile.exists) {
-                  Map from {
-                    Files.walk(oDir).iterator.asScala filter { path =>
-                      // Return only regular files. Also ignore input files, in
-                      // case the used specified the output directory to overlap
-                      // and contain one of the input files (e.g.: '-o .')
-                      path.toFile.isFile && !(iFileSet contains path.toFile.getCanonicalPath)
-                    } map { file =>
-                      file.toString.stripPrefix(tmpDirPrefix) -> Source(file.toFile).text
+              settings pipe { _.copy(sandboxPathOpt = Some(sandboxPath)) } pipe { settings =>
+                CommandLineInterface.compile(args, settings, source, params) map { _ =>
+                  val oDir = settings.oPath.get
+                  // Read all output files
+                  // TODO: Ignore input files if odir == tmpdir
+                  val files = if (oDir.toFile.exists) {
+                    Map from {
+                      Files.walk(oDir).iterator.asScala filter { path =>
+                        // Return only regular files. Also ignore input files, in
+                        // case the used specified the output directory to overlap
+                        // and contain one of the input files (e.g.: '-o .')
+                        path.toFile.isFile && !(iFileSet contains path.toFile.getCanonicalPath)
+                      } map { file =>
+                        file.toString.stripPrefix(sandboxDirPrefix) ->
+                          new String(Files.readAllBytes(file), StandardCharsets.UTF_8)
+                      }
                     }
+                  } else {
+                    Map.empty[String, String]
                   }
-                } else {
-                  Map.empty[String, String]
+                  // Form result
+                  Result("ok", files, messages)
                 }
-                // Form result
-                Result("ok", files, messages)
               }
           } getOrElse {
             // Argument parsing had errors
@@ -159,7 +177,7 @@ class FunctionCompile extends HttpFunction {
             // TODO: Archive input for debug
             val sw = new StringWriter
             t.printStackTrace(new PrintWriter(sw))
-            val trace = Message("", 0, 0, 0, 0, "STDERR", Nil, sw.toString)
+            val trace = ResponseMessage("", 0, 0, 0, 0, "STDERR", Nil, sw.toString)
             Result("crash", Map.empty, List(trace))
         }
       }
@@ -180,33 +198,49 @@ class FunctionCompile extends HttpFunction {
           request.hcursor.get[JsonObject]("inputFiles") match {
             case Left(_) => replyBadRequest("No input files")
             case Right(files) =>
-              withTmpDir { tmpDir =>
-                assert(tmpDir.isAbsolute)
+              withTmpDir { sandboxPath =>
+                assert(sandboxPath.isAbsolute)
                 // Write all input files to the temporary directory
-                val (hasBadIFile, iFileSet) =
-                  files.toIterable.iterator.foldLeft((false, Set.empty[String])) {
-                    case (acc @ (true, _), _) => acc // Had error already
-                    case ((false, files), (fileName, fileContent)) =>
+                val (hasBadIFile, errorMessages, iFileSet) =
+                  files.toIterable.iterator.foldLeft((false, Seq.empty[Error], Set.empty[String])) {
+                    case (acc @ (true, _, _), _) => acc // Had error already
+                    case ((false, messages, files), (fileName, fileContent)) =>
                       fileContent.as[String] match {
-                        case Left(_) => (true, files)
+                        case Left(_) => (true, messages, files)
                         case Right(text) =>
-                          val file = tmpDir.resolve(fileName).toFile
-                          file.getParentFile.mkdirs()
-                          file.createNewFile()
-                          val w = new PrintWriter(file)
-                          w.write(text)
-                          w.close()
-                          (false, files + file.getCanonicalPath)
+                          val file = sandboxPath.resolve(fileName).toFile
+                          if (
+                            allowInputOutsideSanbox ||
+                            file.getCanonicalFile.toPath.startsWith(sandboxPath)
+                          ) {
+                            file.createNewFile()
+                            val w = new PrintWriter(file)
+                            w.write(text)
+                            w.close()
+                            (false, messages, files + file.getCanonicalPath)
+                          } else {
+                            val message = Error(s"Input file $fileName is outside sandbox")
+                            (false, messages :+ message, files)
+                          }
                       }
                   }
                 if (hasBadIFile) {
                   replyBadRequest("Bad input files")
+                } else if (errorMessages.nonEmpty) {
+                  replyOk {
+                    val sandboxDirPrefix = sandboxPath.toString + File.separator
+                    Result(
+                      "invalid-input",
+                      Map.empty,
+                      errorMessages map { toResponseMessage(_, sandboxDirPrefix) }
+                    )
+                  }
                 } else {
                   request.hcursor.get[String]("args") match {
                     case Left(_) =>
                       replyBadRequest("No args")
                     case Right(args) =>
-                      handleCompile(tmpDir, args.trim.split("\\s+").toSeq, iFileSet)
+                      handleCompile(sandboxPath, args.trim.split("\\s+").toSeq, iFileSet)
                   }
                 }
               }

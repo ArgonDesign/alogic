@@ -51,8 +51,8 @@ object Parser {
     // Create Antlr4 parser
     val tokenFactory = new AlogicTokenFactory(source)
     val parser = {
-      val text = if (end >= 0) source.text.take(end) else source.text
-      val stream = CharStreams.fromString(text, source.name)
+      val text = if (end >= 0) source.contents.take(end) else source.contents
+      val stream = CharStreams.fromString(text, source.path)
       stream.seek(start)
       val lexer = new AlogicLexer(stream)
       lexer.setTokenFactory(tokenFactory)

@@ -61,7 +61,7 @@ object CommandLineInterface {
   def compile(
       args: Seq[String],
       settings: Settings,
-      source: Source,
+      source: File,
       params: List[String]
     )(
       implicit
@@ -80,7 +80,7 @@ object CommandLineInterface {
       val end = cliText.length
       val start = end - args.last.length
       val point = start + args.last.reverse.dropWhile(_ != File.separatorChar).length
-      Loc(cliSource.name, 1, cliSource, start, end, point)
+      Loc(cliSource.path, 1, cliSource, start, end, point)
     }
 
     ////////////////////////////////////////////////////////////////////////

@@ -32,6 +32,7 @@ class CompilerContext(
     extends Messaging
     with Symbols
     with Builtins
+    with Input
     with Output
     with Profiling
     with StatelessTransforms {
@@ -50,7 +51,7 @@ class CompilerContext(
   val stats: mutable.Map[(String, String), Any] = mutable.Map.empty
 
   //////////////////////////////////////////////////////////////////////////////
-  // Compile the given sourcess
+  // Compile the given source
   //////////////////////////////////////////////////////////////////////////////
 
   def compile(source: Source, loc: Loc, params: List[Arg]): Unit = {

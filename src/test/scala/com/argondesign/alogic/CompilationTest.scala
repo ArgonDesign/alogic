@@ -34,6 +34,7 @@ import org.scalatest.Tag
 
 import java.io.File
 import java.io.PrintWriter
+import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -107,6 +108,9 @@ trait CompilationTest
     }
   }
 
+  private def readFile(file: File): Source =
+    Source(file, new String(Files.readAllBytes(file.toPath), StandardCharsets.UTF_8))
+
   private def writeFile(file: File)(content: String): Unit = {
     val pw = new PrintWriter(file)
     pw.write(content)
@@ -135,7 +139,7 @@ trait CompilationTest
     logger.close()
     if (config.verbose > 0) {
       println("=== Output:")
-      Source(logFile).linesIterator foreach println
+      readFile(logFile).linesIterator foreach println
     }
     if (!failOk && ret != 0) {
       fail(s"Command failed: '$cmd'")
@@ -783,7 +787,7 @@ trait CompilationTest
       }
     }
 
-    val source = Source(checkFile)
+    val source = readFile(checkFile)
 
     for {
       (line, lineNo) <- source.linesIterator zip LazyList.from(1)
@@ -997,7 +1001,7 @@ trait CompilationTest
           //////////////////////////////////////////////////////////////////////
 
           val manifest =
-            io.circe.parser.parse(Source((oPath resolve "manifest.json").toFile).text) match {
+            io.circe.parser.parse(readFile((oPath resolve "manifest.json").toFile).contents) match {
               case Left(failure) => fail("Failed to parse manifest: " + failure.message)
               case Right(json)   => json
             }
@@ -1012,7 +1016,7 @@ trait CompilationTest
 
           dict get "stats" foreach { expected =>
             val stats =
-              io.circe.parser.parse(Source((oPath resolve "stats.json").toFile).text) match {
+              io.circe.parser.parse(readFile((oPath resolve "stats.json").toFile).contents) match {
                 case Left(failure) => fail("Failed to parse stats: " + failure.message)
                 case Right(json)   => json
               }

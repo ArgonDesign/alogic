@@ -19,7 +19,9 @@ import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.MessageBuffer
 import com.argondesign.alogic.core.Settings
 import com.argondesign.alogic.core.Source
+import com.argondesign.alogic.util.unreachable
 
+import java.io.File
 import java.nio.file.Path
 
 object Compiler {
@@ -30,7 +32,7 @@ object Compiler {
       messageBuffer: MessageBuffer,
       args: Seq[String],
       sandboxPathOpt: Option[Path]
-    ): Option[(Settings, Source, List[String])] = {
+    ): Option[(Settings, File, List[String])] = {
 
     // Parse command line arguments
     val options = new OptionParser(
@@ -78,14 +80,14 @@ object Compiler {
         }
       )
 
-      (settings2, Source(options.file().toFile), options.param())
+      (settings2, options.file().toFile, options.param())
     }
   }
 
   def compile(
       messageBuffer: MessageBuffer,
       settings: Settings,
-      source: Source,
+      source: File,
       loc: Loc,
       params: List[Arg]
     ): Int = {
@@ -100,8 +102,12 @@ object Compiler {
     // Do the work
     ////////////////////////////////////////////////////////////////////////////
 
+    // Read the input file. The OptionParser already proved the source file
+    // exists and is in the sandbox, so readFile will always succeed.
+    val src = Source(source, cc.readFile(source).getOrElse(unreachable))
+
     // Compile what is requested
-    cc.compile(source, loc, params)
+    cc.compile(src, loc, params)
 
     // Emit profile, if required
     if (cc.settings.profile) {

@@ -145,23 +145,26 @@ class Frontend(implicit cc: CompilerContext) {
       case Some(file) =>
         importCache.getOrElseUpdate(
           file.getCanonicalPath,
-          // TODO: sandbox check
-          guardCircular(PendingImport(file.getCanonicalPath), loc) {
-            file.getName.dropWhile(_ != '.') match {
-              case ".alogic" =>
-                fe.elaborate(Source(file)) pipe {
-                  case Left(ms)    => Failure(ms)
-                  case Right(desc) => Complete(desc)
-                } flatMap { desc =>
-                  fe.typeCheck(desc) map { _ => desc.symbol }
+          cc.readFile(file) match {
+            case Left(error) => Failure(loc, error)
+            case Right(content) =>
+              guardCircular(PendingImport(file.getCanonicalPath), loc) {
+                file.getName.dropWhile(_ != '.') match {
+                  case ".alogic" =>
+                    fe.elaborate(Source(file, content)) pipe {
+                      case Left(ms)    => Failure(ms)
+                      case Right(desc) => Complete(desc)
+                    } flatMap { desc =>
+                      fe.typeCheck(desc) map { _ => desc.symbol }
+                    }
+                  case _ =>
+                    Failure(
+                      loc,
+                      s"Unable to import file ${file.getCanonicalPath}",
+                      "unknown filename extension"
+                    )
                 }
-              case _ =>
-                Failure(
-                  loc,
-                  s"Unable to import file ${file.getCanonicalPath}",
-                  "unknown filename extension"
-                )
-            }
+              }
           }
         ) flatMap { symbol =>
           Complete(symbol)
@@ -335,7 +338,7 @@ class Frontend(implicit cc: CompilerContext) {
         if (params.isEmpty) {
           Some(desc)
         } else {
-          val msg = s"Package defined in input file '${source.name}' does not take any parameters."
+          val msg = s"Package defined in input file '${source.path}' does not take any parameters."
           params foreach { cc.error(_, msg) }
           None
         }

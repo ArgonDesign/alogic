@@ -26,7 +26,7 @@ class AlogicTokenFactory(val alogicSource: Source)(implicit mb: MessageBuffer)
     with ChainingSyntax {
 
   // Used to implement #line
-  private var fileName: String = alogicSource.name
+  private var fileName: String = alogicSource.path
   private var lineOffset: Int = 0
 
   // Preprocessor state (only implements #line)
