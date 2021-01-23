@@ -13,12 +13,13 @@ import com.argondesign.alogic.util.unreachable
 import org.antlr.v4.runtime.BaseErrorListener
 import org.antlr.v4.runtime.RecognitionException
 import org.antlr.v4.runtime.Recognizer
+import org.antlr.v4.runtime.Token
 
 class AlogicParseErrorListener(implicit mb: MessageBuffer) extends BaseErrorListener {
 
-  override def syntaxError(
-      recogniser: Recognizer[_, _],
-      offendingSymbol: Object,
+  override def syntaxError[T <: Token](
+      recogniser: Recognizer[T, _],
+      offendingSymbol: T,
       line: Int,
       charPositionInLine: Int,
       defaultMessage: String,

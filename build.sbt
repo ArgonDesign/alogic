@@ -93,7 +93,11 @@ addCommandAlias(
 
 enablePlugins(Antlr4Plugin)
 
-antlr4Version in Antlr4 := "4.8"
+antlr4Version in Antlr4 := "4.9.0"
+
+antlr4Dependency in Antlr4 := "com.tunnelvisionlabs" % "antlr4" % (Antlr4/antlr4Version).value
+
+antlr4RuntimeDependency in Antlr4 := "com.tunnelvisionlabs" % "antlr4-runtime" % (Antlr4/antlr4Version).value
 
 antlr4PackageName in Antlr4 := Some("com.argondesign.alogic.antlr")
 

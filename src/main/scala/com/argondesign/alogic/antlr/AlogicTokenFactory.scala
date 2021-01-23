@@ -17,12 +17,11 @@ import org.antlr.v4.runtime.CharStream
 import org.antlr.v4.runtime.Token
 import org.antlr.v4.runtime.TokenFactory
 import org.antlr.v4.runtime.TokenSource
-import org.antlr.v4.runtime.misc.Pair
 
 import scala.util.ChainingSyntax
 
 class AlogicTokenFactory(val alogicSource: Source)(implicit mb: MessageBuffer)
-    extends TokenFactory[AlogicToken]
+    extends TokenFactory //[AlogicToken]
     with ChainingSyntax {
 
   // Used to implement #line
@@ -57,7 +56,7 @@ class AlogicTokenFactory(val alogicSource: Source)(implicit mb: MessageBuffer)
   private var newFileName: String = _
 
   def create(
-      source: Pair[TokenSource, CharStream],
+      source: org.antlr.v4.runtime.misc.Tuple2[_ <: TokenSource, CharStream],
       kind: Int,
       text: String,
       channel: Int,
@@ -65,9 +64,9 @@ class AlogicTokenFactory(val alogicSource: Source)(implicit mb: MessageBuffer)
       stop: Int,
       line: Int,
       charPositionInLine: Int
-    ): AlogicToken = {
+    ): Token = {
     require(channel == Token.DEFAULT_CHANNEL || channel == Token.HIDDEN_CHANNEL)
-    require(source.a.isInstanceOf[AlogicLexer])
+    require(source.getItem1.isInstanceOf[AlogicLexer])
 
     def mkToken(channel: Int): AlogicToken = {
       val token =

@@ -12,10 +12,9 @@ import com.argondesign.alogic.core.Source
 import org.antlr.v4.runtime.CharStream
 import org.antlr.v4.runtime.CommonToken
 import org.antlr.v4.runtime.TokenSource
-import org.antlr.v4.runtime.misc.Pair
 
 class AlogicToken(
-    source: Pair[TokenSource, CharStream], // Antlr4 source pair
+    source: org.antlr.v4.runtime.misc.Tuple2[_ <: TokenSource, CharStream], // Antlr4 source pair
     kind: Int, // Token type
     channel: Int, // Channel index
     val alogicSource: Source, // Source that this token was lexed from
