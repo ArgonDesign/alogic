@@ -146,7 +146,7 @@ final class InlineKnownVars(
       val bs: Symbol => Option[Expr] =
         bindings.top.get(_).filterNot(_ existsAll { !_.tpe.isNumeric })
       @tailrec // Recursively replace with bound values
-      def simplify(expr: Expr): Expr = (expr given bs).simplify match {
+      def simplify(expr: Expr): Expr = (expr substitute bs).simplify match {
         case simplified: ExprInt => simplified
         case simplified          => if (simplified eq expr) expr else simplify(simplified)
       }

@@ -241,7 +241,7 @@ object StaticEvaluation {
     // expression using the current binding of symbol to remove self references
     val newValue = {
       val selfBinding = Bindings from { curr.bindings get symbol map { symbol -> _ } }
-      val replaced = expr given selfBinding
+      val replaced = expr substitute selfBinding
       val signFixed = if (symbol.kind.isSigned != replaced.tpe.isSigned) {
         if (symbol.kind.isSigned) replaced.castSigned else replaced.castUnsigned
       } else {

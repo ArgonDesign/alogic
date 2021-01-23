@@ -132,7 +132,7 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
             symbol -> TypeAssigner(ExprSym(newSymbol) withLoc newSymbol.loc)
         }
       }
-      assertions.append((enSymbol, cond `given` bindings, deps map { _._2 }, msgOpt, comment))
+      assertions.append((enSymbol, cond substitute bindings, deps map { _._2 }, msgOpt, comment))
       val lb = new ListBuffer[Stmt]
       lb.append(StmtAssign(ExprSym(enSymbol), ExprInt(false, 1, 1)) regularize tree.loc)
       deps foreach {

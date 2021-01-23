@@ -248,10 +248,11 @@ trait ExprOps { this: Expr =>
   }
 
   // Rewrite expression using bindings provided
-  def given(bindings: Symbol => Option[Expr])(implicit cc: CompilerContext): Expr =
+  def substitute(bindings: Symbol => Option[Expr])(implicit cc: CompilerContext): Expr =
     this rewrite new ReplaceTermRefs(bindings)
 
-  def given(bindings: Bindings)(implicit cc: CompilerContext): Expr = this.given(bindings.get _)
+  def substitute(bindings: Bindings)(implicit cc: CompilerContext): Expr =
+    this.substitute(bindings.get _)
 
   // Value of this expression if it can be determined right now, otherwise None
   def value(implicit cc: CompilerContext): Option[BigInt] = simplify match {

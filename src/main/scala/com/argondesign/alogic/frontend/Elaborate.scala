@@ -547,7 +547,7 @@ object Elaborate {
                   )
                 } else {
                   // Evaluate the condition (using match to enable tail recursion)
-                  fe.evaluate(cond `given` bindings, "'gen' loop condition") match {
+                  fe.evaluate(cond substitute bindings, "'gen' loop condition") match {
                     case unknown: Unknown      => unknown
                     case failure: Failure      => failure
                     case Complete(v) if v == 0 => Complete(acc.reverse.flatten)
