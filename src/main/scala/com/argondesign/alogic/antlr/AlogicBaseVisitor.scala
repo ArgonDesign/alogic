@@ -30,9 +30,9 @@ abstract class AlogicBaseVisitor[T, L] extends AlogicParserBaseVisitor[T] {
 
   def visit[U <: RuleNode](ctxList: List[U]): L
 
-  final def visit[U <: RuleNode](ctxList: java.util.List[U]): L = visit(ctxList.asScala.toList)
+  final def visit[U <: RuleNode](ctxList: java.util.List[_ <: U]): L = visit(ctxList.asScala.toList)
 
   final def apply[U <: RuleNode](ctx: U): T = visit(ctx)
 
-  final def apply[U <: RuleNode](ctxList: java.util.List[U]): L = visit(ctxList)
+  final def apply[U <: RuleNode](ctxList: java.util.List[_ <: U]): L = visit(ctxList)
 }
