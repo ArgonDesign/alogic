@@ -38,7 +38,7 @@ sealed abstract class Bindings extends Iterable[(Symbol, Expr)] {
       if (it.isEmpty) {
         Bindings.empty
       } else {
-        it reduceLeft [FastIntersectBindings] {
+        it.reduceLeft[FastIntersectBindings] {
           case (a: FastIntersectBindings, b: FastIntersectBindings) =>
             val FastIntersectBindings(oldA, addA, remA) = a
             val FastIntersectBindings(oldB, addB, remB) = b
