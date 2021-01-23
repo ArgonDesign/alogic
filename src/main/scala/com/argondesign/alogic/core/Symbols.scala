@@ -26,7 +26,7 @@ import com.argondesign.alogic.util.unreachable
 
 import scala.util.chaining._
 
-trait Symbols extends { self: CompilerContext =>
+trait Symbols { self: CompilerContext =>
 
   final def makeBuiltinCall(name: String, loc: Loc, args: List[Expr]): ExprCall = {
     val polySymbol = builtins.get(name) match {

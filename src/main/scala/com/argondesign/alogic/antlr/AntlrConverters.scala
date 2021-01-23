@@ -13,7 +13,7 @@ import org.antlr.v4.runtime.tree.TerminalNode
 import scala.language.implicitConversions
 
 // Implicit conversions for Antrl4 classes
-object AntlrConverters extends {
+object AntlrConverters {
   // All Token are AlogicToken (see AlogicTokenFactory)
   implicit def t2at(token: Token): AlogicToken = token.asInstanceOf[AlogicToken]
 

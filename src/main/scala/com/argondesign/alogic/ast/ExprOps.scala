@@ -308,80 +308,80 @@ trait ExprObjOps { self: Expr.type =>
   final def unapply(num: ExprNum): Option[Int] = if (!num.signed) Some(num.value.toInt) else None
 
   // Extractors to match operators naturally
-  final object * {
+  object * {
     def unapply(expr: ExprBinary) = if (expr.op == "*") Some((expr.lhs, expr.rhs)) else None
   }
 
-  final object / {
+  object / {
     def unapply(expr: ExprBinary) = if (expr.op == "/") Some((expr.lhs, expr.rhs)) else None
   }
 
-  final object % {
+  object % {
     def unapply(expr: ExprBinary) = if (expr.op == "%") Some((expr.lhs, expr.rhs)) else None
   }
 
-  final object + {
+  object + {
     def unapply(expr: ExprBinary) = if (expr.op == "+") Some((expr.lhs, expr.rhs)) else None
   }
 
-  final object - {
+  object - {
     def unapply(expr: ExprBinary) = if (expr.op == "-") Some((expr.lhs, expr.rhs)) else None
   }
 
-  final object << {
+  object << {
     def unapply(expr: ExprBinary) = if (expr.op == "<<") Some((expr.lhs, expr.rhs)) else None
   }
 
-  final object >> {
+  object >> {
     def unapply(expr: ExprBinary) = if (expr.op == ">>") Some((expr.lhs, expr.rhs)) else None
   }
 
-  final object <<< {
+  object <<< {
     def unapply(expr: ExprBinary) = if (expr.op == "<<<") Some((expr.lhs, expr.rhs)) else None
   }
 
-  final object >>> {
+  object >>> {
     def unapply(expr: ExprBinary) = if (expr.op == ">>>") Some((expr.lhs, expr.rhs)) else None
   }
 
-  final object & {
+  object & {
     def unapply(expr: ExprBinary) = if (expr.op == "&") Some((expr.lhs, expr.rhs)) else None
   }
 
-  final object ^ {
+  object ^ {
     def unapply(expr: ExprBinary) = if (expr.op == "^") Some((expr.lhs, expr.rhs)) else None
   }
 
-  final object | {
+  object | {
     def unapply(expr: ExprBinary) = if (expr.op == "|") Some((expr.lhs, expr.rhs)) else None
   }
 
-  final object && {
+  object && {
     def unapply(expr: ExprBinary) = if (expr.op == "&&") Some((expr.lhs, expr.rhs)) else None
   }
 
-  final object || {
+  object || {
     def unapply(expr: ExprBinary) = if (expr.op == "||") Some((expr.lhs, expr.rhs)) else None
   }
 
-  final object < {
+  object < {
     def unapply(expr: ExprBinary) = if (expr.op == "<") Some((expr.lhs, expr.rhs)) else None
   }
 
-  final object <= {
+  object <= {
     def unapply(expr: ExprBinary) = if (expr.op == "<=") Some((expr.lhs, expr.rhs)) else None
   }
 
-  final object > {
+  object > {
     def unapply(expr: ExprBinary) = if (expr.op == ">") Some((expr.lhs, expr.rhs)) else None
   }
 
-  final object >= {
+  object >= {
     def unapply(expr: ExprBinary) = if (expr.op == ">=") Some((expr.lhs, expr.rhs)) else None
   }
 
   // Extractor for instance port selects
-  final object InstancePortSel {
+  object InstancePortSel {
 
     def unapply(expr: ExprSel): Option[(Symbol, Symbol)] = expr match {
       case ExprSel(ExprSym(symbol), sel) =>
@@ -395,7 +395,7 @@ trait ExprObjOps { self: Expr.type =>
   }
 
   // Extractor for integral values (ExprInt or ExprNum)
-  final object Integral {
+  object Integral {
 
     def unapply(expr: Expr): Option[(Boolean, Option[Int], BigInt)] = expr partialMatch {
       case ExprNum(signed, value)                     => (signed, None, value)

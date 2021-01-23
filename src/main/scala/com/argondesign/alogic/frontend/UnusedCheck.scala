@@ -189,6 +189,6 @@ final class UnusedCheck(implicit cc: CompilerContext) extends StatefulTreeTransf
 
 }
 
-object UnusedCheck extends {
+object UnusedCheck {
   def apply(desc: Desc)(implicit cc: CompilerContext): Unit = desc rewrite new UnusedCheck
 }

@@ -17,7 +17,7 @@ package com.argondesign.alogic.lib
 
 import scala.annotation.tailrec
 
-final object Math {
+object Math {
 
   def clog2(value: BigInt): Int = {
     require(value >= 0)
