@@ -38,7 +38,7 @@ class DropPackageAndParametrizedDescs(implicit cc: CompilerContext)
 }
 
 object DropPackageAndParametrizedDescs
-    extends Pass[Option[(DescPackage, Iterable[DescPackage])], Iterable[Desc]] {
+    extends SimplePass[Option[(DescPackage, Iterable[DescPackage])], Iterable[Desc]] {
   val name = "drop-package-and-parametrized-descs"
 
   override protected def dump(

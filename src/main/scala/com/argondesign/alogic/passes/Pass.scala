@@ -1,15 +1,10 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2018 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler
-// Author: Geza Lore
-//
 // DESCRIPTION:
-//
 // A pass is anything that takes a list of trees and returns a new list
 // of trees. While most of them are implemented as a TreeTransformer,
 // other implementations are possible but discouraged. If a pass can
@@ -27,14 +22,41 @@ import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols.Symbol
-import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.nowarn
 import scala.annotation.tailrec
 import scala.util.ChainingSyntax
+import scala.util.chaining.scalaUtilChainingOps
 
 // The compiler pass interface
-trait Pass[T, R] { self =>
+sealed trait Pass[-T, +R] { self =>
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Abstract members
+  //////////////////////////////////////////////////////////////////////////////
+
+  // Return an iterable of the transformations to be applied by this pass.
+  def passTransformations: Iterator[(Any, Int, CompilerContext) => Option[Any]]
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Concrete members
+  //////////////////////////////////////////////////////////////////////////////
+
+  // Apply the pass to some input
+  final def apply(input: T)(implicit cc: CompilerContext): Option[R] =
+    passTransformations.foldLeft[(Option[Any], Int)]((Some(input), 0)) {
+      case (pair @ (None, _), _) => pair
+      case ((Some(input), n), f) => (f(input, n, cc), n + 1)
+    } pipe {
+      _._1.asInstanceOf[Option[R]]
+    }
+
+  // Combine with subsequent pass, with this Pass applied first
+  final def andThen[U](next: Pass[R, U]): Pass[T, U] = new CombinedPass(this, next)
+}
+
+// Extend this for passes implementing a single transformation
+trait SimplePass[T, R] extends Pass[T, R] { self =>
   //////////////////////////////////////////////////////////////////////////////
   // Abstract members
   //////////////////////////////////////////////////////////////////////////////
@@ -50,42 +72,28 @@ trait Pass[T, R] { self =>
   // Concrete members
   //////////////////////////////////////////////////////////////////////////////
 
-  // How many complete transformations does this pass do
-  protected val steps: Int = 1
-
-  // Apply the pass
-  final def apply(input: T)(implicit cc: CompilerContext): Option[R] = run(input, 0)
-
-  // Actual implementation of pass application
-  protected def run(input: T, passNumber: Int)(implicit cc: CompilerContext): Option[R] = {
-    // Process the inputs
-    val output = cc.timeit(f"pass $passNumber%02d $name")(process(input))
-    // Dump result if requested
-    if (cc.settings.dumpTrees) dump(output, f"$passNumber%02d.$name")
-    // Yield output, if there were no errors
-    Option.unless(cc.hasError)(output)
-  }
-
-  // Combine with subsequent pass, with this Pass applied first
-  final def andThen[U](next: Pass[R, U]): Pass[T, U] = new Pass[T, U] {
-    val name: String = self.name + " andThen " + next.name
-
-    // These are not called on the comined pass directly
-    protected def process(input: T)(implicit cc: CompilerContext): U = unreachable
-    protected def dump(result: U, tag: String)(implicit cc: CompilerContext): Unit = unreachable
-
-    override protected val steps: Int = self.steps + next.steps
-
-    // Apply the self pass and then the next pass
-    override def run(input: T, passNumber: Int)(implicit cc: CompilerContext): Option[U] = {
-      self.run(input, passNumber) flatMap { next.run(_, passNumber + self.steps) }
+  // Return single transformation that applies 'process' then 'dump'
+  final def passTransformations: Iterator[(Any, Int, CompilerContext) => Option[R]] =
+    Iterator single {
+      case (input, passNumber, cc) =>
+        // Process the inputs
+        val output = cc.timeit(f"pass $passNumber%02d $name")(process(input.asInstanceOf[T])(cc))
+        // Dump result if requested
+        if (cc.settings.dumpTrees) dump(output, f"$passNumber%02d.$name")(cc)
+        // Yield output, if there were no errors
+        Option.unless(cc.hasError)(output): Option[R]
     }
-
-  }
 
 }
 
-trait PairsTransformerPass extends Pass[Iterable[(Decl, Defn)], Iterable[(Decl, Defn)]] {
+// A pass representing the sequential application of two passes
+final private class CombinedPass[T, R, U](a: Pass[T, R], b: Pass[R, U]) extends Pass[T, U] {
+  // Transformations of a, then transformations of b
+  def passTransformations: Iterator[(Any, Int, CompilerContext) => Option[Any]] =
+    a.passTransformations concat b.passTransformations
+}
+
+trait PairsTransformerPass extends SimplePass[Iterable[(Decl, Defn)], Iterable[(Decl, Defn)]] {
 
   final protected def dump(
       result: Iterable[(Decl, Defn)],

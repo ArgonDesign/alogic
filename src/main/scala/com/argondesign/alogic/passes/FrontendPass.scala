@@ -17,7 +17,7 @@ import com.argondesign.alogic.core.Source
 import com.argondesign.alogic.frontend.Frontend
 
 object FrontendPass
-    extends Pass[(Source, Loc, List[Arg]), Option[(DescPackage, Iterable[DescPackage])]] {
+    extends SimplePass[(Source, Loc, List[Arg]), Option[(DescPackage, Iterable[DescPackage])]] {
   val name = "frontend"
 
   override protected def dump(

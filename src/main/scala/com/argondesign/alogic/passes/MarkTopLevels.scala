@@ -13,7 +13,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 
 object MarkTopLevels
-    extends Pass[Option[(DescPackage, Iterable[DescPackage])], Option[
+    extends SimplePass[Option[(DescPackage, Iterable[DescPackage])], Option[
       (DescPackage, Iterable[DescPackage])
     ]] {
   val name = "mark-top-levels"

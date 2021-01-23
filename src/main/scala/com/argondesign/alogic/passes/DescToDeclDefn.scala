@@ -126,7 +126,7 @@ class DescToDeclDefn(implicit cc: CompilerContext) extends StatelessTreeTransfor
 
 }
 
-object DescToDeclDefn extends Pass[Iterable[Desc], Iterable[(Decl, Defn)]] {
+object DescToDeclDefn extends SimplePass[Iterable[Desc], Iterable[(Decl, Defn)]] {
   val name = "desc-to-decl-defn"
 
   override protected def dump(
