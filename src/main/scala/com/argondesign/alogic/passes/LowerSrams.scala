@@ -91,7 +91,7 @@ final class LowerSrams(
       extends SramParts
 
   // Extractors for transposed views of the above
-  object SramWire {
+  private object SramWire {
 
     def unapply(parts: SramParts): Option[Symbol] = parts match {
       case SramWireInt(sSymbol)       => Some(sSymbol)
@@ -101,7 +101,7 @@ final class LowerSrams(
 
   }
 
-  object SramReg {
+  private object SramReg {
 
     def unapply(parts: SramParts): Option[(Symbol, (DeclEntity, DefnEntity), Symbol)] =
       parts match {
@@ -112,7 +112,7 @@ final class LowerSrams(
 
   }
 
-  object SramInt {
+  private object SramInt {
 
     def unapply(parts: SramParts): Option[Symbol] = parts match {
       case SramWireInt(sSymbol)      => Some(sSymbol)
@@ -122,7 +122,7 @@ final class LowerSrams(
 
   }
 
-  object SramStruct {
+  private object SramStruct {
 
     def unapply(parts: SramParts): Option[(Symbol, Symbol)] = parts match {
       case SramWireStruct(sSymbol, rSymbol)      => Some((sSymbol, rSymbol))
