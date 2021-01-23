@@ -54,7 +54,7 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatelessTreeTra
   // 'this' expression, return an iterator holding the statements to be emitted
   // to inline the function, and the symbol holding the return value, if the
   // function has non-void return type.
-  private def inline(
+  private def inlineBody(
       symbol: Symbol,
       args: List[Arg],
       thisOpt: Option[Expr],
@@ -296,7 +296,7 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatelessTreeTra
     if (tgt.tpe.isError || (args exists { _.tpe.isError })) {
       None
     } else {
-      inline(tgt.tpe.asCallable.symbol, args, getReceiver(tgt), call.loc) map {
+      inlineBody(tgt.tpe.asCallable.symbol, args, getReceiver(tgt), call.loc) map {
         case (extra, retOpt) => (extraStmts.top.iterator concat extra, retOpt)
       }
     }
@@ -325,7 +325,7 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatelessTreeTra
 
   override def transform(tree: Tree): Tree = tree match {
     case ExprCall(tgt, args) if tgt.tpe.isMethod =>
-      inline(tgt.tpe.asCallable.symbol, args, getReceiver(tgt), tree.loc) map {
+      inlineBody(tgt.tpe.asCallable.symbol, args, getReceiver(tgt), tree.loc) map {
         case (extra, resultOpt) =>
           extraStmts.top.addAll(extra)
           TypeAssigner(ExprSym(resultOpt.get) withLoc tree.loc)
