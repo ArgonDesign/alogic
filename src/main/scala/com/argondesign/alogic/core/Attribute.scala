@@ -59,7 +59,7 @@ object Attribute {
     def append(coll: T, elem: E): T
   }
 
-  implicit def appendableList[E] = new Appendable[E, List[E]] {
+  implicit def appendableList[E]: Appendable[E, List[E]] = new Appendable[E, List[E]] {
     def create(elem: E) = List(elem)
     def append(coll: List[E], elem: E) = coll ::: elem :: Nil
   }
@@ -68,7 +68,7 @@ object Attribute {
     def enumerate(coll: T): Iterator[E]
   }
 
-  implicit def enumerableList[E] = new Enumerable[E, List[E]] {
+  implicit def enumerableList[E]: Enumerable[E, List[E]] = new Enumerable[E, List[E]] {
     def enumerate(coll: List[E]): Iterator[E] = coll.iterator
   }
 
