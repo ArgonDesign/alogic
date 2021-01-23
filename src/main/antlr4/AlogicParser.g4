@@ -97,7 +97,7 @@ genitems : genitem* ;
 genitem
   : desc        # GenItemDesc
   | imprt       # GenItemImport
-  | using       # GenItemUsing
+  | usng        # GenItemUsing
   | from        # GenItemFrom
   | assertion   # GenItemAssertion
   | pkg         # GenItemPkg
@@ -122,7 +122,7 @@ imprt
 // Using
 ////////////////////////////////////////////////////////////////////////////////
 
-using
+usng
   : 'using' expr ('as' ident)? ';'  # UsingOne
   | 'using' expr '.' '*' ';'        # UsingAll
   ;
@@ -152,7 +152,7 @@ assertion
 pkg
   : desc                                # PkgDesc
   | imprt                               # PkgImport
-  | using                               # PkgUsing
+  | usng                                # PkgUsing
   | from                                # PkgFrom
   | assertion                           # PkgAssertion
   | 'compile' expr ('as' ident)? ';'    # PkgCompile
@@ -165,7 +165,7 @@ pkg
 ent
   : desc                                                # EntDesc
   | imprt                                               # EntImport
-  | using                                               # EntUsing
+  | usng                                                # EntUsing
   | from                                                # EntFrom
   | assertion                                           # EntAssertion
   | lhs=expr point='->' rhs+=expr (',' rhs+=expr)* ';'  # EntConnect
@@ -180,7 +180,7 @@ ent
 rec
   : desc        # RecDesc
   | imprt       # RecImport
-  | using       # RecUsing
+  | usng        # RecUsing
   | from        # RecFrom
   | assertion   # RecAssertion
   ;
@@ -192,7 +192,7 @@ rec
 stmt
   : desc                                                        # StmtDesc
   | imprt                                                       # StmtImport
-  | using                                                       # StmtUsing
+  | usng                                                        # StmtUsing
   | from                                                        # StmtFrom
   | assertion                                                   # StmtAssertion
   | '{' stmt* '}'                                               # StmtBlock

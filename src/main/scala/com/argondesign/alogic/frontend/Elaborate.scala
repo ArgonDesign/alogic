@@ -1104,19 +1104,19 @@ object Elaborate {
   }
 
   private def elaborate(
-      using: Using,
+      usng: Using,
       symtab: SymbolTable
     )(
       implicit
       cc: CompilerContext,
       fe: Frontend
     ): Result[Tree] =
-    elaborate(using.expr, symtab) map { expr =>
-      using.cpy(expr = expr) withLocOf using
+    elaborate(usng.expr, symtab) map { expr =>
+      usng.cpy(expr = expr) withLocOf usng
     } proceed {
       case UsingOne(expr, Some(ident)) =>
         // Type parameter is unused as DescAlias doesn't have a body...
-        elaborate[Desc](DescAlias(ident, Nil, expr, exprt = false) withLocOf using, symtab, None)
+        elaborate[Desc](DescAlias(ident, Nil, expr, exprt = false) withLocOf usng, symtab, None)
       case UsingOne(_, None) =>
         unreachable // Eliminated by SyntaxNormalize
       case UsingAll(expr, exprt) =>
@@ -1195,7 +1195,7 @@ object Elaborate {
           case desc: DescGenFor   => Unknown(ReasonUnelaborated(desc))
           case _                  => throw Ice("Malformed UsingGenLoopBody")
         }
-    } tap assertProgressIsReal(using)
+    } tap assertProgressIsReal(usng)
 
   private def elaborate(
       assertion: Assertion,

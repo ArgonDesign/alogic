@@ -15,9 +15,9 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.MessageBuffer
 import com.argondesign.alogic.core.SourceContext
 
-object UsingBuilder extends BaseBuilder[UsingContext, Using] {
+object UsingBuilder extends BaseBuilder[UsngContext, Using] {
 
-  def apply(ctx: UsingContext)(implicit mb: MessageBuffer, sc: SourceContext): Using = {
+  def apply(ctx: UsngContext)(implicit mb: MessageBuffer, sc: SourceContext): Using = {
     object Visitor extends AlogicScalarVisitor[Using] {
       override def visitUsingOne(ctx: UsingOneContext): Using =
         UsingOne(

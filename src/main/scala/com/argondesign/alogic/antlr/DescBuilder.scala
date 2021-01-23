@@ -51,7 +51,7 @@ object DescBuilder extends BaseBuilder[DescContext, Desc] with ChainingSyntax {
       // format: off
       override def visitGenItemDesc(ctx: GenItemDescContext): Tree = DescBuilder(ctx.desc)
       override def visitGenItemImport(ctx: GenItemImportContext): Tree = ImportBuilder(ctx.imprt)
-      override def visitGenItemUsing(ctx: GenItemUsingContext): Tree = UsingBuilder(ctx.using)
+      override def visitGenItemUsing(ctx: GenItemUsingContext): Tree = UsingBuilder(ctx.usng)
       override def visitGenItemFrom(ctx: GenItemFromContext): Tree = FromBuilder(ctx.from)
       override def visitGenItemAssertion(ctx: GenItemAssertionContext): Tree = AssertionBuilder(ctx.assertion)
       override def visitGenItemPkg(ctx: GenItemPkgContext): Tree = PkgBuilder(ctx.pkg)

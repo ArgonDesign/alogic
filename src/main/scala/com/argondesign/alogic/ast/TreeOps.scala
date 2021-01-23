@@ -351,9 +351,9 @@ trait ObjectTreeOps {
   }
 
   implicit object parseableUsing extends Parseable[Using] {
-    type C = UsingContext
-    def parse(parser: AlogicParser): UsingContext = parser.using()
-    def build(ctx: UsingContext)(implicit mb: MessageBuffer, sc: SourceContext): Using =
+    type C = UsngContext
+    def parse(parser: AlogicParser): UsngContext = parser.usng()
+    def build(ctx: UsngContext)(implicit mb: MessageBuffer, sc: SourceContext): Using =
       UsingBuilder(ctx)
   }
 

@@ -31,7 +31,7 @@ object RecBuilder extends BaseBuilder[RecContext, Rec] {
         RecSplice(ImportBuilder(ctx.imprt)) withLoc ctx.loc
 
       override def visitRecUsing(ctx: RecUsingContext): Rec =
-        RecSplice(UsingBuilder(ctx.using)) withLoc ctx.loc
+        RecSplice(UsingBuilder(ctx.usng)) withLoc ctx.loc
 
       override def visitRecFrom(ctx: RecFromContext): Rec =
         RecSplice(FromBuilder(ctx.from)) withLoc ctx.loc

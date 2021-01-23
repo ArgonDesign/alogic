@@ -39,7 +39,7 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
         StmtSplice(ImportBuilder(ctx.imprt)) withLoc ctx.loc
 
       override def visitStmtUsing(ctx: StmtUsingContext): Stmt =
-        StmtSplice(UsingBuilder(ctx.using)) withLoc ctx.loc
+        StmtSplice(UsingBuilder(ctx.usng)) withLoc ctx.loc
 
       override def visitStmtFrom(ctx: StmtFromContext): Stmt =
         StmtSplice(FromBuilder(ctx.from)) withLoc ctx.loc

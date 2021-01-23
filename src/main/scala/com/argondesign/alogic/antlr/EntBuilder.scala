@@ -32,7 +32,7 @@ object EntBuilder extends BaseBuilder[EntContext, Ent] {
         EntSplice(ImportBuilder(ctx.imprt)) withLoc ctx.loc
 
       override def visitEntUsing(ctx: EntUsingContext): Ent =
-        EntSplice(UsingBuilder(ctx.using)) withLoc ctx.loc
+        EntSplice(UsingBuilder(ctx.usng)) withLoc ctx.loc
 
       override def visitEntFrom(ctx: EntFromContext): Ent =
         EntSplice(FromBuilder(ctx.from)) withLoc ctx.loc

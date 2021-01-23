@@ -28,10 +28,10 @@ final class SyntaxNormalize(implicit cc: CompilerContext) extends StatefulTreeTr
   private def adjUnnamed(desc: Desc, isLoop: Boolean): Thicket = {
     require(desc.ref == Ident("", Nil))
     val ident = nextTempIdent() withLocOf desc
-    val using = if (isLoop) UsingGenLoopBody(_, Set.empty) else UsingAll(_, exprt = true)
+    val usng = if (isLoop) UsingGenLoopBody(_, Set.empty) else UsingAll(_, exprt = true)
     Thicket(
       desc.copyRef(ref = ident) withLocOf desc,
-      using(ExprIdent(ident) withLoc Loc.synthetic) withLoc Loc.synthetic
+      usng(ExprIdent(ident) withLoc Loc.synthetic) withLoc Loc.synthetic
     )
   }
 
@@ -98,10 +98,10 @@ final class SyntaxNormalize(implicit cc: CompilerContext) extends StatefulTreeTr
     // Ensure UsingOne instances have explicit name
     ////////////////////////////////////////////////////////////////////////////
 
-    case using @ UsingOne(expr, None) =>
+    case usng @ UsingOne(expr, None) =>
       localName(expr) match {
-        case some: Some[_] => using.copy(identOpt = some) withLocOf tree
-        case None          => cc.error(using, "'using' requires 'as' clause"); tree
+        case some: Some[_] => usng.copy(identOpt = some) withLocOf tree
+        case None          => cc.error(usng, "'using' requires 'as' clause"); tree
       }
 
     ////////////////////////////////////////////////////////////////////////////

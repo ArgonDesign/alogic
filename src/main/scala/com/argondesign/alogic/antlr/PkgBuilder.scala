@@ -26,7 +26,7 @@ object PkgBuilder extends BaseBuilder[PkgContext, Pkg] {
         PkgSplice(ImportBuilder(ctx.imprt)) withLoc ctx.loc
 
       override def visitPkgUsing(ctx: PkgUsingContext): Pkg =
-        PkgSplice(UsingBuilder(ctx.using)) withLoc ctx.loc
+        PkgSplice(UsingBuilder(ctx.usng)) withLoc ctx.loc
 
       override def visitPkgFrom(ctx: PkgFromContext): Pkg =
         PkgSplice(FromBuilder(ctx.from)) withLoc ctx.loc
