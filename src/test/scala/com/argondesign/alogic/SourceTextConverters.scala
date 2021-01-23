@@ -31,12 +31,18 @@ object SourceTextConverters {
 
     val source: Source = Source("<asTree>", string)
 
-    def asTree[T <: Tree: Parseable](implicit cc: CompilerContext): T = {
+    def asTree[T <: Tree](implicit cc: CompilerContext, parseable: Parseable[T]): T = {
       implicit val mb: MessageBuffer = cc.messageBuffer
       Parser[T](source, SourceContext.Unknown) getOrElse { throw AsTreeSyntaxErrorException(cc) }
     }
 
-    def asTree[T <: Tree: Parseable](sc: SourceContext)(implicit cc: CompilerContext): T = {
+    def asTree[T <: Tree](
+        sc: SourceContext
+      )(
+        implicit
+        cc: CompilerContext,
+        parseable: Parseable[T]
+      ): T = {
       implicit val mb: MessageBuffer = cc.messageBuffer
       Parser[T](source, sc) getOrElse { throw AsTreeSyntaxErrorException(cc) }
     }

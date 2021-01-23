@@ -106,7 +106,7 @@ final class ExprOpsSpec extends AnyFreeSpec with AlogicTest {
       ">>>" in { Expr(1) >>> Expr(2) should matchPattern { case Expr(1) >>> Expr(2) => } }
       "&" in { Expr(1) & Expr(2) should matchPattern { case Expr(1) & Expr(2) => } }
       "^" in { Expr(1) ^ Expr(2) should matchPattern { case Expr(1) ^ Expr(2) => } }
-      "|" in { Expr(1) | Expr(2) should matchPattern { case Expr(1) `|` Expr(2) => } }
+      "|" in { Expr(1) | Expr(2) should matchPattern { case `|`(Expr(1), Expr(2)) => } }
       "&&" in { Expr(1) && Expr(2) should matchPattern { case Expr(1) && Expr(2) => } }
       "||" in { Expr(1) || Expr(2) should matchPattern { case Expr(1) || Expr(2) => } }
       "<" in { Expr(1) < Expr(2) should matchPattern { case Expr(1) < Expr(2) => } }
