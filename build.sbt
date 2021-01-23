@@ -39,17 +39,17 @@ unmanagedSources / excludeFilter := {
 // Library dependencies
 ////////////////////////////////////////////////////////////////////////////////
 
-libraryDependencies += "org.rogach" %% "scallop" % "3.3.1"
+libraryDependencies += "org.rogach" %% "scallop" % "4.0.1"
 
 libraryDependencies +=
-  "org.scala-lang.modules" %% "scala-parallel-collections" % "0.2.0"
+  "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.0"
 
 libraryDependencies ++= Seq(
   "io.circe" %% "circe-core",
   "io.circe" %% "circe-generic",
   "io.circe" %% "circe-parser"
 ) map {
-  _ % "0.13.0"
+  _ % "0.14.0-M3"
 }
 
 // Java 11 only
@@ -65,7 +65,7 @@ libraryDependencies ++= {
 // Testing dependencies
 ////////////////////////////////////////////////////////////////////////////////
 
-libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.1" % Test
+libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.3" % Test
 
 libraryDependencies += "org.scalamock" %% "scalamock" % "4.4.0" % Test
 
