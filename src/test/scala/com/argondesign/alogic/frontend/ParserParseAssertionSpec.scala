@@ -22,25 +22,25 @@ final class ParserParseAssertionSpec extends AnyFreeSpec with AlogicTest {
 
   "The parser should build correct ASTs for Assertion" - {
     "assert statement with no message" in {
-      "assert true;".asTree[Assertion] shouldBe {
+      "assert true;".asTree[Assertion]() shouldBe {
         AssertionAssert(ExprInt(false, 1, 1), None)
       }
     }
 
     "assert statement with message" in {
-      """assert false, "msg";""".asTree[Assertion] shouldBe {
+      """assert false, "msg";""".asTree[Assertion]() shouldBe {
         AssertionAssert(ExprInt(false, 1, 0), Some("msg"))
       }
     }
 
     "static assert with no message" in {
-      "static assert false;".asTree[Assertion] shouldBe {
+      "static assert false;".asTree[Assertion]() shouldBe {
         AssertionStatic(ExprInt(false, 1, 0), None)
       }
     }
 
     "static assert with message" in {
-      """static assert 2'd2, "msg";""".asTree[Assertion] shouldBe {
+      """static assert 2'd2, "msg";""".asTree[Assertion]() shouldBe {
         AssertionStatic(ExprInt(false, 2, 2), Some("msg"))
       }
     }

@@ -27,35 +27,35 @@ final class ParserParseExprSpec extends AnyFreeSpec with AlogicTest {
   "The parser should build correct ASTs for Expr" - {
     // TODO: match Trees enumeration order
     "bool" in {
-      "bool".asTree[Expr] shouldBe ExprType(TypeUInt(1))
+      "bool".asTree[Expr]() shouldBe ExprType(TypeUInt(1))
     }
 
     "bool is same as u1" in {
-      "bool".asTree[Expr] shouldBe "u1".asTree[Expr]
+      "bool".asTree[Expr]() shouldBe "u1".asTree[Expr]()
     }
 
     "fixed unsigned ints" in {
       forAll(List("u1", "u2", "u3", "u44", "u128")) { str =>
-        str.asTree[Expr] shouldBe ExprType(TypeUInt(str.tail.toInt))
+        str.asTree[Expr]() shouldBe ExprType(TypeUInt(str.tail.toInt))
       }
     }
 
     "fixed signed ints" in {
       forAll(List("i1", "i2", "i3", "i44", "i128")) { str =>
-        str.asTree[Expr] shouldBe ExprType(TypeSInt(str.tail.toInt))
+        str.asTree[Expr]() shouldBe ExprType(TypeSInt(str.tail.toInt))
       }
     }
 
     "parametrized integers" - {
       "unsigned" in {
-        "uint(N)".asTree[Expr] shouldBe ExprCall(
+        "uint(N)".asTree[Expr]() shouldBe ExprCall(
           ExprType(TypeNum(false)),
           List(ArgP(ExprIdent(Ident("N", Nil))))
         )
       }
 
       "signed" in {
-        "int(N)".asTree[Expr] shouldBe ExprCall(
+        "int(N)".asTree[Expr]() shouldBe ExprCall(
           ExprType(TypeNum(true)),
           List(ArgP(ExprIdent(Ident("N", Nil))))
         )
@@ -64,34 +64,34 @@ final class ParserParseExprSpec extends AnyFreeSpec with AlogicTest {
 
     "vectors" - {
       "1D u2" in {
-        "u2[8]".asTree[Expr] shouldBe ExprIndex(ExprType(TypeUInt(2)), Expr(8))
+        "u2[8]".asTree[Expr]() shouldBe ExprIndex(ExprType(TypeUInt(2)), Expr(8))
       }
 
       "2D u2" in {
-        "u2[4][8]".asTree[Expr] shouldBe {
+        "u2[4][8]".asTree[Expr]() shouldBe {
           ExprIndex(ExprIndex(ExprType(TypeUInt(2)), Expr(4)), Expr(8))
         }
       }
 
       "1D i2" in {
-        "i2[8]".asTree[Expr] shouldBe ExprIndex(ExprType(TypeSInt(2)), Expr(8))
+        "i2[8]".asTree[Expr]() shouldBe ExprIndex(ExprType(TypeSInt(2)), Expr(8))
       }
 
       "2D i2" in {
-        "i2[4][8]".asTree[Expr] shouldBe {
+        "i2[4][8]".asTree[Expr]() shouldBe {
           ExprIndex(ExprIndex(ExprType(TypeSInt(2)), Expr(4)), Expr(8))
         }
       }
 
       "1D uint(3)" in {
-        "uint(3)[8]".asTree[Expr] shouldBe ExprIndex(
+        "uint(3)[8]".asTree[Expr]() shouldBe ExprIndex(
           ExprCall(ExprType(TypeNum(false)), ArgP(Expr(3)) :: Nil),
           Expr(8)
         )
       }
 
       "2D uint(3)" in {
-        "uint(3)[4][8]".asTree[Expr] shouldBe {
+        "uint(3)[4][8]".asTree[Expr]() shouldBe {
           ExprIndex(
             ExprIndex(ExprCall(ExprType(TypeNum(false)), ArgP(Expr(3)) :: Nil), Expr(4)),
             Expr(8)
@@ -100,14 +100,14 @@ final class ParserParseExprSpec extends AnyFreeSpec with AlogicTest {
       }
 
       "1D int(3)" in {
-        "int(3)[8]".asTree[Expr] shouldBe ExprIndex(
+        "int(3)[8]".asTree[Expr]() shouldBe ExprIndex(
           ExprCall(ExprType(TypeNum(true)), ArgP(Expr(3)) :: Nil),
           Expr(8)
         )
       }
 
       "2D int(3)" in {
-        "int(3)[4][8]".asTree[Expr] shouldBe {
+        "int(3)[4][8]".asTree[Expr]() shouldBe {
           ExprIndex(
             ExprIndex(ExprCall(ExprType(TypeNum(true)), ArgP(Expr(3)) :: Nil), Expr(4)),
             Expr(8)
@@ -116,39 +116,39 @@ final class ParserParseExprSpec extends AnyFreeSpec with AlogicTest {
       }
 
       "1D bool" in {
-        "bool[8]".asTree[Expr] shouldBe ExprIndex(ExprType(TypeUInt(1)), Expr(8))
+        "bool[8]".asTree[Expr]() shouldBe ExprIndex(ExprType(TypeUInt(1)), Expr(8))
       }
 
       "2D bool" in {
-        "bool[4][8]".asTree[Expr] shouldBe {
+        "bool[4][8]".asTree[Expr]() shouldBe {
           ExprIndex(ExprIndex(ExprType(TypeUInt(1)), Expr(4)), Expr(8))
         }
       }
     }
 
     "void" in {
-      "void".asTree[Expr] shouldBe ExprType(TypeVoid)
+      "void".asTree[Expr]() shouldBe ExprType(TypeVoid)
     }
 
     "unsized int" in {
-      "int".asTree[Expr] shouldBe ExprType(TypeNum(true))
+      "int".asTree[Expr]() shouldBe ExprType(TypeNum(true))
     }
 
     "unsized uint" in {
-      "uint".asTree[Expr] shouldBe ExprType(TypeNum(false))
+      "uint".asTree[Expr]() shouldBe ExprType(TypeNum(false))
     }
 
     "literals" - {
       "string" in {
-        "\"foo\"".asTree[Expr] shouldBe ExprStr("foo")
+        "\"foo\"".asTree[Expr]() shouldBe ExprStr("foo")
       }
 
       "true" in {
-        "true".asTree[Expr] shouldBe ExprInt(false, 1, 1)
+        "true".asTree[Expr]() shouldBe ExprInt(false, 1, 1)
       }
 
       "false" in {
-        "false".asTree[Expr] shouldBe ExprInt(false, 1, 0)
+        "false".asTree[Expr]() shouldBe ExprInt(false, 1, 0)
       }
 
       "unsized integers" - {
@@ -282,7 +282,7 @@ final class ParserParseExprSpec extends AnyFreeSpec with AlogicTest {
           )
         } {
           literal in {
-            literal.asTree[Expr] shouldBe result
+            literal.asTree[Expr]() shouldBe result
             if (msg.nonEmpty) {
               cc.messages.loneElement should beThe[Error]((msg split '\n').toSeq: _*)
             } else {
@@ -432,7 +432,7 @@ final class ParserParseExprSpec extends AnyFreeSpec with AlogicTest {
           )
         } {
           literal in {
-            literal.asTree[Expr] shouldBe result
+            literal.asTree[Expr]() shouldBe result
             if (msg.nonEmpty) {
               result match {
                 case _: ExprError => cc.messages.loneElement should beThe[Error](msg)
@@ -450,20 +450,20 @@ final class ParserParseExprSpec extends AnyFreeSpec with AlogicTest {
 
     "simple" - {
       "bracket" in {
-        "(((1)))".asTree[Expr] shouldBe Expr(1)
+        "(((1)))".asTree[Expr]() shouldBe Expr(1)
       }
 
       "call" - {
         "with no arguments" in {
-          "a()".asTree[Expr] shouldBe ExprCall(ExprIdent(Ident("a", Nil)), Nil)
+          "a()".asTree[Expr]() shouldBe ExprCall(ExprIdent(Ident("a", Nil)), Nil)
         }
 
         "with 1 positional argument" in {
-          "b(2)".asTree[Expr] shouldBe ExprCall(ExprIdent(Ident("b", Nil)), List(ArgP(Expr(2))))
+          "b(2)".asTree[Expr]() shouldBe ExprCall(ExprIdent(Ident("b", Nil)), List(ArgP(Expr(2))))
         }
 
         "with 2 positional arguments" in {
-          "c(d, e)".asTree[Expr] shouldBe {
+          "c(d, e)".asTree[Expr]() shouldBe {
             ExprCall(
               ExprIdent(Ident("c", Nil)),
               List(ArgP(ExprIdent(Ident("d", Nil))), ArgP(ExprIdent(Ident("e", Nil))))
@@ -473,11 +473,11 @@ final class ParserParseExprSpec extends AnyFreeSpec with AlogicTest {
 
         "with 1 named argument" in {
           "b(x = 2)"
-            .asTree[Expr] shouldBe ExprCall(ExprIdent(Ident("b", Nil)), List(ArgN("x", Expr(2))))
+            .asTree[Expr]() shouldBe ExprCall(ExprIdent(Ident("b", Nil)), List(ArgN("x", Expr(2))))
         }
 
         "with 2 named arguments" in {
-          "c(x=d, y=e)".asTree[Expr] shouldBe {
+          "c(x=d, y=e)".asTree[Expr]() shouldBe {
             ExprCall(
               ExprIdent(Ident("c", Nil)),
               List(ArgN("x", ExprIdent(Ident("d", Nil))), ArgN("y", ExprIdent(Ident("e", Nil))))
@@ -486,7 +486,7 @@ final class ParserParseExprSpec extends AnyFreeSpec with AlogicTest {
         }
 
         "with 1 positional and 1 named argument" in {
-          "c(d, y=e)".asTree[Expr] shouldBe {
+          "c(d, y=e)".asTree[Expr]() shouldBe {
             ExprCall(
               ExprIdent(Ident("c", Nil)),
               List(ArgP(ExprIdent(Ident("d", Nil))), ArgN("y", ExprIdent(Ident("e", Nil))))
@@ -495,7 +495,7 @@ final class ParserParseExprSpec extends AnyFreeSpec with AlogicTest {
         }
 
         "with 1 dict argument" in {
-          "c(x#[0]=d)".asTree[Expr] shouldBe {
+          "c(x#[0]=d)".asTree[Expr]() shouldBe {
             ExprCall(
               ExprIdent(Ident("c", Nil)),
               List(
@@ -506,7 +506,7 @@ final class ParserParseExprSpec extends AnyFreeSpec with AlogicTest {
         }
 
         "with 2 dict arguments" in {
-          "c(x#[0]=d, x#[1]=e)".asTree[Expr] shouldBe {
+          "c(x#[0]=d, x#[1]=e)".asTree[Expr]() shouldBe {
             ExprCall(
               ExprIdent(Ident("c", Nil)),
               List(
@@ -531,7 +531,7 @@ final class ParserParseExprSpec extends AnyFreeSpec with AlogicTest {
         )
       ) {
         s"unary $op" in {
-          s"$op(2)".asTree[Expr] shouldBe ExprUnary(op, Expr(2))
+          s"$op(2)".asTree[Expr]() shouldBe ExprUnary(op, Expr(2))
         }
       }
 
@@ -561,25 +561,25 @@ final class ParserParseExprSpec extends AnyFreeSpec with AlogicTest {
         )
       ) {
         s"binary $op" in {
-          s"4 $op 3".asTree[Expr] shouldBe ExprBinary(Expr(4), op, Expr(3))
+          s"4 $op 3".asTree[Expr]() shouldBe ExprBinary(Expr(4), op, Expr(3))
         }
       }
 
       "ternary" in {
-        "1 ? 2 : 3".asTree[Expr] shouldBe ExprCond(Expr(1), Expr(2), Expr(3))
+        "1 ? 2 : 3".asTree[Expr]() shouldBe ExprCond(Expr(1), Expr(2), Expr(3))
       }
 
       "repetition" in {
         "{N{a}}"
-          .asTree[Expr] shouldBe ExprRep(ExprIdent(Ident("N", Nil)), ExprIdent(Ident("a", Nil)))
+          .asTree[Expr]() shouldBe ExprRep(ExprIdent(Ident("N", Nil)), ExprIdent(Ident("a", Nil)))
       }
 
       "concatenation" in {
-        "{0, 1, 2}".asTree[Expr] shouldBe ExprCat(List(Expr(0), Expr(1), Expr(2)))
+        "{0, 1, 2}".asTree[Expr]() shouldBe ExprCat(List(Expr(0), Expr(1), Expr(2)))
       }
 
       "multiple concatenation " in {
-        "{N{a, b}}".asTree[Expr] shouldBe {
+        "{N{a, b}}".asTree[Expr]() shouldBe {
           ExprRep(
             ExprIdent(Ident("N", Nil)),
             ExprCat(List(ExprIdent(Ident("a", Nil)), ExprIdent(Ident("b", Nil))))
@@ -588,22 +588,22 @@ final class ParserParseExprSpec extends AnyFreeSpec with AlogicTest {
       }
 
       "index 1x" in {
-        "a[0]".asTree[Expr] shouldBe ExprIndex(ExprIdent(Ident("a", Nil)), Expr(0))
+        "a[0]".asTree[Expr]() shouldBe ExprIndex(ExprIdent(Ident("a", Nil)), Expr(0))
       }
 
       "index 2x" in {
-        "a[0][2]".asTree[Expr] shouldBe {
+        "a[0][2]".asTree[Expr]() shouldBe {
           ExprIndex(ExprIndex(ExprIdent(Ident("a", Nil)), Expr(0)), Expr(2))
         }
       }
 
       "slice 1x" in {
         "b[1:0]"
-          .asTree[Expr] shouldBe ExprSlice(ExprIdent(Ident("b", Nil)), Expr(1), ":", Expr(0))
+          .asTree[Expr]() shouldBe ExprSlice(ExprIdent(Ident("b", Nil)), Expr(1), ":", Expr(0))
       }
 
       "slice 2x" in {
-        "b[2+:0][1-:1]".asTree[Expr] should matchPattern {
+        "b[2+:0][1-:1]".asTree[Expr]() should matchPattern {
           case ExprSlice(
                 ExprSlice(ExprIdent(Ident("b", Nil)), Expr(2), "+:", Expr(0)),
                 Expr(1),
@@ -614,11 +614,11 @@ final class ParserParseExprSpec extends AnyFreeSpec with AlogicTest {
       }
 
       "select 1x" in {
-        "a.b".asTree[Expr] shouldBe ExprDot(ExprIdent(Ident("a", Nil)), "b", Nil)
+        "a.b".asTree[Expr]() shouldBe ExprDot(ExprIdent(Ident("a", Nil)), "b", Nil)
       }
 
       "select 2x" in {
-        "a.b.c".asTree[Expr] shouldBe ExprDot(
+        "a.b.c".asTree[Expr]() shouldBe ExprDot(
           ExprDot(ExprIdent(Ident("a", Nil)), "b", Nil),
           "c",
           Nil
@@ -626,23 +626,23 @@ final class ParserParseExprSpec extends AnyFreeSpec with AlogicTest {
       }
 
       "select in" in {
-        "a.in".asTree[Expr] shouldBe ExprDot(ExprIdent(Ident("a", Nil)), "in", Nil)
+        "a.in".asTree[Expr]() shouldBe ExprDot(ExprIdent(Ident("a", Nil)), "in", Nil)
       }
 
       "select out" in {
-        "a.out".asTree[Expr] shouldBe ExprDot(ExprIdent(Ident("a", Nil)), "out", Nil)
+        "a.out".asTree[Expr]() shouldBe ExprDot(ExprIdent(Ident("a", Nil)), "out", Nil)
       }
 
       "@id" in {
-        "@zx".asTree[Expr] shouldBe ExprIdent(Ident("@zx", Nil))
+        "@zx".asTree[Expr]() shouldBe ExprIdent(Ident("@zx", Nil))
       }
 
       "$id" in {
-        "$clog2".asTree[Expr] shouldBe ExprIdent(Ident("$clog2", Nil))
+        "$clog2".asTree[Expr]() shouldBe ExprIdent(Ident("$clog2", Nil))
       }
 
       "@ call" in {
-        "@zx(0, a)".asTree[Expr] shouldBe {
+        "@zx(0, a)".asTree[Expr]() shouldBe {
           ExprCall(
             ExprIdent(Ident("@zx", Nil)),
             List(ArgP(Expr(0)), ArgP(ExprIdent(Ident("a", Nil))))
@@ -651,34 +651,34 @@ final class ParserParseExprSpec extends AnyFreeSpec with AlogicTest {
       }
 
       "$ call" in {
-        "$clog2(a)".asTree[Expr] shouldBe {
+        "$clog2(a)".asTree[Expr]() shouldBe {
           ExprCall(ExprIdent(Ident("$clog2", Nil)), List(ArgP(ExprIdent(Ident("a", Nil)))))
         }
       }
 
       "identifier" in {
-        "foo".asTree[Expr] shouldBe ExprIdent(Ident("foo", Nil))
+        "foo".asTree[Expr]() shouldBe ExprIdent(Ident("foo", Nil))
       }
 
       "type" in {
-        "i8".asTree[Expr] shouldBe ExprType(TypeSInt(8))
+        "i8".asTree[Expr]() shouldBe ExprType(TypeSInt(8))
       }
     }
 
     "honouring precedence" - {
       "1 + 2 * 3" in {
-        "1 + 2 * 3".asTree[Expr] shouldBe {
+        "1 + 2 * 3".asTree[Expr]() shouldBe {
           Expr(1) + ExprBinary(Expr(2), "*", Expr(3))
         }
       }
       "1 + 2 + 3" in {
-        "1 + 2 + 3".asTree[Expr] shouldBe {
+        "1 + 2 + 3".asTree[Expr]() shouldBe {
           ExprBinary(Expr(1), "+", Expr(2)) + Expr(3)
         }
       }
 
       "a.b && a.c" in {
-        "a.b && a.c".asTree[Expr] shouldBe {
+        "a.b && a.c".asTree[Expr]() shouldBe {
           ExprDot(ExprIdent(Ident("a", Nil)), "b", Nil) && ExprDot(
             ExprIdent(Ident("a", Nil)),
             "c",
@@ -688,14 +688,14 @@ final class ParserParseExprSpec extends AnyFreeSpec with AlogicTest {
       }
 
       "a.b && a.c == 1" in {
-        "a.b && a.c == 1".asTree[Expr] shouldBe {
+        "a.b && a.c == 1".asTree[Expr]() shouldBe {
           ExprDot(ExprIdent(Ident("a", Nil)), "b", Nil) &&
           ExprBinary(ExprDot(ExprIdent(Ident("a", Nil)), "c", Nil), "==", Expr(1))
         }
       }
 
       "a.b && a[0]" in {
-        "a.b && a[0]".asTree[Expr] shouldBe {
+        "a.b && a[0]".asTree[Expr]() shouldBe {
           ExprDot(ExprIdent(Ident("a", Nil)), "b", Nil) && ExprIndex(
             ExprIdent(Ident("a", Nil)),
             0
@@ -704,7 +704,7 @@ final class ParserParseExprSpec extends AnyFreeSpec with AlogicTest {
       }
 
       "a.b && a[1:0]" in {
-        "a.b && a[1:0]".asTree[Expr] shouldBe {
+        "a.b && a[1:0]".asTree[Expr]() shouldBe {
           ExprDot(ExprIdent(Ident("a", Nil)), "b", Nil) && ExprSlice(
             ExprIdent(Ident("a", Nil)),
             1,
@@ -715,7 +715,7 @@ final class ParserParseExprSpec extends AnyFreeSpec with AlogicTest {
       }
 
       "a.b[1]" in {
-        "a.b[1]".asTree[Expr] shouldBe {
+        "a.b[1]".asTree[Expr]() shouldBe {
           ExprIndex(ExprDot(ExprIdent(Ident("a", Nil)), "b", Nil), 1)
         }
       }
@@ -760,12 +760,12 @@ final class ParserParseExprSpec extends AnyFreeSpec with AlogicTest {
           ("a ? b : c ? d : e", "a ? b : (c ? d : e)")
         )
       } {
-        expr in { expr.asTree[Expr] shouldBe equiv.asTree[Expr] }
+        expr in { expr.asTree[Expr]() shouldBe equiv.asTree[Expr]() }
       }
     }
 
     "this" in {
-      "this".asTree[Expr] shouldBe ExprError()
+      "this".asTree[Expr]() shouldBe ExprError()
       cc.messages.loneElement should beThe[Error] {
         "'this' reference is not user accessible"
       }
@@ -773,11 +773,11 @@ final class ParserParseExprSpec extends AnyFreeSpec with AlogicTest {
 
     "keywords" - {
       "in" in {
-        "in".asTree[Expr] shouldBe ExprIdent(Ident("in", Nil))
+        "in".asTree[Expr]() shouldBe ExprIdent(Ident("in", Nil))
       }
 
       "out" in {
-        "out".asTree[Expr] shouldBe ExprIdent(Ident("out", Nil))
+        "out".asTree[Expr]() shouldBe ExprIdent(Ident("out", Nil))
       }
     }
   }

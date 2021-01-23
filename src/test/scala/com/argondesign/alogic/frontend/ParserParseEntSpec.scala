@@ -25,45 +25,45 @@ final class ParserParseEntSpec extends AnyFreeSpec with AlogicTest {
   "The parser should build correct ASTs for Ent" - {
     "definition" - {
       "var" in {
-        "bool x;".asTree[Ent] shouldBe {
+        "bool x;".asTree[Ent]() shouldBe {
           EntSplice(DescVar(Ident("x", Nil), Nil, ExprType(TypeUInt(1)), None))
         }
       }
 
       "control function" in {
-        """void f() {}""".asTree[Ent] shouldBe {
+        """void f() {}""".asTree[Ent]() shouldBe {
           EntSplice(DescFunc(Ident("f", Nil), Nil, FuncVariant.Ctrl, ExprType(TypeVoid), Nil, Nil))
         }
       }
     }
 
     "import" in {
-      """import "a" as a;""".asTree[Ent] shouldBe {
+      """import "a" as a;""".asTree[Ent]() shouldBe {
         EntSplice(ImportOne("a", Ident("a", Nil)))
       }
     }
 
     "using" in {
-      "using a;".asTree[Ent] shouldBe {
+      "using a;".asTree[Ent]() shouldBe {
         EntSplice(UsingOne(ExprIdent(Ident("a", Nil)), None))
       }
     }
 
     "from" in {
-      """from "a" import b;""".asTree[Ent] shouldBe {
+      """from "a" import b;""".asTree[Ent]() shouldBe {
         EntSplice(FromOne("a", ExprIdent(Ident("b", Nil)), None))
       }
     }
 
     "assertion" in {
-      "static assert false;".asTree[Ent] shouldBe {
+      "static assert false;".asTree[Ent]() shouldBe {
         EntSplice(AssertionStatic(ExprInt(false, 1, 0), None))
       }
     }
 
     "connection" - {
       "single" in {
-        "i.a -> j.b;".asTree[Ent] shouldBe {
+        "i.a -> j.b;".asTree[Ent]() shouldBe {
           EntConnect(
             ExprDot(ExprIdent(Ident("i", Nil)), "a", Nil),
             List(ExprDot(ExprIdent(Ident("j", Nil)), "b", Nil))
@@ -72,7 +72,7 @@ final class ParserParseEntSpec extends AnyFreeSpec with AlogicTest {
       }
 
       "multiple" in {
-        "i.a -> j.b, k.c;".asTree[Ent] shouldBe {
+        "i.a -> j.b, k.c;".asTree[Ent]() shouldBe {
           EntConnect(
             ExprDot(ExprIdent(Ident("i", Nil)), "a", Nil),
             List(
@@ -84,7 +84,7 @@ final class ParserParseEntSpec extends AnyFreeSpec with AlogicTest {
       }
 
       "dict" in {
-        "i.a#[0] -> j.b#[1, 2];".asTree[Ent] shouldBe {
+        "i.a#[0] -> j.b#[1, 2];".asTree[Ent]() shouldBe {
           EntConnect(
             ExprDot(ExprIdent(Ident("i", Nil)), "a", Expr(0) :: Nil),
             List(ExprDot(ExprIdent(Ident("j", Nil)), "b", Expr(1) :: Expr(2) :: Nil))
@@ -94,20 +94,20 @@ final class ParserParseEntSpec extends AnyFreeSpec with AlogicTest {
     }
 
     "fence block" in {
-      "fence { a = 1; }".asTree[Ent] shouldBe {
+      "fence { a = 1; }".asTree[Ent]() shouldBe {
         EntCombProcess(List(StmtAssign(ExprIdent(Ident("a", Nil)), Expr(1))))
       }
     }
 
     "verbatim block" - {
       "verilog" in {
-        "verbatim verilog {\n    +-/* comment */ {{{}}}\n  }".asTree[Ent] shouldBe {
+        "verbatim verilog {\n    +-/* comment */ {{{}}}\n  }".asTree[Ent]() shouldBe {
           EntVerbatim("verilog", "\n    +-/* comment */ {{{}}}\n  ")
         }
       }
 
       "other" in {
-        "verbatim other {\n    +-/* comment */ {{{}}}\n  }".asTree[Ent] shouldBe {
+        "verbatim other {\n    +-/* comment */ {{{}}}\n  }".asTree[Ent]() shouldBe {
           EntVerbatim("other", "\n    +-/* comment */ {{{}}}\n  ")
         }
       }

@@ -23,14 +23,14 @@ final class ParserSyntaxErrorSpec extends AnyFreeSpec with AlogicTest {
   "The parser should yield a syntax error on some invalid input" - {
     "incomplete" in {
       a[AsTreeSyntaxErrorException] shouldBe thrownBy {
-        "fsm".asTree[DescPackage]
+        "fsm".asTree[DescPackage]()
       }
       cc.messages.loneElement should beSyntaxError
     }
 
     "empty let statement" in {
       a[AsTreeSyntaxErrorException] should be thrownBy {
-        "let () for(a=1;a;a--) { a+=b; }".asTree[Stmt]
+        "let () for(a=1;a;a--) { a+=b; }".asTree[Stmt]()
       }
       cc.messages should not be empty
       cc.messages(0) should beSyntaxError("empty 'let ()' statement")
@@ -38,14 +38,14 @@ final class ParserSyntaxErrorSpec extends AnyFreeSpec with AlogicTest {
 
     "empty do loop" in {
       a[AsTreeSyntaxErrorException] should be thrownBy {
-        "do { a=1; } while();".asTree[Stmt]
+        "do { a=1; } while();".asTree[Stmt]()
       }
       cc.messages.loneElement should beSyntaxError("empty 'while ()' condition")
     }
 
     "empty while loop" in {
       a[AsTreeSyntaxErrorException] should be thrownBy {
-        "while ()".asTree[Stmt]
+        "while ()".asTree[Stmt]()
       }
       cc.messages should not be empty
       cc.messages(0) should beSyntaxError("empty 'while ()' condition")
@@ -53,21 +53,21 @@ final class ParserSyntaxErrorSpec extends AnyFreeSpec with AlogicTest {
 
     "empty concatenation" in {
       a[AsTreeSyntaxErrorException] should be thrownBy {
-        "{}".asTree[Expr]
+        "{}".asTree[Expr]()
       }
       cc.messages should not be empty
     }
 
     "missing closing brace" in {
       a[AsTreeSyntaxErrorException] should be thrownBy {
-        "a = {".asTree[Stmt]
+        "a = {".asTree[Stmt]()
       }
       cc.messages should not be empty
     }
 
     "missing opening brace" in {
       a[AsTreeSyntaxErrorException] should be thrownBy {
-        "a = }".asTree[Stmt]
+        "a = }".asTree[Stmt]()
       }
       cc.messages should not be empty
     }
@@ -77,19 +77,19 @@ final class ParserSyntaxErrorSpec extends AnyFreeSpec with AlogicTest {
     "gen for with" - {
       "empty decl" in {
         a[AsTreeSyntaxErrorException] shouldBe thrownBy {
-          "gen for(;1;1++){}".asTree[Desc]
+          "gen for(;1;1++){}".asTree[Desc]()
         }
       }
 
       "empty cond" in {
         a[AsTreeSyntaxErrorException] shouldBe thrownBy {
-          "gen for(uint a = 0;;1++){}".asTree[Desc]
+          "gen for(uint a = 0;;1++){}".asTree[Desc]()
         }
       }
 
       "empty step" in {
         a[AsTreeSyntaxErrorException] shouldBe thrownBy {
-          "gen for(uint a = 0;1;){}".asTree[Desc]
+          "gen for(uint a = 0;1;){}".asTree[Desc]()
         }
       }
     }

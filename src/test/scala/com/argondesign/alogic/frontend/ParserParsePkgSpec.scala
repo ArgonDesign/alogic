@@ -25,51 +25,51 @@ final class ParserParsePkgSpec extends AnyFreeSpec with AlogicTest {
   "The parser should build correct ASTs for Pkg" - {
     "definition" - {
       "var" in {
-        "bool x;".asTree[Pkg] shouldBe {
+        "bool x;".asTree[Pkg]() shouldBe {
           PkgSplice(DescVar(Ident("x", Nil), Nil, ExprType(TypeUInt(1)), None))
         }
       }
 
       "comb function" in {
-        """void f() {}""".asTree[Pkg] shouldBe {
+        """void f() {}""".asTree[Pkg]() shouldBe {
           PkgSplice(DescFunc(Ident("f", Nil), Nil, FuncVariant.Comb, ExprType(TypeVoid), Nil, Nil))
         }
       }
     }
 
     "import" in {
-      """import "a" as a;""".asTree[Pkg] shouldBe {
+      """import "a" as a;""".asTree[Pkg]() shouldBe {
         PkgSplice(ImportOne("a", Ident("a", Nil)))
       }
     }
 
     "using" in {
-      "using a;".asTree[Pkg] shouldBe {
+      "using a;".asTree[Pkg]() shouldBe {
         PkgSplice(UsingOne(ExprIdent(Ident("a", Nil)), None))
       }
     }
 
     "from" in {
-      """from "a" import b;""".asTree[Pkg] shouldBe {
+      """from "a" import b;""".asTree[Pkg]() shouldBe {
         PkgSplice(FromOne("a", ExprIdent(Ident("b", Nil)), None))
       }
     }
 
     "assertion" in {
-      "static assert false;".asTree[Pkg] shouldBe {
+      "static assert false;".asTree[Pkg]() shouldBe {
         PkgSplice(AssertionStatic(ExprInt(false, 1, 0), None))
       }
     }
 
     "compile" - {
       "without alias" in {
-        "compile 1;".asTree[Pkg] shouldBe {
+        "compile 1;".asTree[Pkg]() shouldBe {
           PkgCompile(Expr(1), None)
         }
       }
 
       "with alias" in {
-        "compile 1 as a;".asTree[Pkg] shouldBe {
+        "compile 1 as a;".asTree[Pkg]() shouldBe {
           PkgCompile(Expr(1), Some(Ident("a", Nil)))
         }
       }

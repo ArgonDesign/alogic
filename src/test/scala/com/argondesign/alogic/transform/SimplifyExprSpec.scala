@@ -44,7 +44,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
 
   protected def simplify(text: String): Expr = {
     implicit val fe: Frontend = new Frontend
-    val tree = text.asTree[Expr]
+    val tree = text.asTree[Expr]()
     assert(cc.messages.filterNot(_.isInstanceOf[Warning]).isEmpty)
     val expr = ResolveNames(tree, cc.builtins)
       .proceed(e => fe.typeCheck(e) map { _ => e })
@@ -2644,7 +2644,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
             case ExprCall(_, List(_, ArgP(e))) => e
           } tap { expr =>
             cc.messages filterNot { _.isInstanceOf[Warning] } shouldBe empty
-            val kind = kindSrc.asTree[Expr] match {
+            val kind = kindSrc.asTree[Expr]() match {
               case ExprType(kind) => kind
               case _              => fail
             }

@@ -32,7 +32,7 @@ final class StatelessTreeTransformerSpec extends AnyFlatSpec with AlogicTest {
     val tree = """{
                  |  u1 foo;
                  |  u2 foo;
-                 |}""".stripMargin.asTree[Stmt] rewrite new StatelessTreeTransformer {
+                 |}""".stripMargin.asTree[Stmt]() rewrite new StatelessTreeTransformer {
       override val typed = false
       override def transform(tree: Tree): Tree = tree match {
         case _: Ident => Ident("bar", Nil) withLoc tree.loc
@@ -51,7 +51,7 @@ final class StatelessTreeTransformerSpec extends AnyFlatSpec with AlogicTest {
   }
 
   it should "return the same tree instance if it is not rewritten" in {
-    val oldTree = "{ a = b; bool c = a; }".asTree[Stmt]
+    val oldTree = "{ a = b; bool c = a; }".asTree[Stmt]()
     val newTree = oldTree rewrite new StatelessTreeTransformer {
       override val typed = false
       val sequenceNumbers = new SequenceNumbers

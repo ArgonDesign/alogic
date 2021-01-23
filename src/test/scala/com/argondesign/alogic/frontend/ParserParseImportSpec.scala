@@ -21,7 +21,7 @@ final class ParserParseImportSpec extends AnyFreeSpec with AlogicTest {
   implicit val cc: CompilerContext = new CompilerContext
 
   "The parser should build correct ASTs for Import" - {
-    """import "a" as x;""".asTree[Import] shouldBe {
+    """import "a" as x;""".asTree[Import]() shouldBe {
       ImportOne("a", Ident("x", Nil))
     }
   }

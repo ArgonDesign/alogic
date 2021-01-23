@@ -1007,7 +1007,7 @@ final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
           )
         } {
           src in {
-            TypeAssigner(src.asTree[Expr]).tpe shouldBe kind
+            TypeAssigner(src.asTree[Expr]()).tpe shouldBe kind
             cc.messages shouldBe empty
           }
         }
@@ -1023,7 +1023,7 @@ final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
           )
         } {
           src in {
-            TypeAssigner(src.asTree[Expr]).tpe shouldBe kind
+            TypeAssigner(src.asTree[Expr]()).tpe shouldBe kind
             cc.messages shouldBe empty
           }
         }
@@ -1037,7 +1037,7 @@ final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
           )
         } {
           src in {
-            TypeAssigner(src.asTree[Expr]).tpe shouldBe kind
+            TypeAssigner(src.asTree[Expr]()).tpe shouldBe kind
             cc.messages shouldBe empty
           }
         }
@@ -1103,8 +1103,8 @@ final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
           )
         } {
           s"($kindSrc)($exprSrc)" in {
-            val expr = exprSrc.asTree[Expr]
-            val castKind = kindSrc.asTree[Expr] match {
+            val expr = exprSrc.asTree[Expr]()
+            val castKind = kindSrc.asTree[Expr]() match {
               case ExprType(kind) => kind
               case _              => fail()
             }

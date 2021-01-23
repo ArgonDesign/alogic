@@ -41,7 +41,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
                           |      fence;
                           |    }
                           |  }
-                          |}""".stripMargin.asTree[Desc]
+                          |}""".stripMargin.asTree[Desc]()
 
             tree rewrite checker shouldBe tree
 
@@ -58,7 +58,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
                           |  void main() {
                           |    fence;
                           |  }
-                          |}""".stripMargin.asTree[Desc]
+                          |}""".stripMargin.asTree[Desc]()
 
             tree rewrite checker
 
@@ -73,7 +73,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
     "ensure declaration statements" - {
       "do not declare" - {
         "input ports" in {
-          val tree = "in bool a;".asTree[Stmt]
+          val tree = "in bool a;".asTree[Stmt]()
 
           tree rewrite checker shouldBe StmtError()
 
@@ -83,7 +83,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
         }
 
         "output ports" in {
-          val tree = "out bool a;".asTree[Stmt]
+          val tree = "out bool a;".asTree[Stmt]()
 
           tree rewrite checker shouldBe StmtError()
 
@@ -93,7 +93,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
         }
 
         "parameters" in {
-          val tree = "param bool a = false;".asTree[Stmt]
+          val tree = "param bool a = false;".asTree[Stmt]()
 
           tree rewrite checker shouldBe StmtError()
 
@@ -113,7 +113,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
         }
 
         "arrays" in {
-          val tree = "bool a[2];".asTree[Stmt]
+          val tree = "bool a[2];".asTree[Stmt]()
 
           tree rewrite checker shouldBe StmtError()
 
@@ -123,7 +123,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
         }
 
         "pipeline variables" in {
-          val tree = "pipeline bool a;".asTree[Stmt]
+          val tree = "pipeline bool a;".asTree[Stmt]()
 
           tree rewrite checker shouldBe StmtError()
 
@@ -133,7 +133,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
         }
 
         "srams" in {
-          val tree = "sram bool a[1];".asTree[Stmt]
+          val tree = "sram bool a[1];".asTree[Stmt]()
 
           tree rewrite checker shouldBe StmtError()
 
@@ -145,7 +145,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
 
       "can declare" - {
         "variables" in {
-          val tree = "bool a;".asTree[Stmt]
+          val tree = "bool a;".asTree[Stmt]()
           tree rewrite checker should not be StmtError()
           cc.messages shouldBe empty
         }
@@ -157,7 +157,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
         }
 
         "static" in {
-          val tree = "static bool a;".asTree[Stmt]
+          val tree = "static bool a;".asTree[Stmt]()
           tree rewrite checker should not be StmtError()
           cc.messages shouldBe empty
         }
@@ -168,7 +168,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       val tree = """fsm foo {
                    |  fence {}
                    |  fence {}
-                   |}""".stripMargin.asTree[Desc]
+                   |}""".stripMargin.asTree[Desc]()
 
       tree rewrite checker
 
@@ -183,7 +183,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       "with no flow control" in {
         val entity = """network a {
                        |  out bubble i2 a;
-                       |}""".stripMargin.asTree[Desc]
+                       |}""".stripMargin.asTree[Desc]()
 
         val tree = entity rewrite checker
 
@@ -204,7 +204,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       "with valid flow control" in {
         val entity = """network a {
                        |  out sync bubble i2 a;
-                       |}""".stripMargin.asTree[Desc]
+                       |}""".stripMargin.asTree[Desc]()
 
         val tree = entity rewrite checker
 
@@ -227,7 +227,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       val tree = """case(1) {
                    | default: a;
                    | default: b;
-                   |}""".stripMargin.asTree[Stmt]
+                   |}""".stripMargin.asTree[Stmt]()
 
       tree rewrite checker shouldBe StmtError()
 
@@ -245,7 +245,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
           variant in {
             val tree = s"""$variant a {
                           |  c = new d();
-                          |}""".stripMargin.asTree[Desc]
+                          |}""".stripMargin.asTree[Desc]()
 
             tree rewrite checker should matchPattern {
               case DescEntity(_, _, _, Nil) =>
@@ -262,7 +262,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
           variant in {
             val tree = s"""$variant a {
                           |  a -> b;
-                          |}""".stripMargin.asTree[Desc]
+                          |}""".stripMargin.asTree[Desc]()
 
             tree rewrite checker should matchPattern {
               case DescEntity(_, _, _, Nil) =>
@@ -279,7 +279,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
           variant in {
             val tree = s"""$variant a {
                           |  fsm d {}
-                          |}""".stripMargin.asTree[Desc]
+                          |}""".stripMargin.asTree[Desc]()
 
             tree rewrite checker should matchPattern {
               case DescEntity(_, _, _, Nil) =>
@@ -298,7 +298,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
           variant in {
             val tree = s"""$variant a {
                           |  new fsm d {}
-                          |}""".stripMargin.asTree[Desc]
+                          |}""".stripMargin.asTree[Desc]()
 
             tree rewrite checker should matchPattern {
               case DescEntity(_, _, _, Nil) =>
@@ -317,7 +317,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
           variant in {
             val tree = s"""$variant a {
                           |  void main() {}
-                          |}""".stripMargin.asTree[Desc]
+                          |}""".stripMargin.asTree[Desc]()
 
             tree rewrite checker should matchPattern {
               case DescEntity(_, _, _, Nil) =>
@@ -335,7 +335,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
         "fsm" in {
           val tree = s"""fsm a {
                         |  static void main() {}
-                        |}""".stripMargin.asTree[Desc]
+                        |}""".stripMargin.asTree[Desc]()
 
           tree rewrite checker should matchPattern {
             case DescEntity(_, _, _, Nil) =>
@@ -353,7 +353,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
           variant in {
             val tree = s"""$variant a {
                           |  fence {}
-                          |}""".stripMargin.asTree[Desc]
+                          |}""".stripMargin.asTree[Desc]()
 
             tree rewrite checker should matchPattern {
               case DescEntity(_, _, _, Nil) =>
@@ -374,7 +374,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
           decl in {
             val tree = s"""fsm a {
                           |  $decl;
-                          |}""".stripMargin.asTree[Desc]
+                          |}""".stripMargin.asTree[Desc]()
 
             tree rewrite checker should matchPattern {
               case DescEntity(_, _, _, Nil) =>
@@ -405,7 +405,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
                           |
                           |network a {
                           |  $decl;
-                          |}""".stripMargin.asTree[DescPackage]
+                          |}""".stripMargin.asTree[DescPackage]()
 
             tree rewrite checker
 
@@ -435,7 +435,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
                           |
                           |verbatim entity a {
                           |  $decl;
-                          |}""".stripMargin.asTree[DescPackage]
+                          |}""".stripMargin.asTree[DescPackage]()
 
             tree rewrite checker
 
@@ -452,7 +452,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
           variant in {
             val tree = s"""$variant a {
                           |  assert 0;
-                          |}""".stripMargin.asTree[Desc]
+                          |}""".stripMargin.asTree[Desc]()
 
             tree rewrite checker should matchPattern {
               case DescEntity(_, _, _, Nil) =>
@@ -476,7 +476,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
                           |  new $variant inner {
                           |    param u8 P = 0;
                           |  }
-                          |}""".stripMargin.asTree[Desc]
+                          |}""".stripMargin.asTree[Desc]()
 
             tree rewrite checker should matchPattern {
               case DescEntity(_, _, _, EntSplice(DescSingleton(_, _, _, Nil)) :: Nil) =>
@@ -497,7 +497,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
                           |  new $variant inner {
                           |    param type P = bool;
                           |  }
-                          |}""".stripMargin.asTree[Desc]
+                          |}""".stripMargin.asTree[Desc]()
 
             tree rewrite checker should matchPattern {
               case DescEntity(_, _, _, EntSplice(DescSingleton(_, _, _, Nil)) :: Nil) =>
@@ -533,7 +533,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
           decl in {
             s"""struct a {
                |  $decl
-               |}""".stripMargin.asTree[Desc] rewrite checker should matchPattern {
+               |}""".stripMargin.asTree[Desc]() rewrite checker should matchPattern {
               case DescRecord(_, _, Nil) =>
             }
 
@@ -572,7 +572,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
             "simple invalid lvalues" - {
               for ((name, lval) <- badLvals) {
                 name in {
-                  s"$lval $assign;".asTree[Stmt] rewrite checker shouldBe a[StmtError]
+                  s"$lval $assign;".asTree[Stmt]() rewrite checker shouldBe a[StmtError]
                   cc.messages.loneElement should beThe[Error](
                     s"Invalid expression on left hand side of '$op'"
                   )
@@ -582,7 +582,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
             "invalid lvalues inside concatenation lvalue" - {
               for ((name, lval) <- badLvals) {
                 name in {
-                  s"{x, $lval} $assign;".asTree[Stmt] rewrite checker shouldBe a[StmtError]
+                  s"{x, $lval} $assign;".asTree[Stmt]() rewrite checker shouldBe a[StmtError]
                   cc.messages.loneElement should beThe[Error](
                     s"Invalid expression on left hand side of '$op'"
                   )
@@ -613,7 +613,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
             "simple valid lvalues" - {
               for ((name, lval) <- goodLvals) {
                 name in {
-                  val stmt = s"$lval $assign;".asTree[Stmt]
+                  val stmt = s"$lval $assign;".asTree[Stmt]()
                   stmt rewrite checker should be theSameInstanceAs stmt
                   cc.messages shouldBe empty
                 }
@@ -622,7 +622,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
             "nested valid lvalues" - {
               for ((name, lval) <- goodLvals) {
                 name in {
-                  val stmt = s"{x, $lval} $assign;".asTree[Stmt]
+                  val stmt = s"{x, $lval} $assign;".asTree[Stmt]()
                   stmt rewrite checker should be theSameInstanceAs stmt
                   cc.messages shouldBe empty
                 }
@@ -643,7 +643,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
                         | const i8 f = 2;
                         |
                         | verbatim verilog {}
-                        |}""".stripMargin.asTree[Desc]
+                        |}""".stripMargin.asTree[Desc]()
           tree rewrite checker shouldBe a[Desc]
           cc.messages.loneElement should beThe[Warning](
             s"Entity contains only verbatim blocks, use a 'verbatim entity' instead"
@@ -671,7 +671,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
                           |
                           |$entity x {
                           |  $decl;
-                          |}""".stripMargin.asTree[DescPackage]
+                          |}""".stripMargin.asTree[DescPackage]()
             tree rewrite checker shouldBe a[DescPackage]
             if (msg.nonEmpty) {
               cc.messages.loneElement should beThe[Error](
@@ -687,7 +687,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
 
     "warn for concatenations" - {
       "containing only a single expression" in {
-        val tree = "{1'b1}".asTree[Expr]
+        val tree = "{1'b1}".asTree[Expr]()
 
         tree rewrite checker shouldBe tree
 
@@ -697,7 +697,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       }
 
       "but not for 2 or more expressions" in {
-        val tree = "{1'b1, 1'b1}".asTree[Expr]
+        val tree = "{1'b1, 1'b1}".asTree[Expr]()
 
         tree rewrite checker shouldBe tree
 
@@ -715,7 +715,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
                           |      $word;
                           |    }
                           |  }
-                          |}""".stripMargin.asTree[Desc]
+                          |}""".stripMargin.asTree[Desc]()
 
             tree rewrite checker shouldBe tree
 
@@ -732,7 +732,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
                           |    loop {}
                           |    $word;
                           |  }
-                          |}""".stripMargin.asTree[Desc]
+                          |}""".stripMargin.asTree[Desc]()
 
             val node = tree rewrite checker
 
@@ -769,7 +769,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
         decl in {
           val tree = s"""verbatim entity a {
                         |  $decl;
-                        |}""".stripMargin.asTree[Desc]
+                        |}""".stripMargin.asTree[Desc]()
 
           tree rewrite checker
           if (ok) {
@@ -799,7 +799,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
                         |  void main() {
                         |    goto $tgt;
                         |  }
-                        |}""".stripMargin.asTree[DescPackage]
+                        |}""".stripMargin.asTree[DescPackage]()
 
           tree rewrite checker
 

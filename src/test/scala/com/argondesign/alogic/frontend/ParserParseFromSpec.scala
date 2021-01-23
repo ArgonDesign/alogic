@@ -23,15 +23,15 @@ final class ParserParseFromSpec extends AnyFreeSpec with AlogicTest {
   "The parser should build correct ASTs for From" - {
     "From one" - {
       "without alias" - {
-        """from "a" import b;""".asTree[From] shouldBe {
+        """from "a" import b;""".asTree[From]() shouldBe {
           FromOne("a", ExprIdent(Ident("b", Nil)), None)
         }
 
-        """from "a" import b.c;""".asTree[From] shouldBe {
+        """from "a" import b.c;""".asTree[From]() shouldBe {
           FromOne("a", ExprDot(ExprIdent(Ident("b", Nil)), "c", Nil), None)
         }
 
-        """from "a" import b.c(2);""".asTree[From] shouldBe {
+        """from "a" import b.c(2);""".asTree[From]() shouldBe {
           FromOne(
             "a",
             ExprCall(ExprDot(ExprIdent(Ident("b", Nil)), "c", Nil), ArgP(Expr(2)) :: Nil),
@@ -41,15 +41,15 @@ final class ParserParseFromSpec extends AnyFreeSpec with AlogicTest {
       }
 
       "with alias" - {
-        """from "a" import b as x;""".asTree[From] shouldBe {
+        """from "a" import b as x;""".asTree[From]() shouldBe {
           FromOne("a", ExprIdent(Ident("b", Nil)), Some(Ident("x", Nil)))
         }
 
-        """from "a" import b.c as x;""".asTree[From] shouldBe {
+        """from "a" import b.c as x;""".asTree[From]() shouldBe {
           FromOne("a", ExprDot(ExprIdent(Ident("b", Nil)), "c", Nil), Some(Ident("x", Nil)))
         }
 
-        """from "a" import b.c(2) as x;""".asTree[From] shouldBe {
+        """from "a" import b.c(2) as x;""".asTree[From]() shouldBe {
           FromOne(
             "a",
             ExprCall(ExprDot(ExprIdent(Ident("b", Nil)), "c", Nil), ArgP(Expr(2)) :: Nil),
@@ -60,7 +60,7 @@ final class ParserParseFromSpec extends AnyFreeSpec with AlogicTest {
     }
 
     "Import all" - {
-      """from "a" import *;""".asTree[From] shouldBe {
+      """from "a" import *;""".asTree[From]() shouldBe {
         FromAll("a")
       }
     }

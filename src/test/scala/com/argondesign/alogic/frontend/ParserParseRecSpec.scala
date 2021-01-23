@@ -25,13 +25,13 @@ final class ParserParseRecSpec extends AnyFreeSpec with AlogicTest {
   "The parser should build correct ASTs for Rec" - {
     "definition" - {
       "var" in {
-        "bool x;".asTree[Rec] shouldBe {
+        "bool x;".asTree[Rec]() shouldBe {
           RecSplice(DescVar(Ident("x", Nil), Nil, ExprType(TypeUInt(1)), None))
         }
       }
 
       "method" in {
-        """void f() {}""".asTree[Rec] shouldBe {
+        """void f() {}""".asTree[Rec]() shouldBe {
           RecSplice(
             DescFunc(Ident("f", Nil), Nil, FuncVariant.Method, ExprType(TypeVoid), Nil, Nil)
           )
@@ -39,7 +39,7 @@ final class ParserParseRecSpec extends AnyFreeSpec with AlogicTest {
       }
 
       "static method" in {
-        """static void f() {}""".asTree[Rec] shouldBe {
+        """static void f() {}""".asTree[Rec]() shouldBe {
           RecSplice(
             DescFunc(Ident("f", Nil), Nil, FuncVariant.Static, ExprType(TypeVoid), Nil, Nil)
           )
@@ -48,25 +48,25 @@ final class ParserParseRecSpec extends AnyFreeSpec with AlogicTest {
     }
 
     "import" in {
-      """import "a" as a;""".asTree[Rec] shouldBe {
+      """import "a" as a;""".asTree[Rec]() shouldBe {
         RecSplice(ImportOne("a", Ident("a", Nil)))
       }
     }
 
     "using" in {
-      "using a;".asTree[Rec] shouldBe {
+      "using a;".asTree[Rec]() shouldBe {
         RecSplice(UsingOne(ExprIdent(Ident("a", Nil)), None))
       }
     }
 
     "from" in {
-      """from "a" import b;""".asTree[Rec] shouldBe {
+      """from "a" import b;""".asTree[Rec]() shouldBe {
         RecSplice(FromOne("a", ExprIdent(Ident("b", Nil)), None))
       }
     }
 
     "assertion" in {
-      "static assert false;".asTree[Rec] shouldBe {
+      "static assert false;".asTree[Rec]() shouldBe {
         RecSplice(AssertionStatic(ExprInt(false, 1, 0), None))
       }
     }

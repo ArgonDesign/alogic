@@ -24,19 +24,19 @@ final class ParserParseUsingSpec extends AnyFreeSpec with AlogicTest {
     "Using one" - {
       "without alias" - {
         "ident" in {
-          "using a;".asTree[Using] shouldBe {
+          "using a;".asTree[Using]() shouldBe {
             UsingOne(ExprIdent(Ident("a", Nil)), None)
           }
         }
 
         "select" in {
-          "using a.b;".asTree[Using] shouldBe {
+          "using a.b;".asTree[Using]() shouldBe {
             UsingOne(ExprDot(ExprIdent(Ident("a", Nil)), "b", Nil), None)
           }
         }
 
         "call" in {
-          "using a.b(0);".asTree[Using] shouldBe {
+          "using a.b(0);".asTree[Using]() shouldBe {
             UsingOne(
               ExprCall(
                 ExprDot(ExprIdent(Ident("a", Nil)), "b", Nil),
@@ -50,19 +50,19 @@ final class ParserParseUsingSpec extends AnyFreeSpec with AlogicTest {
 
       "with alias" - {
         "ident" in {
-          "using a as x;".asTree[Using] shouldBe {
+          "using a as x;".asTree[Using]() shouldBe {
             UsingOne(ExprIdent(Ident("a", Nil)), Some(Ident("x", Nil)))
           }
         }
 
         "select" in {
-          "using a.b as y;".asTree[Using] shouldBe {
+          "using a.b as y;".asTree[Using]() shouldBe {
             UsingOne(ExprDot(ExprIdent(Ident("a", Nil)), "b", Nil), Some(Ident("y", Nil)))
           }
         }
 
         "call" in {
-          "using a.b(0) as z#[2];".asTree[Using] shouldBe {
+          "using a.b(0) as z#[2];".asTree[Using]() shouldBe {
             UsingOne(
               ExprCall(
                 ExprDot(ExprIdent(Ident("a", Nil)), "b", Nil),
@@ -77,19 +77,19 @@ final class ParserParseUsingSpec extends AnyFreeSpec with AlogicTest {
 
     "Using all" - {
       "ident" in {
-        "using a.*;".asTree[Using] shouldBe {
+        "using a.*;".asTree[Using]() shouldBe {
           UsingAll(ExprIdent(Ident("a", Nil)), false)
         }
       }
 
       "select" in {
-        "using a.b.*;".asTree[Using] shouldBe {
+        "using a.b.*;".asTree[Using]() shouldBe {
           UsingAll(ExprDot(ExprIdent(Ident("a", Nil)), "b", Nil), false)
         }
       }
 
       "call" in {
-        "using a.b(0).*;".asTree[Using] shouldBe {
+        "using a.b(0).*;".asTree[Using]() shouldBe {
           UsingAll(
             ExprCall(ExprDot(ExprIdent(Ident("a", Nil)), "b", Nil), ArgP(ExprNum(false, 0)) :: Nil),
             false

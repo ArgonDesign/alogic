@@ -31,7 +31,7 @@ final class ParserLocSpec extends AnyFreeSpec with AlogicTest {
                    |    bar i;
                    |    loop { }
                    |  }
-                   |}""".stripMargin.asTree[Desc]
+                   |}""".stripMargin.asTree[Desc]()
 
       inside(tree) {
         case entity @ DescEntity(_, _, EntityVariant.Fsm, eBody) =>
@@ -82,7 +82,7 @@ final class ParserLocSpec extends AnyFreeSpec with AlogicTest {
                    |#line 2 /* Comment */ "another"
                    |    loop { }
                    |  }
-                   |}""".stripMargin.asTree[Desc]
+                   |}""".stripMargin.asTree[Desc]()
 
       inside(tree) {
         case entity @ DescEntity(_, _, EntityVariant.Fsm, eBody) =>

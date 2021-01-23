@@ -33,17 +33,18 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
     "declarations" - {
       "var" - {
         "without initializer" in {
-          "bool a;".asTree[Desc] shouldBe DescVar(Ident("a", Nil), Nil, ExprType(TypeUInt(1)), None)
+          "bool a;"
+            .asTree[Desc]() shouldBe DescVar(Ident("a", Nil), Nil, ExprType(TypeUInt(1)), None)
         }
 
         "with initializer" in {
-          "bool b = true;".asTree[Desc] shouldBe {
+          "bool b = true;".asTree[Desc]() shouldBe {
             DescVar(Ident("b", Nil), Nil, ExprType(TypeUInt(1)), Some(ExprInt(false, 1, 1)))
           }
         }
 
         "with attribute" in {
-          "(* foo *) bool b;".asTree[Desc] shouldBe {
+          "(* foo *) bool b;".asTree[Desc]() shouldBe {
             DescVar(
               Ident("b", Nil),
               List(AttrBool("foo")),
@@ -58,19 +59,19 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
 
       "static" - {
         "without initializer" in {
-          "static bool a;".asTree[Desc] shouldBe {
+          "static bool a;".asTree[Desc]() shouldBe {
             DescStatic(Ident("a", Nil), Nil, ExprType(TypeUInt(1)), None)
           }
         }
 
         "with initializer" in {
-          "static bool b = true;".asTree[Desc] shouldBe {
+          "static bool b = true;".asTree[Desc]() shouldBe {
             DescStatic(Ident("b", Nil), Nil, ExprType(TypeUInt(1)), Some(ExprInt(false, 1, 1)))
           }
         }
 
         "with attribute" in {
-          "(* foo *) static bool b;".asTree[Desc] shouldBe {
+          "(* foo *) static bool b;".asTree[Desc]() shouldBe {
             DescStatic(
               Ident("b", Nil),
               List(AttrBool("foo")),
@@ -83,25 +84,25 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
 
       "in" - {
         "no flow control" in {
-          "in i2 a;".asTree[Desc] shouldBe {
+          "in i2 a;".asTree[Desc]() shouldBe {
             DescIn(Ident("a", Nil), Nil, ExprType(TypeSInt(2)), FlowControlTypeNone)
           }
         }
 
         "valid flow control" in {
-          "in sync i2 a;".asTree[Desc] shouldBe {
+          "in sync i2 a;".asTree[Desc]() shouldBe {
             DescIn(Ident("a", Nil), Nil, ExprType(TypeSInt(2)), FlowControlTypeValid)
           }
         }
 
         "valid/ready flow control" in {
-          "in sync ready i2 a;".asTree[Desc] shouldBe {
+          "in sync ready i2 a;".asTree[Desc]() shouldBe {
             DescIn(Ident("a", Nil), Nil, ExprType(TypeSInt(2)), FlowControlTypeReady)
           }
         }
 
         "with attribute" in {
-          "(* foo *) in i2 a;".asTree[Desc] shouldBe {
+          "(* foo *) in i2 a;".asTree[Desc]() shouldBe {
             DescIn(
               Ident("a", Nil),
               List(AttrBool("foo")),
@@ -112,7 +113,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
         }
 
         "unnamed" in {
-          "in bool;".asTree[Desc] shouldBe {
+          "in bool;".asTree[Desc]() shouldBe {
             DescIn(Ident("in", Nil), Nil, ExprType(TypeUInt(1)), FlowControlTypeNone)
           }
         }
@@ -121,7 +122,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
       "out" - {
         "no flow control" - {
           "default" in {
-            "out i2 a;".asTree[Desc] shouldBe {
+            "out i2 a;".asTree[Desc]() shouldBe {
               DescOut(
                 Ident("a", Nil),
                 Nil,
@@ -134,7 +135,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
           }
 
           "wire" in {
-            "out wire u2 a;".asTree[Desc] shouldBe {
+            "out wire u2 a;".asTree[Desc]() shouldBe {
               DescOut(
                 Ident("a", Nil),
                 Nil,
@@ -149,7 +150,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
 
         "valid flow control" - {
           "default" in {
-            "out sync i2 a;".asTree[Desc] shouldBe {
+            "out sync i2 a;".asTree[Desc]() shouldBe {
               DescOut(
                 Ident("a", Nil),
                 Nil,
@@ -162,7 +163,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
           }
 
           "wire" in {
-            "out sync wire i2 a;".asTree[Desc] shouldBe {
+            "out sync wire i2 a;".asTree[Desc]() shouldBe {
               DescOut(
                 Ident("a", Nil),
                 Nil,
@@ -177,7 +178,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
 
         "valid/ready flow control" - {
           "default" in {
-            "out sync ready i2 a;".asTree[Desc] shouldBe {
+            "out sync ready i2 a;".asTree[Desc]() shouldBe {
               DescOut(
                 Ident("a", Nil),
                 Nil,
@@ -190,7 +191,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
           }
 
           "fslice" in {
-            "out sync ready fslice i2 a;".asTree[Desc] shouldBe {
+            "out sync ready fslice i2 a;".asTree[Desc]() shouldBe {
               DescOut(
                 Ident("a", Nil),
                 Nil,
@@ -203,7 +204,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
           }
 
           "bslice" in {
-            "out sync ready bslice i2 a;".asTree[Desc] shouldBe {
+            "out sync ready bslice i2 a;".asTree[Desc]() shouldBe {
               DescOut(
                 Ident("a", Nil),
                 Nil,
@@ -216,7 +217,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
           }
 
           "bubble" in {
-            "out sync ready bubble i2 a;".asTree[Desc] shouldBe {
+            "out sync ready bubble i2 a;".asTree[Desc]() shouldBe {
               DescOut(
                 Ident("a", Nil),
                 Nil,
@@ -229,7 +230,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
           }
 
           "bslice bubble fslice" in {
-            "out sync ready bslice bubble fslice i2 a;".asTree[Desc] shouldBe {
+            "out sync ready bslice bubble fslice i2 a;".asTree[Desc]() shouldBe {
               DescOut(
                 Ident("a", Nil),
                 Nil,
@@ -242,7 +243,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
           }
 
           "with attribute" in {
-            "(* foo *) out i2 a;".asTree[Desc] shouldBe {
+            "(* foo *) out i2 a;".asTree[Desc]() shouldBe {
               DescOut(
                 Ident("a", Nil),
                 List(AttrBool("foo")),
@@ -256,7 +257,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
         }
 
         "unnamed" in {
-          "out bool;".asTree[Desc] shouldBe {
+          "out bool;".asTree[Desc]() shouldBe {
             DescOut(
               Ident("out", Nil),
               Nil,
@@ -269,7 +270,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
         }
 
         "unnamed with initializer" in {
-          "out bool = true;".asTree[Desc] shouldBe {
+          "out bool = true;".asTree[Desc]() shouldBe {
             DescOut(
               Ident("out", Nil),
               Nil,
@@ -284,27 +285,27 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
 
       "pipe var" - {
         "plain" in {
-          "pipeline u8 a;".asTree[Desc] shouldBe {
+          "pipeline u8 a;".asTree[Desc]() shouldBe {
             DescPipeVar(Ident("a", Nil), Nil, ExprType(TypeUInt(8)))
           }
         }
 
         "with attribute" in {
-          "(* foo *) pipeline u8 a;".asTree[Desc] shouldBe {
+          "(* foo *) pipeline u8 a;".asTree[Desc]() shouldBe {
             DescPipeVar(Ident("a", Nil), List(AttrBool("foo")), ExprType(TypeUInt(8)))
           }
         }
       }
 
       "pipe in" in {
-        "in pipeline a;".asTree[Desc] shouldBe {
+        "in pipeline a;".asTree[Desc]() shouldBe {
           DescPipeIn(Ident("a", Nil), Nil, FlowControlTypeNone)
         }
       }
 
       "pipe out" - {
         "without initalizer" in {
-          "out pipeline a;".asTree[Desc] shouldBe {
+          "out pipeline a;".asTree[Desc]() shouldBe {
             DescPipeOut(
               Ident("a", Nil),
               Nil,
@@ -315,7 +316,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
         }
 
         "with initializer" in {
-          "out pipeline a = 0;".asTree[Desc] shouldBe {
+          "out pipeline a = 0;".asTree[Desc]() shouldBe {
             DescPipeOut(
               Ident("a", Nil),
               Nil,
@@ -331,19 +332,19 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
 
       "param" - {
         "without initializer" in {
-          "param bool a;".asTree[Desc] shouldBe {
+          "param bool a;".asTree[Desc]() shouldBe {
             DescParam(Ident("a", Nil), Nil, ExprType(TypeUInt(1)), None, false)
           }
         }
 
         "with initializer" in {
-          "param i2 a = 2;".asTree[Desc] shouldBe {
+          "param i2 a = 2;".asTree[Desc]() shouldBe {
             DescParam(Ident("a", Nil), Nil, ExprType(TypeSInt(2)), Some(Expr(2)), false)
           }
         }
 
         "with attribute" in {
-          "(* foo *) param i2 a = 2;".asTree[Desc] shouldBe {
+          "(* foo *) param i2 a = 2;".asTree[Desc]() shouldBe {
             DescParam(
               Ident("a", Nil),
               List(AttrBool("foo")),
@@ -357,13 +358,13 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
 
       "param type" - {
         "without initialzier" in {
-          "param type T;".asTree[Desc] shouldBe {
+          "param type T;".asTree[Desc]() shouldBe {
             DescParamType(Ident("T", Nil), Nil, None, false)
           }
         }
 
         "with initialzier" in {
-          "param type T = uint;".asTree[Desc] shouldBe {
+          "param type T = uint;".asTree[Desc]() shouldBe {
             DescParamType(Ident("T", Nil), Nil, Some(ExprType(TypeNum(false))), false)
           }
         }
@@ -385,13 +386,13 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
 
       "array" - {
         "1D" in {
-          "i8 c[2];".asTree[Desc] shouldBe {
+          "i8 c[2];".asTree[Desc]() shouldBe {
             DescArray(Ident("c", Nil), Nil, ExprType(TypeSInt(8)), Expr(2))
           }
         }
 
         "1D with attribute" in {
-          "(* foo *) i8 c[2];".asTree[Desc] shouldBe {
+          "(* foo *) i8 c[2];".asTree[Desc]() shouldBe {
             DescArray(Ident("c", Nil), List(AttrBool("foo")), ExprType(TypeSInt(8)), Expr(2))
           }
         }
@@ -399,13 +400,13 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
 
       "sram" - {
         "plain" in {
-          "sram u8 a[10];".asTree[Desc] shouldBe {
+          "sram u8 a[10];".asTree[Desc]() shouldBe {
             DescSram(Ident("a", Nil), Nil, ExprType(TypeUInt(8)), Expr(10), StorageTypeReg)
           }
         }
 
         "with attribute" in {
-          "(* foo *) sram u8 a[10];".asTree[Desc] shouldBe {
+          "(* foo *) sram u8 a[10];".asTree[Desc]() shouldBe {
             DescSram(
               Ident("a", Nil),
               List(AttrBool("foo")),
@@ -417,13 +418,13 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
         }
 
         "wire" in {
-          "sram wire u8 a[10];".asTree[Desc] shouldBe {
+          "sram wire u8 a[10];".asTree[Desc]() shouldBe {
             DescSram(Ident("a", Nil), Nil, ExprType(TypeUInt(8)), Expr(10), StorageTypeWire)
           }
         }
 
         "wire with attribute" in {
-          "(* foo *) sram wire u8 a[10];".asTree[Desc] shouldBe {
+          "(* foo *) sram wire u8 a[10];".asTree[Desc]() shouldBe {
             DescSram(
               Ident("a", Nil),
               List(AttrBool("foo")),
@@ -436,46 +437,46 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
       }
 
       "type" in {
-        "typedef u8 foo;".asTree[Desc] shouldBe {
+        "typedef u8 foo;".asTree[Desc]() shouldBe {
           DescType(Ident("foo", Nil), Nil, ExprType(TypeUInt(8)))
         }
       }
 
       "entity" - {
         "fsm" in {
-          "fsm a {}".asTree[Desc] shouldBe {
+          "fsm a {}".asTree[Desc]() shouldBe {
             DescEntity(Ident("a", Nil), Nil, EntityVariant.Fsm, Nil)
           }
         }
 
         "network" in {
-          "network a {}".asTree[Desc] shouldBe {
+          "network a {}".asTree[Desc]() shouldBe {
             DescEntity(Ident("a", Nil), Nil, EntityVariant.Net, Nil)
           }
         }
 
         "verbatim entity" in {
-          "verbatim entity a {}".asTree[Desc] shouldBe {
+          "verbatim entity a {}".asTree[Desc]() shouldBe {
             DescEntity(Ident("a", Nil), Nil, EntityVariant.Ver, Nil)
           }
         }
       }
 
       "record" in {
-        "struct a {}".asTree[Desc] shouldBe {
+        "struct a {}".asTree[Desc]() shouldBe {
           DescRecord(Ident("a", Nil), Nil, Nil)
         }
       }
 
       "instance" - {
         "plain" in {
-          "i = new j;".asTree[Desc] shouldBe {
+          "i = new j;".asTree[Desc]() shouldBe {
             DescInstance(Ident("i", Nil), Nil, ExprIdent(Ident("j", Nil)))
           }
         }
 
         "with parameters" in {
-          "i = new j(A=2, B=3);".stripMargin.asTree[Desc] shouldBe {
+          "i = new j(A=2, B=3);".stripMargin.asTree[Desc]() shouldBe {
             DescInstance(
               Ident("i", Nil),
               Nil,
@@ -485,7 +486,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
         }
 
         "with attribute" in {
-          "(* foo *) i = new j;".asTree[Desc] shouldBe {
+          "(* foo *) i = new j;".asTree[Desc]() shouldBe {
             DescInstance(Ident("i", Nil), List(AttrBool("foo")), ExprIdent(Ident("j", Nil)))
           }
         }
@@ -493,13 +494,13 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
 
       "singleton" - {
         "fsm" in {
-          "new fsm i {}".asTree[Desc] shouldBe {
+          "new fsm i {}".asTree[Desc]() shouldBe {
             DescSingleton(Ident("i", Nil), Nil, EntityVariant.Fsm, Nil)
           }
         }
 
         "with attribute" in {
-          "(* foo *) new fsm i {}".asTree[Desc] shouldBe {
+          "(* foo *) new fsm i {}".asTree[Desc]() shouldBe {
             DescSingleton(Ident("i", Nil), List(AttrBool("foo")), EntityVariant.Fsm, Nil)
           }
         }
@@ -529,13 +530,13 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
 
         "foreign" - {
           "a" in {
-            "import u8 f();".asTree[Desc] shouldBe {
+            "import u8 f();".asTree[Desc]() shouldBe {
               DescFunc(Ident("f", Nil), Nil, FuncVariant.Xeno, ExprType(TypeUInt(8)), Nil, Nil)
             }
           }
 
           "b" in {
-            "import void f(u2 i);".asTree[Desc] shouldBe {
+            "import void f(u2 i);".asTree[Desc]() shouldBe {
               DescFunc(
                 Ident("f", Nil),
                 Nil,
@@ -548,7 +549,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
           }
 
           "c" in {
-            "import void f(u2 i, i3 j);".asTree[Desc] shouldBe {
+            "import void f(u2 i, i3 j);".asTree[Desc]() shouldBe {
               DescFunc(
                 Ident("f", Nil),
                 Nil,
@@ -636,7 +637,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
       }
 
       "package" in {
-        "bool a; u2 b;".asTree[DescPackage] shouldBe DescPackage(
+        "bool a; u2 b;".asTree[DescPackage]() shouldBe DescPackage(
           Ident("<asTree>", Nil),
           Nil,
           List(
@@ -648,7 +649,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
 
       "gen if" - {
         "unnamed without else" in {
-          "gen if (i < 0) { fence; }".asTree[Desc] shouldBe {
+          "gen if (i < 0) { fence; }".asTree[Desc]() shouldBe {
             DescGenIf(
               Ident("", Nil),
               Nil,
@@ -659,7 +660,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
         }
 
         "unnamed with else" in {
-          "gen if (i < 0) { fence; } else { fence; break; }".asTree[Desc] shouldBe {
+          "gen if (i < 0) { fence; } else { fence; break; }".asTree[Desc]() shouldBe {
             DescGenIf(
               Ident("", Nil),
               Nil,
@@ -716,7 +717,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
         }
 
         "named" in {
-          "gen if (i < 0) : foo { fence; }".asTree[Desc] shouldBe {
+          "gen if (i < 0) : foo { fence; }".asTree[Desc]() shouldBe {
             DescGenIf(
               Ident("foo", Nil),
               Nil,
@@ -727,7 +728,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
         }
 
         "unnamed empty if" in {
-          "gen if (i < 0) {}".asTree[Desc] shouldBe {
+          "gen if (i < 0) {}".asTree[Desc]() shouldBe {
             DescGenIf(
               Ident("", Nil),
               Nil,
@@ -738,7 +739,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
         }
 
         "unnamed empty if empty else if" in {
-          "gen if (i < 0) {} else if (i < 1) {}".asTree[Desc] shouldBe {
+          "gen if (i < 0) {} else if (i < 1) {}".asTree[Desc]() shouldBe {
             DescGenIf(
               Ident("", Nil),
               Nil,
@@ -752,7 +753,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
         }
 
         "unnamed explicitly empty else" in {
-          "gen if (i < 0) {} else {}".asTree[Desc] shouldBe {
+          "gen if (i < 0) {} else {}".asTree[Desc]() shouldBe {
             DescGenIf(
               Ident("", Nil),
               Nil,
@@ -767,7 +768,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
         "unnamed with single init definition" in {
           """gen for (i8 a=2;a;a--) {
             |  2;
-            |}""".stripMargin.asTree[Desc] shouldBe {
+            |}""".stripMargin.asTree[Desc]() shouldBe {
             DescGenFor(
               Ident("", Nil),
               Nil,
@@ -781,7 +782,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
 
         "unnamed with multiple init definitions" in {
           """gen for (i8 a=2, u8 b=1 ; 1 ; 1++) {
-            |}""".stripMargin.asTree[Desc] shouldBe {
+            |}""".stripMargin.asTree[Desc]() shouldBe {
             DescGenFor(
               Ident("", Nil),
               Nil,
@@ -798,7 +799,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
 
         "unnamed with multiple step" in {
           """gen for (uint a = 0 ; a ; a++, b--) {
-            |}""".stripMargin.asTree[Desc] shouldBe {
+            |}""".stripMargin.asTree[Desc]() shouldBe {
             DescGenFor(
               Ident("", Nil),
               Nil,
@@ -816,7 +817,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
         }
 
         "named" in {
-          "gen for (i8 a=2;a;a--) : foo {}".asTree[Desc] shouldBe {
+          "gen for (i8 a=2;a;a--) : foo {}".asTree[Desc]() shouldBe {
             DescGenFor(
               Ident("foo", Nil),
               Nil,
@@ -831,7 +832,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
 
       "gen range" - {
         "unnamed with <" in {
-          "gen for (u8 i < 10) { fence; }".asTree[Desc] shouldBe {
+          "gen for (u8 i < 10) { fence; }".asTree[Desc]() shouldBe {
             DescGenRange(
               Ident("", Nil),
               Nil,
@@ -844,7 +845,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
         }
 
         "unnamed with <=" in {
-          "gen for (i8 j <= 20) { break; }".asTree[Desc] shouldBe {
+          "gen for (i8 j <= 20) { break; }".asTree[Desc]() shouldBe {
             DescGenRange(
               Ident("", Nil),
               Nil,
@@ -857,7 +858,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
         }
 
         "named" in {
-          "gen for (u8 i < 10) : foo {}".asTree[Desc] shouldBe {
+          "gen for (u8 i < 10) : foo {}".asTree[Desc]() shouldBe {
             DescGenRange(
               Ident("foo", Nil),
               Nil,
@@ -872,13 +873,13 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
 
       "attributes" - {
         "flag" in {
-          "(* flag *) void a;".asTree[Desc] shouldBe {
+          "(* flag *) void a;".asTree[Desc]() shouldBe {
             DescVar(Ident("a", Nil), List(AttrBool("flag")), ExprType(TypeVoid), None)
           }
         }
 
         "expr" in {
-          "(* expr = 2 *) void a;".asTree[Desc] shouldBe {
+          "(* expr = 2 *) void a;".asTree[Desc]() shouldBe {
             DescVar(Ident("a", Nil), List(AttrExpr("expr", Expr(2))), ExprType(TypeVoid), None)
           }
         }
