@@ -131,18 +131,20 @@ final class LowerArrays(implicit cc: CompilerContext) extends StatefulTreeTransf
     //////////////////////////////////////////////////////////////////////////
 
     case EntCombProcess(stmts) =>
-      val leading = arrays.iterator map {
-        case (weSymbol, waSymbol, wdSymbol) =>
-          StmtBlock(
-            List(
-              StmtAssign(ExprSym(weSymbol), ExprInt(false, 1, 0)),
-              StmtAssign(ExprSym(waSymbol), ExprInt(false, waSymbol.kind.width.toInt, 0)),
-              StmtAssign(ExprSym(wdSymbol), ExprInt(false, wdSymbol.kind.width.toInt, 0))
-            )
-          ) regularize weSymbol.loc
+      val newBody = List from {
+        arrays.iterator map {
+          case (weSymbol, waSymbol, wdSymbol) =>
+            StmtBlock(
+              List(
+                StmtAssign(ExprSym(weSymbol), ExprInt(false, 1, 0)),
+                StmtAssign(ExprSym(waSymbol), ExprInt(false, waSymbol.kind.width.toInt, 0)),
+                StmtAssign(ExprSym(wdSymbol), ExprInt(false, wdSymbol.kind.width.toInt, 0))
+              )
+            ) regularize weSymbol.loc
+        } concat stmts
       }
       arrays.clear()
-      TypeAssigner(EntCombProcess(List.from(leading ++ stmts)) withLoc tree.loc)
+      TypeAssigner(EntCombProcess(newBody) withLoc tree.loc)
 
     //
     case _ => tree
