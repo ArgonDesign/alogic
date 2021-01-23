@@ -144,7 +144,7 @@ final class InlineKnownVars(
       // Drop bindings which contain non-numeric symbols, as operators change
       // over them. This only happens prior to SplitStructs and LowerVectors.
       val bs: Symbol => Option[Expr] =
-        bindings.top.get(_).filterNot(_ existsAll { !_.tpe.isNumeric })
+        bindings.top.get(_).filterNot(_ existsAll { case tree => !tree.tpe.isNumeric })
       @tailrec // Recursively replace with bound values
       def simplify(expr: Expr): Expr = (expr substitute bs).simplify match {
         case simplified: ExprInt => simplified

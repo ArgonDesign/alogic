@@ -63,7 +63,9 @@ class OptionParser(args: Seq[String], messageBuffer: MessageBuffer, sandboxPathO
 
     protected def convert(value: String): T
 
-    protected val handler: PartialFunction[Throwable, Either[String, Option[List[T]]]] = { throw _ }
+    protected val handler: PartialFunction[Throwable, Either[String, Option[List[T]]]] = {
+      case t: Throwable => throw t
+    }
 
     def parse(instances: List[(String, List[String])]): Either[String, Option[List[T]]] = {
       val bad = instances.filter(_._2.size > 1)
