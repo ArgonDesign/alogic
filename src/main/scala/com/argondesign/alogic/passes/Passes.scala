@@ -46,8 +46,9 @@ object Passes extends ChainingSyntax {
         ////////////////////////////////////////////////////////////////////////
         // Middle-end
         ////////////////////////////////////////////////////////////////////////
-        Desugar andThen
         Fold andThen
+        CombineStatements andThen
+        Desugar andThen
         NormalizeFunctions andThen
         InlineMethods andThen
         NormalizeReferences() andThen
@@ -79,6 +80,7 @@ object Passes extends ChainingSyntax {
         LowerVectors() andThen
         // FIXME: AddCasts andThen // TODO: Remove the need for this (make previous passes not add Nums..)
         Fold andThen
+        CombineStatements andThen
         SimplifyCat andThen
         ////////////////////////////////////////////////////////////////////////
         // Back-end
