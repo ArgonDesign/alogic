@@ -19,7 +19,20 @@ organization := "com.argondesign"
 
 scalaVersion := "2.13.2"
 
-scalacOptions ++= Seq("-feature", "-explaintypes", "-unchecked", "-Xlint:_")
+crossScalaVersions := Seq(scalaVersion.value, "3.0.0-M3")
+
+scalacOptions ++= Seq("-feature", "-unchecked")
+
+scalacOptions ++= {
+  CrossVersion.partialVersion(scalaVersion.value) match {
+    case Some((3, n)) => Seq("-explain", "-explain-types", "-source:3.0")
+    case _            => Seq("-explaintypes", "-Xlint:_")
+  }
+}
+
+// Note: Needed for Scala 3 Dokka dependencies, which are planned to be
+// removed at some point. Remove when that happens
+ThisBuild / resolvers += Resolver.JCenterRepository
 
 ////////////////////////////////////////////////////////////////////////////////
 // Some of the build is conditional and built only on Java 11
@@ -41,8 +54,12 @@ unmanagedSources / excludeFilter := {
 
 libraryDependencies += "org.rogach" %% "scallop" % "4.0.1"
 
-libraryDependencies +=
-  "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.0"
+libraryDependencies += {
+  CrossVersion.partialVersion(scalaVersion.value) match {
+    case Some((3, n)) => "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.0"
+    case _            => "org.scala-lang.modules" %% "scala-parallel-collections" % "0.2.0"
+  }
+}
 
 libraryDependencies ++= Seq(
   "io.circe" %% "circe-core",
