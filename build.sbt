@@ -67,7 +67,7 @@ libraryDependencies ++= {
 
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.3" % Test
 
-libraryDependencies += "org.scalamock" %% "scalamock" % "4.4.0" % Test
+libraryDependencies += "org.mockito" % "mockito-core" % "3.7.7" % Test
 
 logBuffered in Test := false
 

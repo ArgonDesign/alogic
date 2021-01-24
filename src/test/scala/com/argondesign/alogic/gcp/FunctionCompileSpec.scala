@@ -11,10 +11,10 @@
 package com.argondesign.alogic.gcp
 
 import com.argondesign.alogic.BuildInfo
+import com.argondesign.alogic.MockitoSugar._
 import com.google.cloud.functions.HttpRequest
 import com.google.cloud.functions.HttpResponse
 import io.circe.syntax._
-import org.scalamock.scalatest.MockFactory
 import org.scalatest.OptionValues
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
@@ -28,57 +28,9 @@ import scala.util.ChainingSyntax
 
 final class FunctionCompileSpec
     extends AnyFreeSpec
-    with MockFactory
     with Matchers
     with OptionValues
     with ChainingSyntax {
-
-  private def mkReader(text: String) = new BufferedReader(new StringReader(text))
-
-  private class ResponseWriter private (val out: Writer) extends BufferedWriter(out) {
-    def this() = this(new StringWriter())
-
-    def getText: String = {
-      flush()
-      out.toString
-    }
-
-  }
-
-  private def mkWriter = new ResponseWriter()
-
-  private val requestHeaders = Map.empty[String, java.util.List[String]].asJava
-
-  private def mkRequest(text: String): HttpRequest =
-    mock[HttpRequest] tap { request =>
-      (request.getHeaders _).expects().returns(requestHeaders)
-      (request.getMethod _).expects().returns("POST")
-      (request.getContentType _).expects().returns(Some("application/json; charset=utf-8").toJava)
-      (request.getReader _).expects().returns(mkReader(text))
-    }
-
-  private def checkBadRequest(request: HttpRequest)(reason: String): Unit = {
-    val response = mock[HttpResponse]
-    (response.appendHeader(_: String, _: String)).expects("Access-Control-Allow-Origin", "*")
-    (response.setStatusCode(_: Int, _: String)).expects(HttpURLConnection.HTTP_BAD_REQUEST, reason)
-    (new FunctionCompile).service(request, response)
-  }
-
-  private def checkOK(request: HttpRequest)(expected: String): Unit = {
-    val response = mock[HttpResponse]
-    (response.appendHeader(_: String, _: String)).expects("Access-Control-Allow-Origin", "*")
-    (response.setContentType(_: String)).expects("application/json; charset=utf-8")
-    (response.setStatusCode(_: Int)).expects(HttpURLConnection.HTTP_OK)
-    val writer = mkWriter
-    (response.getWriter _).expects().returns(writer)
-
-    (new FunctionCompile).service(request, response)
-
-    val resultJson = io.circe.parser.parse(writer.getText).fold(_ => fail, identity)
-    val expectedJson = io.circe.parser.parse(expected).fold(_ => fail, identity)
-
-    resultJson shouldBe expectedJson
-  }
 
   // TODO: Factor this together with the one in CompilationTest
   private def checkJson(json: io.circe.Json, expected: Map[String, String]): Unit =
@@ -117,45 +69,105 @@ final class FunctionCompileSpec
         }
     }
 
+  private val requestHeaders = Map.empty[String, java.util.List[String]].asJava
+
+  private def mockRequest(text: String): HttpRequest =
+    mock[HttpRequest] tap { request =>
+      request.getHeaders willReturn requestHeaders
+      request.getMethod willReturn "POST"
+      request.getContentType willReturn Some("application/json; charset=utf-8").toJava
+      request.getReader willReturn new BufferedReader(new StringReader(text))
+    }
+
+  private def checkBadRequest(request: HttpRequest)(reason: String): Unit = {
+    val response = mock[HttpResponse]
+
+    (new FunctionCompile).service(request, response)
+
+    response verify { __ =>
+      __.appendHeader("Access-Control-Allow-Origin", "*")
+      __.setStatusCode(HttpURLConnection.HTTP_BAD_REQUEST, reason)
+    }
+  }
+
+  case class checkOk(request: HttpRequest) {
+
+    val (response, getContent) = mock[HttpResponse] pipe { response =>
+      val stringWriter = new StringWriter
+      val bufferedWriter = new BufferedWriter(stringWriter)
+      response.getWriter willReturn bufferedWriter
+      (response, () => { bufferedWriter.flush(); stringWriter.toString })
+    }
+
+    private def verify(): Unit = response verifyIgnoringStubs { __ =>
+      __.appendHeader("Access-Control-Allow-Origin", "*")
+      __.setContentType("application/json; charset=utf-8")
+      __.setStatusCode(HttpURLConnection.HTTP_OK)
+    }
+
+    protected val servicerOpt: Option[(HttpRequest, HttpResponse) => Unit] = None
+
+    private def getServicer = servicerOpt getOrElse { (new FunctionCompile).service(_, _) }
+
+    def apply(expected: String): Unit = {
+      getServicer(request, response)
+      verify()
+      val resultJson = io.circe.parser.parse(getContent()).fold(_ => fail, identity)
+      val expectedJson = io.circe.parser.parse(expected).fold(_ => fail, identity)
+      resultJson shouldBe expectedJson
+    }
+
+    def apply(expected: (String, String)*): Unit = {
+      getServicer(request, response)
+      verify()
+      val resultJson = io.circe.parser.parse(getContent()).fold(_ => fail, identity)
+      checkJson(resultJson, expected.toMap)
+    }
+
+    def withServicer(servicer: (HttpRequest, HttpResponse) => Unit): checkOk =
+      new checkOk(request) {
+        override val servicerOpt: Option[(HttpRequest, HttpResponse) => Unit] = Some(servicer)
+      }
+
+  }
+
   "FunctionCompile" - {
 
     "should reject invalid HTTP method" - {
       for (method <- List("GET", "PUT", "HEAD", "DELETE", "PATCH", "TRACE", "CONNECT")) {
         method in {
-          val request = stub[HttpRequest]
-          (request.getHeaders _).when().returns(requestHeaders)
-          (request.getMethod _).when().returns(method)
+          val request = mock[HttpRequest]
+          request.getHeaders willReturn requestHeaders
+          request.getMethod willReturn method
 
           val response = mock[HttpResponse]
-          (response.appendHeader(_: String, _: String)).stubs(*, *)
-          (response.setStatusCode(_: Int)).expects(HttpURLConnection.HTTP_BAD_METHOD)
 
           (new FunctionCompile).service(request, response)
+
+          response verify { __ =>
+            __.setStatusCode(HttpURLConnection.HTTP_BAD_METHOD)
+            __.appendHeader(*, *)
+          }
         }
       }
     }
 
     "should respond to OPTIONS request with CORS headers" in {
-      val request = stub[HttpRequest]
-      (request.getHeaders _).when().returns(requestHeaders)
-      (request.getMethod _).when().returns("OPTIONS")
+      val request = mock[HttpRequest]
+      request.getHeaders willReturn requestHeaders
+      request.getMethod willReturn "OPTIONS"
 
       val response = mock[HttpResponse]
-      (response
-        .appendHeader(_: String, _: String))
-        .expects("Access-Control-Allow-Origin", "*")
-      (response
-        .appendHeader(_: String, _: String))
-        .expects("Access-Control-Allow-Methods", "POST")
-      (response
-        .appendHeader(_: String, _: String))
-        .expects("Access-Control-Allow-Headers", "Content-Type")
-      (response
-        .appendHeader(_: String, _: String))
-        .expects("Access-Control-Max-Age", "3600")
-      (response.setStatusCode(_: Int)).expects(HttpURLConnection.HTTP_NO_CONTENT)
 
       (new FunctionCompile).service(request, response)
+
+      response verify { __ =>
+        __.appendHeader("Access-Control-Allow-Origin", "*")
+        __.appendHeader("Access-Control-Allow-Methods", "POST")
+        __.appendHeader("Access-Control-Allow-Headers", "Content-Type")
+        __.appendHeader("Access-Control-Max-Age", "3600")
+        __.setStatusCode(HttpURLConnection.HTTP_NO_CONTENT)
+      }
     }
 
     "should reject invalid content type" - {
@@ -168,73 +180,71 @@ final class FunctionCompileSpec
         )
       ) {
         content.toString in {
-          val request = stub[HttpRequest]
-          (request.getHeaders _).when().returns(requestHeaders)
-          (request.getMethod _).when().returns("POST")
-          (request.getContentType _).when().returns(content.toJava)
+          val request = mock[HttpRequest]
+          request.getHeaders willReturn requestHeaders
+          request.getMethod willReturn "POST"
+          request.getContentType willReturn content.toJava
 
           val response = mock[HttpResponse]
-          (response.appendHeader(_: String, _: String)).stubs(*, *)
-          (response.setStatusCode(_: Int)).expects(HttpURLConnection.HTTP_UNSUPPORTED_TYPE)
 
           (new FunctionCompile).service(request, response)
+
+          response verify { __ =>
+            __.appendHeader(*, *)
+            __.setStatusCode(HttpURLConnection.HTTP_UNSUPPORTED_TYPE)
+          }
         }
       }
     }
 
     "should reject non-JSON request" in {
-      val request = mkRequest("@@@-malformed")
+      val request = mockRequest("@@@-malformed")
       checkBadRequest(request)("Request must be a JSON object")
     }
 
     "should reject non JSON object request" in {
-      val request = mkRequest("1")
+      val request = mockRequest("1")
       checkBadRequest(request)("Request must have 'request' key")
     }
 
     "should reject JSON object requests with no 'request' key" in {
-      val request = mkRequest("""{ "foo" : 0 }""")
+      val request = mockRequest("""{ "foo" : 0 }""")
       checkBadRequest(request)("Request must have 'request' key")
     }
 
     "should reject JSON object requests with 'request' not a string" in {
-      val request = mkRequest("""{ "request" : 0 }""")
+      val request = mockRequest("""{ "request" : 0 }""")
       checkBadRequest(request)("Value of 'request' must be a string")
     }
 
-    "should reject unkown requests" in {
-      val request = mkRequest("""{ "request": "foo" }""")
+    "should reject unknown requests" in {
+      val request = mockRequest("""{ "request": "foo" }""")
       checkBadRequest(request)("Unknown request type: 'foo'")
     }
 
     "should respond to 'describe'" in {
-      val request = mkRequest("""{ "request" : "describe" }""")
-      checkOK(request) {
+      val request = mockRequest("""{ "request" : "describe" }""")
+      checkOk(request) {
         s"""{
-           |  "apiVersion": 1,
-           |  "compilerVersion": "${BuildInfo.version}",
-           |  "buildTime": "${BuildInfo.buildTime}"
-           |}""".stripMargin
+              "apiVersion": 1,
+              "compilerVersion": "${BuildInfo.version}",
+              "buildTime": "${BuildInfo.buildTime}"
+            }"""
       }
     }
 
     "response to 'describe' must always have 'apiVersion'" in {
-      // WARNING: Do not change this test (except for the actual version number).
-      // 'apiVersion' is required so the client knows what to do next!
-      val request = mkRequest("""{ "request" : "describe" }""")
+      // WARNING: Do not change this test (except for the actual version
+      // number) 'apiVersion' is required to be present so the client knows
+      // what to do with the response!
+      val request = mockRequest {
+        """{
+          | "request" : "describe"
+          |}""".stripMargin
+      }
 
-      val response = mock[HttpResponse]
-      (response.appendHeader(_: String, _: String)).expects("Access-Control-Allow-Origin", "*")
-      (response.setContentType(_: String)).expects("application/json; charset=utf-8")
-      (response.setStatusCode(_: Int)).expects(HttpURLConnection.HTTP_OK)
-      val writer = mkWriter
-      (response.getWriter _).expects().returns(writer)
-
-      (new FunctionCompile).service(request, response)
-
-      io.circe.parser.parse(writer.getText) match {
-        case Left(_)     => fail
-        case Right(json) => json.hcursor.get[Int]("apiVersion").toOption.value shouldBe 1
+      checkOk(request) {
+        "apiVersion" -> "1"
       }
     }
 
@@ -247,7 +257,7 @@ final class FunctionCompileSpec
              |  i -> o;
              |}""".stripMargin
 
-        val request = mkRequest {
+        val request = mockRequest {
           s"""{
              |  "request" : "compile",
              |  "inputFiles" : {
@@ -257,25 +267,11 @@ final class FunctionCompileSpec
              |}""".stripMargin
         }
 
-        val response = mock[HttpResponse]
-        (response.appendHeader(_: String, _: String)).expects("Access-Control-Allow-Origin", "*")
-        (response.setContentType(_: String)).expects("application/json; charset=utf-8")
-        (response.setStatusCode(_: Int)).expects(HttpURLConnection.HTTP_OK)
-        val writer = mkWriter
-        (response.getWriter _).expects().returns(writer)
-
-        (new FunctionCompile).service(request, response)
-
-        val resultJson = io.circe.parser.parse(writer.getText).fold(_ => fail, identity)
-
-        checkJson(
-          resultJson,
-          Map(
-            "code" -> "\"ok\"",
-            "outputFiles.out/example\\.v" -> "*",
-            "outputFiles.out/manifest\\.json" -> "*",
-            "messages" -> "[]"
-          )
+        checkOk(request)(
+          "code" -> "\"ok\"",
+          "outputFiles.out/example\\.v" -> "*",
+          "outputFiles.out/manifest\\.json" -> "*",
+          "messages" -> "[]"
         )
       }
 
@@ -287,7 +283,7 @@ final class FunctionCompileSpec
              |  i -> o;
              |}""".stripMargin
 
-        val request = mkRequest {
+        val request = mockRequest {
           s"""{
              |  "request" : "compile",
              |  "inputFiles" : {
@@ -297,7 +293,7 @@ final class FunctionCompileSpec
              |}""".stripMargin
         }
 
-        checkOK(request) {
+        checkOk(request) {
           """{
             |  "code": "ok",
             |  "outputFiles": {},
@@ -320,7 +316,7 @@ final class FunctionCompileSpec
       }
 
       "no input files" in {
-        val request = mkRequest {
+        val request = mockRequest {
           """{
             |  "request" : "compile",
             |  "args" : ""
@@ -331,7 +327,7 @@ final class FunctionCompileSpec
       }
 
       "bad input file" in {
-        val request = mkRequest {
+        val request = mockRequest {
           """{
             |  "request" : "compile",
             |  "inputFiles" : { "a": true, "b": "" },
@@ -343,7 +339,7 @@ final class FunctionCompileSpec
       }
 
       "no args" in {
-        val request = mkRequest {
+        val request = mockRequest {
           """{
             |  "request" : "compile",
             |  "inputFiles" : {}
@@ -354,7 +350,7 @@ final class FunctionCompileSpec
       }
 
       "bad args" in {
-        val request = mkRequest {
+        val request = mockRequest {
           """{
             |  "request" : "compile",
             |  "inputFiles" : {},
@@ -362,7 +358,7 @@ final class FunctionCompileSpec
             |}""".stripMargin
         }
 
-        checkOK(request) {
+        checkOk(request) {
           """{
             |  "code" : "ok",
             |  "outputFiles" : {},
@@ -383,11 +379,10 @@ final class FunctionCompileSpec
             |}""".stripMargin
         }
       }
-
     }
 
     "should report compiler crash" in {
-      val request = mkRequest {
+      val request = mockRequest {
         s"""{
            |  "request" : "compile",
            |  "inputFiles" : {},
@@ -395,32 +390,18 @@ final class FunctionCompileSpec
            |}""".stripMargin
       }
 
-      val response = mock[HttpResponse]
-      (response.appendHeader(_: String, _: String)).expects("Access-Control-Allow-Origin", "*")
-      (response.setContentType(_: String)).expects("application/json; charset=utf-8")
-      (response.setStatusCode(_: Int)).expects(HttpURLConnection.HTTP_OK)
-      val writer = mkWriter
-      (response.getWriter _).expects().returns(writer)
-
-      (new FunctionCompile).service(request, response)
-
-      val resultJson = io.circe.parser.parse(writer.getText).fold(_ => fail, identity)
-
-      checkJson(
-        resultJson,
-        Map(
-          "code" -> "\"crash\"",
-          "outputFiles" -> "{}",
-          "messages[0].file" -> "\"\"",
-          "messages[0].category" -> "\"STDERR\""
-        )
+      checkOk(request)(
+        "code" -> "\"crash\"",
+        "outputFiles" -> "{}",
+        "messages[0].file" -> "\"\"",
+        "messages[0].category" -> "\"STDERR\""
       )
     }
 
     "should signal error for input file outside sandbox" - {
       List("../top.algoic", "/top.alogic") foreach { path =>
         path in {
-          val request = mkRequest {
+          val request = mockRequest {
             s"""{
                |  "request" : "compile",
                |  "inputFiles" : {
@@ -430,33 +411,19 @@ final class FunctionCompileSpec
                |}""".stripMargin
           }
 
-          val response = mock[HttpResponse]
-          (response.appendHeader(_: String, _: String)).expects("Access-Control-Allow-Origin", "*")
-          (response.setContentType(_: String)).expects("application/json; charset=utf-8")
-          (response.setStatusCode(_: Int)).expects(HttpURLConnection.HTTP_OK)
-          val writer = mkWriter
-          (response.getWriter _).expects().returns(writer)
-
-          (new FunctionCompile).service(request, response)
-
-          val resultJson = io.circe.parser.parse(writer.getText).fold(_ => fail, identity)
-
-          checkJson(
-            resultJson,
-            Map(
-              "code" -> "\"ok\"",
-              "outputFiles" -> "{}",
-              "messages[0].file" -> "\"\"",
-              "messages[0].category" -> "\"ERROR\"",
-              "messages[0].lines[0]" -> s""""Input file $path is outside sandbox""""
-            )
+          checkOk(request)(
+            "code" -> "\"ok\"",
+            "outputFiles" -> "{}",
+            "messages[0].file" -> "\"\"",
+            "messages[0].category" -> "\"ERROR\"",
+            "messages[0].lines[0]" -> s""""Input file $path is outside sandbox""""
           )
         }
       }
     }
 
     "should signal error for import from outside sandbox" in {
-      val request = mkRequest {
+      val request = mockRequest {
         s"""{
            |  "request" : "compile",
            |  "inputFiles" : {
@@ -467,32 +434,20 @@ final class FunctionCompileSpec
            |}""".stripMargin
       }
 
-      val response = mock[HttpResponse]
-      (response.appendHeader(_: String, _: String)).expects("Access-Control-Allow-Origin", "*")
-      (response.setContentType(_: String)).expects("application/json; charset=utf-8")
-      (response.setStatusCode(_: Int)).expects(HttpURLConnection.HTTP_OK)
-      val writer = mkWriter
-      (response.getWriter _).expects().returns(writer)
-
-      (new FunctionCompile).serviceInternal(request, response, allowInputOutsideSandbox = true)
-
-      val resultJson = io.circe.parser.parse(writer.getText).fold(_ => fail, identity)
-
-      checkJson(
-        resultJson,
-        Map(
-          "code" -> "\"ok\"",
-          "outputFiles" -> "{}",
-          "messages[0].file" -> "\"top.alogic\"",
-          "messages[0].line" -> "1",
-          "messages[0].category" -> "\"ERROR\"",
-          "messages[0].lines[0]" -> "\"Imported file is outside sandbox\""
-        )
+      checkOk(request).withServicer(
+        (new FunctionCompile).serviceInternal(_, _, allowInputOutsideSandbox = true)
+      )(
+        "code" -> "\"ok\"",
+        "outputFiles" -> "{}",
+        "messages[0].file" -> "\"top.alogic\"",
+        "messages[0].line" -> "1",
+        "messages[0].category" -> "\"ERROR\"",
+        "messages[0].lines[0]" -> "\"Imported file is outside sandbox\""
       )
     }
 
     "should signal timeout on long computation" in {
-      val request = mkRequest {
+      val request = mockRequest {
         s"""{
            |  "request" : "compile",
            |  "inputFiles" : {
@@ -502,27 +457,13 @@ final class FunctionCompileSpec
            |}""".stripMargin
       }
 
-      val response = mock[HttpResponse]
-      (response.appendHeader(_: String, _: String)).expects("Access-Control-Allow-Origin", "*")
-      (response.setContentType(_: String)).expects("application/json; charset=utf-8")
-      (response.setStatusCode(_: Int)).expects(HttpURLConnection.HTTP_OK)
-      val writer = mkWriter
-      (response.getWriter _).expects().returns(writer)
-
-      (new FunctionCompile).serviceInternal(request, response, timeoutMs = 0)
-
-      val resultJson = io.circe.parser.parse(writer.getText).fold(_ => fail, identity)
-
-      checkJson(
-        resultJson,
-        Map(
-          "code" -> "\"timeout\"",
-          "outputFiles" -> "{}",
-          "messages" -> "[]"
-        )
+      checkOk(request).withServicer(
+        (new FunctionCompile).serviceInternal(_, _, timeoutMs = 0)
+      )(
+        "code" -> "\"timeout\"",
+        "outputFiles" -> "{}",
+        "messages" -> "[]"
       )
     }
-
   }
-
 }
