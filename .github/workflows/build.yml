@@ -15,7 +15,8 @@ jobs:
         java: [8, 11]
         os: [ubuntu-20.04]
         suite: [UnitTests, EndToEndTests]
-    name: Build + ${{ matrix.suite }} (Java ${{ matrix.java }})
+        scala: [2.13.4, 3.0.0-M3]
+    name: Build + ${{ matrix.suite }} (Scala ${{ matrix.scala }}, Java ${{ matrix.java }})
     runs-on: ${{ matrix.os }}
     steps:
       - name: Install APT dependencies
@@ -60,8 +61,8 @@ jobs:
             ~/.sbt
             ~/.cache/coursier
             ~/.ivy2/cache
-          key: build-${{ matrix.os }}-SBT-${{ matrix.java }}-${{ matrix.suite }}-${{ hashFiles('**/build.sbt') }}
-          restore-keys: build-${{ matrix.os }}-SBT-${{ matrix.java }}-${{ matrix.suite }}-
+          key: build-${{ matrix.os }}-SBT-${{ matrix.java }}-${{ matrix.scala }}-${{ matrix.suite }}-${{ hashFiles('**/build.sbt') }}
+          restore-keys: build-${{ matrix.os }}-SBT-${{ matrix.java }}-${{ matrix.scala }}-${{ matrix.suite }}-
       - name: Cache ccache
         if: matrix.suite == 'EndToEndTests'
         uses: actions/cache@v2
@@ -70,9 +71,9 @@ jobs:
           key: build-${{ matrix.os }}-ccache-${{ github.sha }}
           restore-keys: build-${{ matrix.os }}-ccache-
       - name: Compile
-        run: sbt clean compile Test/compile
+        run: sbt ++${{ matrix.scala }} clean compile Test/compile
       - name: Run tests
-        run: sbt run${{ matrix.suite }}
+        run: sbt ++${{ matrix.scala }} run${{ matrix.suite }}
   format:
     name: Check code formatting
     runs-on: ubuntu-20.04
