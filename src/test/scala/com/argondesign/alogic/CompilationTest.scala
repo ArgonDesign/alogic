@@ -38,6 +38,7 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+import scala.annotation.nowarn
 import scala.collection.immutable.ListMap
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -437,10 +438,12 @@ trait CompilationTest
 
     implicit val portDecoder: io.circe.Decoder[Port] =
       io.circe.Decoder.forProduct2("dir", "flow-control")(Port.apply)
+    @nowarn("cat=lint-byname-implicit") // Scala 2.13.4 is overzealous
     implicit val signalDecoder: io.circe.Decoder[Signal] = io.circe.generic.semiauto.deriveDecoder
 
     val ports = topLevelManifest.downField("ports").as[ListMap[String, Port]].getOrElse(fail())
-    val signals = topLevelManifest.downField("signals").as[ListMap[String, Signal]].getOrElse(fail())
+    val signals =
+      topLevelManifest.downField("signals").as[ListMap[String, Signal]].getOrElse(fail())
 
     // All Verilog inputs
     val vInputs: Iterable[String] = signals collect {
