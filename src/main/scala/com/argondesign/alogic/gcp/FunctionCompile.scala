@@ -57,6 +57,67 @@ class FunctionCompile extends HttpFunction {
   // For timeout handling
   private val executorService = Executors.newSingleThreadExecutor()
 
+  // Representation of a compiler Message in a response
+  private case class ResponseMessage(
+      file: String,
+      line: Int,
+      start: Int,
+      end: Int,
+      point: Int,
+      category: String,
+      lines: Seq[String],
+      context: String)
+
+  // Turns a compiler Message into a ResponseMessage
+  private def toResponseMessage(m: Message, sandboxDirPrefix: String): ResponseMessage = {
+    require(sandboxDirPrefix.endsWith(File.separator))
+    val sandboxDirName = sandboxDirPrefix.dropRight(File.separator.length)
+    ResponseMessage(
+      if (m.loc eq Loc.unknown) "" else m.loc.file.stripPrefix(sandboxDirPrefix),
+      m.loc.line,
+      m.loc.start,
+      m.loc.end,
+      m.loc.point,
+      m.category match {
+        // $COVERAGE-OFF$ Trivial
+        case Messages.WarningCategory => "WARNING"
+        case Messages.ErrorCategory   => "ERROR"
+        case Messages.NoteCategory    => "NOTE"
+        case Messages.FatalCategory   => "FATAL"
+        case Messages.IceCategory     => "INTERNAL COMPILER ERROR"
+        // $COVERAGE-ON$
+      },
+      m.msg map { _.replaceAll(sandboxDirPrefix, "").replaceAll(sandboxDirName, ".") },
+      m.context
+    )
+  }
+
+  // Response to a 'describe' request
+  private case class DescribeResult(
+      apiVersion: Int,
+      compilerVersion: String,
+      buildTime: String)
+
+  // Response to a 'compile' request
+  private case class CompileResult(
+      code: String,
+      outputFiles: Map[String, String],
+      messages: Seq[ResponseMessage])
+
+  // Create temporary directory, run 'f' passing the path, then delete it
+  private def withTmpDir(f: Path => Unit): Unit = {
+    def remove(f: File): Unit = {
+      if (f.isDirectory) { f.listFiles foreach remove }
+      f.delete()
+    }
+    val tmpPath = Files.createTempDirectory("compile").toFile.getCanonicalFile.toPath
+    try {
+      f(tmpPath)
+    } finally {
+      remove(tmpPath.toFile)
+    }
+  }
+
   override def service(request: HttpRequest, response: HttpResponse): Unit =
     serviceInternal(request, response)
 
@@ -86,57 +147,6 @@ class FunctionCompile extends HttpFunction {
       response.getWriter.write(result.asJson(implicitly[io.circe.Encoder[T]]).toString)
       response.setStatusCode(HttpURLConnection.HTTP_OK)
     }
-
-    def withTmpDir(f: Path => Unit): Unit = {
-      def remove(f: File): Unit = {
-        if (f.isDirectory) { f.listFiles foreach remove }
-        f.delete()
-      }
-      val tmpPath = Files.createTempDirectory("compile").toFile.getCanonicalFile.toPath
-      try {
-        f(tmpPath)
-      } finally {
-        remove(tmpPath.toFile)
-      }
-    }
-
-    case class ResponseMessage(
-        file: String,
-        line: Int,
-        start: Int,
-        end: Int,
-        point: Int,
-        category: String,
-        lines: Seq[String],
-        context: String) {}
-
-    def toResponseMessage(m: Message, sandboxDirPrefix: String): ResponseMessage = {
-      require(sandboxDirPrefix.endsWith(File.separator))
-      val sandboxDirName = sandboxDirPrefix.dropRight(File.separator.length)
-      ResponseMessage(
-        if (m.loc eq Loc.unknown) "" else m.loc.file.stripPrefix(sandboxDirPrefix),
-        m.loc.line,
-        m.loc.start,
-        m.loc.end,
-        m.loc.point,
-        m.category match {
-          // $COVERAGE-OFF$ Trivial
-          case Messages.WarningCategory => "WARNING"
-          case Messages.ErrorCategory   => "ERROR"
-          case Messages.NoteCategory    => "NOTE"
-          case Messages.FatalCategory   => "FATAL"
-          case Messages.IceCategory     => "INTERNAL COMPILER ERROR"
-          // $COVERAGE-ON$
-        },
-        m.msg map { _.replaceAll(sandboxDirPrefix, "").replaceAll(sandboxDirName, ".") },
-        m.context
-      )
-    }
-
-    case class Result(
-        code: String,
-        outputFiles: Map[String, String],
-        messages: Seq[ResponseMessage])
 
     def handleCompile(sandboxPath: Path, args: Seq[String], iFileSet: Set[String]): Unit = {
 
@@ -177,12 +187,12 @@ class FunctionCompile extends HttpFunction {
                       Map.empty[String, String]
                     }
                     // Form result
-                    Result("ok", files, messages)
+                    CompileResult("ok", files, messages)
                   }
                 }
             } getOrElse {
               // Argument parsing had errors
-              Result("ok", Map.empty, messages)
+              CompileResult("ok", Map.empty, messages)
             }
           }
 
@@ -195,7 +205,7 @@ class FunctionCompile extends HttpFunction {
           }
         } catch {
           case _: TimeoutException =>
-            Result("timeout", Map.empty, Seq.empty)
+            CompileResult("timeout", Map.empty, Seq.empty)
           case t: Throwable =>
             // TODO: Archive input for debug
             val cause = t match {
@@ -205,7 +215,7 @@ class FunctionCompile extends HttpFunction {
             val sw = new StringWriter
             cause.printStackTrace(new PrintWriter(sw))
             val trace = ResponseMessage("", 0, 0, 0, 0, "STDERR", Nil, sw.toString)
-            Result("crash", Map.empty, Seq(trace))
+            CompileResult("crash", Map.empty, Seq(trace))
         }
       }
     }
@@ -217,9 +227,8 @@ class FunctionCompile extends HttpFunction {
           // WARNING: At a minimum, response to 'describe' must have the
           // apiVersion key so the client knows what to do next
           //////////////////////////////////////////////////////////////////////
-          case class Describe(apiVersion: Int, compilerVersion: String, buildTime: String)
           replyOk {
-            Describe(apiVersion, BuildInfo.version, BuildInfo.buildTime.toString)
+            DescribeResult(apiVersion, BuildInfo.version, BuildInfo.buildTime.toString)
           }
         case "compile" =>
           request.hcursor.get[JsonObject]("inputFiles") match {
@@ -256,7 +265,7 @@ class FunctionCompile extends HttpFunction {
                 } else if (errorMessages.nonEmpty) {
                   replyOk {
                     val sandboxDirPrefix = sandboxPath.toString + File.separator
-                    Result(
+                    CompileResult(
                       "ok",
                       Map.empty,
                       errorMessages map { toResponseMessage(_, sandboxDirPrefix) }
