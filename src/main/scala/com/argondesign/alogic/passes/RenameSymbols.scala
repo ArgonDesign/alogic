@@ -253,7 +253,7 @@ object RenameSymbols {
                     if (eDecls.size == 1 || eSymbol.attr.topLevel.isSet) {
                       newName
                     } else {
-                      newName + cc.sep + sequenceNumbers.next
+                      newName + cc.sep + sequenceNumbers.next()
                     }
                   } pipe { newName =>
                     // Enforce max name length if provided

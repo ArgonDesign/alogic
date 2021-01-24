@@ -280,7 +280,7 @@ private[frontend] object Finalize {
             modified(0) = true
             // Pop hierarchy
             tree match {
-              case Splice(_: DescGenScope) | _: Desc => hierarcy.pop
+              case Splice(_: DescGenScope) | _: Desc => hierarcy.pop()
               case _                                 =>
             }
           case None =>
@@ -292,13 +292,13 @@ private[frontend] object Finalize {
           //////////////////////////////////////////////////////////////////////
 
           case desc: Desc =>
-            if (modified.pop) {
+            if (modified.pop()) {
               desc.symbol.kind = null
               fe.typeOf(desc.symbol, desc.symbol.loc, refresh = true) ensuring {
                 _.isInstanceOf[Complete[_]]
               }
             }
-            hierarcy.pop
+            hierarcy.pop()
             desc
 
           case _ => tree

@@ -226,10 +226,10 @@ object Elaborate {
             case tree         => tree
           } map {
             case d: DescParam =>
-              val initOpt = posParamIt.nextOption orElse d.initOpt
+              val initOpt = posParamIt.nextOption() orElse d.initOpt
               if (d.finished) d else d.copy(initOpt = initOpt).withLocOf(d)
             case d: DescParamType =>
-              val initOpt = posParamIt.nextOption orElse d.initOpt
+              val initOpt = posParamIt.nextOption() orElse d.initOpt
               if (d.finished) d else d.copy(initOpt = initOpt).withLocOf(d)
             case other => other
           }
@@ -1390,7 +1390,7 @@ object Elaborate {
                 val ord = LazyList.from(0).iterator
                 descStmts foreach {
                   case StmtSplice(Desc(Sym(symbol))) =>
-                    symbol.name = symbol.name + cc.sep + ord.next
+                    symbol.name = symbol.name + cc.sep + ord.next()
                   case _ => unreachable
                 }
                 StmtBlock(descStmts :+ caseStmt) withLocOf s

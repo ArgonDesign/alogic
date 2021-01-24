@@ -25,7 +25,7 @@ object Json {
 
   private def writeAny(w: Writer, thing: Any, level: Int): Unit = thing match {
     case child: Map[_, _] =>
-      require(child.keysIterator.nextOption forall { _.isInstanceOf[String] })
+      require(child.keysIterator.nextOption() forall { _.isInstanceOf[String] })
       writeObj(w, child.asInstanceOf[Map[String, _]], level)
     case child: Seq[_] => writeArr(w, child, level)
     case null          => w.write("null")
@@ -57,14 +57,14 @@ object Json {
 
       // Write the first pair
       if (it.hasNext) {
-        val (k, v) = it.next
+        val (k, v) = it.next()
         writePair(k, v)
       }
 
       // Write the remaining pairs, with separators
       while (it.hasNext) {
         w.write(",")
-        val (k, v) = it.next
+        val (k, v) = it.next()
         writePair(k, v)
       }
 
@@ -94,13 +94,13 @@ object Json {
 
       // Write the first element
       if (it.hasNext) {
-        writeValue(it.next)
+        writeValue(it.next())
       }
 
       // Write the remaining elements, with separators
       while (it.hasNext) {
         w.write(",")
-        writeValue(it.next)
+        writeValue(it.next())
       }
 
       // Close array

@@ -259,13 +259,13 @@ object Clarify {
           } getOrElse tree
 
         case expr @ ExprIndex(tgt, idx) if idx.tpe.underlying.isNum =>
-          tgt.tpe.shapeIter.nextOption map { size =>
+          tgt.tpe.shapeIter.nextOption() map { size =>
             expr.copy(index = cast(TypeUInt(clog2(size) max 1), idx))
           } getOrElse tree
 
         case expr @ ExprSlice(tgt, lIdx, op, rIdx)
             if lIdx.tpe.underlying.isNum || rIdx.tpe.underlying.isNum =>
-          tgt.tpe.shapeIter.nextOption map { size =>
+          tgt.tpe.shapeIter.nextOption() map { size =>
             val lWidth = clog2(size) max 1
             val rWidth = if (op == ":") lWidth else clog2(size + 1)
             val newLIdx = if (lIdx.tpe.underlying.isNum) cast(TypeUInt(lWidth), lIdx) else lIdx

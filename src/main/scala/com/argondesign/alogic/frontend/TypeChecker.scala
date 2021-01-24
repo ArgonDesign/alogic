@@ -586,7 +586,7 @@ final private class Checker(val root: Tree)(implicit cc: CompilerContext, fe: Fr
           if (!shapeIter.hasNext && !tgt.tpe.underlying.isNum) {
             error(tgt, "Target is not indexable")
           } else {
-            UnaryTickContext.pushType(tree, TypeUInt(clog2(shapeIter.next) max 1))
+            UnaryTickContext.pushType(tree, TypeUInt(clog2(shapeIter.next()) max 1))
           }
         }
       }
@@ -599,7 +599,7 @@ final private class Checker(val root: Tree)(implicit cc: CompilerContext, fe: Fr
           if (!shapeIter.hasNext || tgt.tpe.isArray) {
             error(tgt, "Target is not sliceable")
           } else {
-            val size = shapeIter.next
+            val size = shapeIter.next()
             val lWidth = clog2(size) max 1
             val rWidth = if (op == ":") lWidth else clog2(size + 1)
             UnaryTickContext.pushType(rIdx, TypeUInt(rWidth))
@@ -827,7 +827,7 @@ final private class Checker(val root: Tree)(implicit cc: CompilerContext, fe: Fr
     ////////////////////////////////////////////////////////////////////////////
 
     case StmtReturn(_, exprOpt) =>
-      enclosingSymbols.iterator.dropWhile(_.kind.isScope).next.kind match {
+      enclosingSymbols.iterator.dropWhile(_.kind.isScope).next().kind match {
         case TypeCallable(symbol, TypeVoid, _) =>
           exprOpt match {
             case Some(expr) => error(expr, s"void function '${symbol.name}' cannot return a value")
@@ -1017,7 +1017,7 @@ final private class Checker(val root: Tree)(implicit cc: CompilerContext, fe: Fr
           }
         val lHint = s"Left index of '$op' slice"
         val rHint = s"Right index of '$op' slice"
-        val dimSize = tgt.tpe.shapeIter.nextOption getOrElse BigInt(0) // Num has no shape
+        val dimSize = tgt.tpe.shapeIter.nextOption() getOrElse BigInt(0) // Num has no shape
         if (op == ":") {
           val iWidth = clog2(dimSize) max 1
           checkIndex(Option.unless(tgtIsNum)(iWidth), lIdx, lHint)

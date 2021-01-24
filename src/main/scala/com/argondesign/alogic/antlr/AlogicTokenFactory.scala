@@ -148,7 +148,7 @@ class AlogicTokenFactory(val alogicSource: Source)(implicit mb: MessageBuffer)
           }
       }
     }
-  } ensuring (!eol(kind) || _.getChannel == Token.HIDDEN_CHANNEL, "Failed to hide newline")
+  }.ensuring(!eol(kind) || _.getChannel == Token.HIDDEN_CHANNEL, "Failed to hide newline")
 
   // This is never be used by Alogic but is part of the TokenFactory interface
   def create(kind: Int, text: String): AlogicToken = unreachable

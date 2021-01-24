@@ -55,11 +55,11 @@ trait ExprOps { this: Expr =>
   }
 
   final private def mkIndex(idx: Int)(implicit cc: CompilerContext) = {
-    fix(ExprInt(false, (clog2(tpe.shapeIter.next) max 1).toInt, idx))
+    fix(ExprInt(false, (clog2(tpe.shapeIter.next()) max 1).toInt, idx))
   }
 
   final private def mkSliceLength(idx: Int)(implicit cc: CompilerContext) = {
-    fix(ExprInt(false, clog2(tpe.shapeIter.next + 1), idx))
+    fix(ExprInt(false, clog2(tpe.shapeIter.next() + 1), idx))
   }
 
   // Helpers to easily combine expression trees manually with other expressions

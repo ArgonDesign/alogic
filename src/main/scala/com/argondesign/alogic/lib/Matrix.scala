@@ -102,7 +102,7 @@ case class Matrix[T: Numeric](elements: List[List[T]]) {
   // $COVERAGE-OFF$ Debug code
   override def toString: String = {
     val lines = for (row <- rows) yield {
-      row mkString ("[", " ", "]")
+      row.mkString("[", " ", "]")
     }
     lines mkString "\n"
   }

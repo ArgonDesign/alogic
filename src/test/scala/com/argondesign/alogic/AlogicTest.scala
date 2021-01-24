@@ -61,7 +61,7 @@ trait AlogicTest
     val reply = s"""--- Message
                    |${message.render}
                    |--- $hint ---
-                   |${lines mkString ("  ", "\n  ", "")}
+                   |${lines.mkString("  ", "\n  ", "")}
                    |---""".stripMargin
 
     MatchResult(pass, reply, reply)

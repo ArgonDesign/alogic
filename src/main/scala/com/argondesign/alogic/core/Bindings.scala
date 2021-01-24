@@ -119,7 +119,7 @@ final case class FastIntersectBindings(
         rem: immutable.Set[Symbol]
       ): (immutable.Map[Symbol, Expr], immutable.Set[Symbol]) =
       if (it.hasNext) {
-        val pair = it.next
+        val pair = it.next()
         if (get(pair._1) contains pair._2) {
           loop(it, add, rem)
         } else {

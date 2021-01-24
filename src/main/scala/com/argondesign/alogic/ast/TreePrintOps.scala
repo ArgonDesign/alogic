@@ -15,6 +15,7 @@ import com.argondesign.alogic.core.FlowControlTypes._
 import com.argondesign.alogic.core.FuncVariant
 import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.core.enums.EntityVariant
+import com.argondesign.alogic.util.unreachable
 
 import scala.util.chaining._
 
@@ -55,11 +56,13 @@ trait TreePrintOps {
     case StorageTypeReg     => "reg "
     case StorageTypeWire    => "wire "
     case StorageTypeSlices(slices) =>
-      slices map {
-        case StorageSliceFwd => "fslice"
-        case StorageSliceBwd => "bslice"
-        case StorageSliceBub => "bubble"
-      } mkString ("", " ", " ")
+      slices
+        .map {
+          case StorageSliceFwd => "fslice"
+          case StorageSliceBwd => "bslice"
+          case StorageSliceBub => "bubble"
+        }
+        .mkString("", " ", " ")
   }
 
   final private def v(ev: EntityVariant.Type): String = ev match {
@@ -79,7 +82,7 @@ trait TreePrintOps {
     )(
       implicit
       indent: Int
-    ): String = trees map v mkString (start, sep, end)
+    ): String = trees.map(v).mkString(start, sep, end)
 
   final private def vo(treeOpt: Option[Tree])(implicit indent: Int): String =
     treeOpt map v getOrElse ""
@@ -159,9 +162,7 @@ trait TreePrintOps {
     case DescFunc(_, _, _, ret, args, body) => block(s"desc ${v(ret)} $name(${vs(args)})", body)
     case DescPackage(_, _, body) => block(s"desc package $name", body)
     case DescGenVar(_, _, spec, init) => s"desc gen ${v(spec)} $name = ${v(init)}"
-    case DescGenIf(_, _, cases, defaults) => cases map {
-      v(_)
-    } mkString(s"gen : $name ", " else ", block(" else", defaults))
+    case DescGenIf(_, _, cases, defaults) => cases.map(v(_)).mkString(s"gen : $name ", " else ", block(" else", defaults))
     case DescGenFor(_, _, inits, cond, steps, body) => block(s"gen for (${vs(inits)}; ${v(cond)} ; ${vs(steps)}) : $name", body)
     case DescGenRange(_, _, init, op, end, body) => block(s"gen for (${v(init)} $op ${v(end)}) : $name", body)
     case DescGenScope(_, _, body) => block(s"gen scope $name", body)

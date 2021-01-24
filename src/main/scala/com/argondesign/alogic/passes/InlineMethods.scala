@@ -194,7 +194,7 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatelessTreeTra
       // Drop any trailing statements after a statement that always returns
       val reachable = {
         val (init, tail) = simplified.iterator.span(!_.alwaysReturns)
-        init concat tail.nextOption
+        init concat tail.nextOption()
       }
 
       // Now convert return statements
@@ -301,7 +301,7 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatelessTreeTra
       }
     }
   } tap { _ =>
-    extraStmts.pop
+    extraStmts.pop()
   }
 
   override protected def enter(tree: Tree): Option[Tree] = tree match {
@@ -332,7 +332,7 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatelessTreeTra
       } getOrElse TypeAssigner(ExprError() withLoc tree.loc)
 
     case stmt: Stmt =>
-      val extra = extraStmts.pop
+      val extra = extraStmts.pop()
       extra append stmt
       Thicket(extra.toList)
 

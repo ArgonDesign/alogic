@@ -59,7 +59,8 @@ final class MakeVerilog(
         } else {
           val i0 = "  " * indent
           val i1 = i0 + "  "
-          s"""import "DPI-C" context function void $id(${as mkString ("\n" + i1, ",\n" + i1, "\n" + i0)});"""
+          val args = as.mkString("\n" + i1, ",\n" + i1, "\n" + i0)
+          s"""import "DPI-C" context function void $id($args);"""
         }
       case _ => throw Ice(s"Don't know how to declare this type in Verilog:", kind.toString)
     }
@@ -115,8 +116,8 @@ final class MakeVerilog(
     case ExprCat(ps) if indent > 0 =>
       val i0 = "  "
       val i = i0 * indent
-      ps map { vexpr(_, indent + 1) } mkString (s"{\n$i0$i", s",\n$i0$i", s"\n$i}")
-    case ExprCat(ps)                   => ps map { vexpr(_) } mkString ("{", ", ", "}")
+      ps.map(vexpr(_, indent + 1)).mkString(s"{\n$i0$i", s",\n$i0$i", s"\n$i}")
+    case ExprCat(ps)                   => ps.map(vexpr(_)).mkString("{", ", ", "}")
     case ExprIndex(e, i)               => s"${vexpr(e)}[${vexpr(i)}]"
     case ExprSlice(e, l, op, r)        => s"${vexpr(e)}[${vexpr(l)}$op${vexpr(r)}]"
     case ExprSym(symbol)               => symbol.name

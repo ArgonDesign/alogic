@@ -119,13 +119,15 @@ class Frontend(implicit cc: CompilerContext) {
       loc: Loc,
       absolute: Boolean
     ): FinalResult[Symbol] =
-    searchPaths.iterator.flatMap { searchPath =>
-      val asIs = searchPath.resolve(path).toFile
-      Option.when(asIs.isFile)(asIs) orElse {
-        val withSuffix = searchPath.resolve(path + ".alogic").toFile
-        Option.when(withSuffix.isFile)(withSuffix)
+    searchPaths.iterator
+      .flatMap { searchPath =>
+        val asIs = searchPath.resolve(path).toFile
+        Option.when(asIs.isFile)(asIs) orElse {
+          val withSuffix = searchPath.resolve(path + ".alogic").toFile
+          Option.when(withSuffix.isFile)(withSuffix)
+        }
       }
-    }.nextOption match {
+      .nextOption() match {
       case None =>
         Failure {
           if (absolute) {
@@ -229,7 +231,7 @@ class Frontend(implicit cc: CompilerContext) {
       idxs
         .map(evaluate(_, "Identifier index"))
         .distil
-        .map(_ mkString (base + "#[", ",", "]"))
+        .map(_.mkString(base + "#[", ",", "]"))
     }
 
   def specialize(symbol: Symbol, params: List[Arg], loc: Loc): FinalResult[Symbol] =

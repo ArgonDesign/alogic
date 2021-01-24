@@ -248,7 +248,7 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatefulTreeT
     val it = callArcs.iterator collect {
       case (_, returnee, `symbol`) => returnee
     }
-    val returnee = it.next
+    val returnee = it.next()
     // If the returnee is unique and is called only once, then we have an urp
     Option.when(!it.hasNext && callCounts(returnee) == 1) {
       returnee

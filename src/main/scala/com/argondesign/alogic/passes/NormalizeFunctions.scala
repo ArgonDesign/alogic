@@ -31,10 +31,10 @@ final class NormalizeFunctions(implicit cc: CompilerContext) extends StatelessTr
 
   private def trimUnreachable[T <: Tree](stmts: List[Stmt])(copy: List[Stmt] => T): Option[T] = {
     val (init, tail) = stmts.iterator.span(!_.alwaysReturns)
-    val lastOption = tail.nextOption // Need to consume this eagerly here
+    val lastOption = tail.nextOption() // Need to consume this eagerly here
     val reachable = init concat lastOption
     Option.when(tail.nonEmpty) {
-      cc.warning(tail.next, "Statement is unreachable")
+      cc.warning(tail.next(), "Statement is unreachable")
       TypeAssigner(copy(reachable.toList))
     }
   }
@@ -89,7 +89,7 @@ final class NormalizeFunctions(implicit cc: CompilerContext) extends StatelessTr
     if (tail.isEmpty) {
       stmts
     } else {
-      val critical = tail.next
+      val critical = tail.next()
       assert(!critical.alwaysReturns || !tail.hasNext, "Unreachable should have been pruned")
       val fini = if (!tail.hasNext) {
         conditionalize(critical) :: Nil

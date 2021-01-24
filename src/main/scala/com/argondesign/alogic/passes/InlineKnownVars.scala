@@ -126,7 +126,7 @@ final class InlineKnownVars(
             val lsb = (dataMembers.iterator map { _.kind.width.toInt })
               .scanLeft(0)(_ + _)
               .drop(fieldIndex)
-              .next
+              .next()
             TypeAssigner(
               ExprInt(signed, width, known.value.extract(lsb, width, signed)) withLoc tree.loc
             )

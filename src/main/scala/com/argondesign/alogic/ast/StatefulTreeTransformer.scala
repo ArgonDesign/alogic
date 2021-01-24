@@ -49,10 +49,10 @@ abstract class StatefulTreeTransformer(implicit cc: CompilerContext) extends Tre
   final protected[this] def enclosingSymbols: collection.Seq[Symbol] = _enclosingSymbols
 
   final protected[this] def withEnclosingSymbol[R](symbol: Symbol)(f: => R): R = {
-    _enclosingSymbols push symbol
+    _enclosingSymbols.push(symbol)
     f
   } tap { _ =>
-    _enclosingSymbols.pop
+    _enclosingSymbols.pop()
   }
 
   // The Symbol of the closest enclosing entity

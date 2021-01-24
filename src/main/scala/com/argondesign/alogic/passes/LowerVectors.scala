@@ -54,9 +54,9 @@ final class LowerVectorsA(
           }
         }
         expr match {
-          case ExprIndex(tgt, _)       => tgtTpe push tgt.tpe.underlying
-          case ExprSlice(tgt, _, _, _) => tgtTpe push tgt.tpe.underlying
-          case _: Expr                 => tgtTpe push TypeMisc
+          case ExprIndex(tgt, _)       => tgtTpe.push(tgt.tpe.underlying)
+          case ExprSlice(tgt, _, _, _) => tgtTpe.push(tgt.tpe.underlying)
+          case _: Expr                 => tgtTpe.push(TypeMisc)
         }
 
       case _ =>
@@ -118,7 +118,7 @@ final class LowerVectorsA(
             assert(!tgt.tpe.isVector) // By this point the target should not have a Vector type
 
             val ew = eKind.width
-            val shape = tgt.tpe.shapeIter.next
+            val shape = tgt.tpe.shapeIter.next()
 
             val newLIdx = {
               val w = clog2(shape) max 1
@@ -165,7 +165,7 @@ final class LowerVectorsA(
               fixSign(tgt, eKind.isSigned)
             } else {
               val ew = eKind.width
-              val shape = tgt.tpe.shapeIter.next
+              val shape = tgt.tpe.shapeIter.next()
 
               val newLIdx = {
                 val w = clog2(shape) max 1
@@ -195,7 +195,7 @@ final class LowerVectorsA(
     // the lvalueLevel and catLevel
     tree match {
       case expr: Expr =>
-        tgtTpe.pop
+        tgtTpe.pop()
         if (lvalueLevel > 0 && expr.isInstanceOf[ExprCat]) {
           catLevel -= 1
         }

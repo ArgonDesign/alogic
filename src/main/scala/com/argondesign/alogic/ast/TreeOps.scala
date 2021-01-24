@@ -77,7 +77,7 @@ trait TreeOps extends TreePrintOps { this: Tree =>
   final def visit(pf: PartialFunction[Tree, Unit]): Unit = {
     def iterate(it: Iterator[Tree]): Unit = {
       if (it.hasNext) {
-        val next = it.next
+        val next = it.next()
         if (pf.isDefinedAt(next)) {
           pf(next)
         } else {
@@ -97,7 +97,7 @@ trait TreeOps extends TreePrintOps { this: Tree =>
   final def visitAll(pf: PartialFunction[Tree, Unit]): Unit = {
     def iterate(it: Iterator[Tree]): Unit = {
       if (it.hasNext) {
-        val next = it.next
+        val next = it.next()
         if (pf.isDefinedAt(next)) {
           pf(next)
         }
@@ -118,7 +118,7 @@ trait TreeOps extends TreePrintOps { this: Tree =>
   final def collect[E](pf: PartialFunction[Tree, E]): Iterator[E] = {
     def iterate(it: Iterator[Tree]): Iterator[E] = {
       if (it.hasNext) {
-        val next = it.next
+        val next = it.next()
         if (pf.isDefinedAt(next)) {
           Iterator.single(pf(next)) ++ iterate(it)
         } else {
@@ -135,7 +135,7 @@ trait TreeOps extends TreePrintOps { this: Tree =>
   final def collectAll[E](pf: PartialFunction[Tree, E]): Iterator[E] = {
     def iterate(it: Iterator[Tree]): Iterator[E] = {
       if (it.hasNext) {
-        val next = it.next
+        val next = it.next()
         if (pf.isDefinedAt(next)) {
           Iterator.single(pf(next)) ++ iterate(next.children ++ it)
         } else {
@@ -155,7 +155,7 @@ trait TreeOps extends TreePrintOps { this: Tree =>
   final def flatCollect[E](pf: PartialFunction[Tree, IterableOnce[E]]): Iterator[E] = {
     def iterate(it: Iterator[Tree]): Iterator[E] = {
       if (it.hasNext) {
-        val next = it.next
+        val next = it.next()
         if (pf.isDefinedAt(next)) {
           pf(next).iterator ++ iterate(it)
         } else {
@@ -171,7 +171,7 @@ trait TreeOps extends TreePrintOps { this: Tree =>
   final def flatCollectAll[E](pf: PartialFunction[Tree, IterableOnce[E]]): Iterator[E] = {
     def iterate(it: Iterator[Tree]): Iterator[E] = {
       if (it.hasNext) {
-        val next = it.next
+        val next = it.next()
         if (pf.isDefinedAt(next)) {
           pf(next).iterator ++ iterate(next.children ++ it)
         } else {
@@ -191,7 +191,7 @@ trait TreeOps extends TreePrintOps { this: Tree =>
   final def collectFirst[E](pf: PartialFunction[Tree, E]): Option[E] = {
     def iterate(it: Iterator[Tree]): Option[E] = {
       if (it.hasNext) {
-        val next = it.next
+        val next = it.next()
         if (pf.isDefinedAt(next)) {
           Some(pf(next))
         } else {
@@ -222,7 +222,7 @@ trait TreeOps extends TreePrintOps { this: Tree =>
   final def forall(pf: PartialFunction[Tree, Boolean]): Boolean = {
     def iterate(it: Iterator[Tree]): Boolean = {
       if (it.hasNext) {
-        val next = it.next
+        val next = it.next()
         if (pf.isDefinedAt(next)) {
           pf(next) && iterate(it)
         } else {
@@ -238,7 +238,7 @@ trait TreeOps extends TreePrintOps { this: Tree =>
   final def forallAll(pf: PartialFunction[Tree, Boolean]): Boolean = {
     def iterate(it: Iterator[Tree]): Boolean = {
       if (it.hasNext) {
-        val next = it.next
+        val next = it.next()
         if (pf.isDefinedAt(next)) {
           pf(next) && iterate(next.children) && iterate(it)
         } else {
@@ -261,7 +261,7 @@ trait TreeOps extends TreePrintOps { this: Tree =>
   final def exists(pf: PartialFunction[Tree, Boolean]): Boolean = {
     def iterate(it: Iterator[Tree]): Boolean = {
       if (it.hasNext) {
-        val next = it.next
+        val next = it.next()
         if (pf.isDefinedAt(next)) {
           pf(next) || iterate(it)
         } else {
@@ -277,7 +277,7 @@ trait TreeOps extends TreePrintOps { this: Tree =>
   final def existsAll(pf: PartialFunction[Tree, Boolean]): Boolean = {
     def iterate(it: Iterator[Tree]): Boolean = {
       if (it.hasNext) {
-        val next = it.next
+        val next = it.next()
         if (pf.isDefinedAt(next)) {
           pf(next) || iterate(next.children) || iterate(it)
         } else {

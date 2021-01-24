@@ -50,9 +50,12 @@ trait CompilationTest
     with fixture.ConfigMapFixture
     with ParallelTestExecution {
 
-  private def getTool(path: Path, name: String, msg: String): File = {
-    path.resolve(name).toFile
-  } pipe { _.getCanonicalFile } ensuring (_.exists, msg)
+  private def getTool(path: Path, name: String, msg: String): File =
+    path
+      .resolve(name)
+      .toFile
+      .pipe(_.getCanonicalFile)
+      .ensuring(_.exists, msg)
 
   private lazy val verilatorPath = Paths.get("verilator/install/bin").toAbsolutePath
 

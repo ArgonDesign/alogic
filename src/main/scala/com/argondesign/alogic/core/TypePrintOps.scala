@@ -33,11 +33,13 @@ trait TypePrintOps { this: Type =>
     case StorageTypeReg     => "reg "
     case StorageTypeWire    => "wire "
     case StorageTypeSlices(slices) =>
-      slices map {
-        case StorageSliceFwd => "fslice"
-        case StorageSliceBwd => "bslice"
-        case StorageSliceBub => "bubble"
-      } mkString ("", " ", " ")
+      slices
+        .map {
+          case StorageSliceFwd => "fslice"
+          case StorageSliceBwd => "bslice"
+          case StorageSliceBub => "bubble"
+        }
+        .mkString("", " ", " ")
   }
 
   // format: off
@@ -70,11 +72,11 @@ trait TypePrintOps { this: Type =>
     case TypeParametrized(symbol)             => s"parametrized ${symbol.name}"
     case TypeCombStmt                         => this.toString
     case TypeCtrlStmt                         => this.toString
-    case TypeCombFunc(s, r, as)               => s"comb ${r.toSource} ${s.name} ${as map { _.toSource } mkString ("(", ", ", ")")}"
-    case TypeCtrlFunc(s, r, as)               => s"ctrl ${r.toSource} ${s.name} ${as map { _.toSource } mkString ("(", ", ", ")")}"
-    case TypeXenoFunc(s, r, as)               => s"xeno ${r.toSource} ${s.name} ${as map { _.toSource } mkString ("(", ", ", ")")}"
-    case TypeStaticMethod(s, r, as)           => s"static ${r.toSource} ${s.name} ${as map { _.toSource } mkString ("(", ", ", ")")}"
-    case TypeNormalMethod(s, r, as)           => s"method ${r.toSource} ${s.name} ${as map { _.toSource } mkString ("(", ", ", ")")}"
+    case TypeCombFunc(s, r, as)               => s"comb ${r.toSource} ${s.name} ${as.map(_.toSource).mkString("(", ", ", ")")}"
+    case TypeCtrlFunc(s, r, as)               => s"ctrl ${r.toSource} ${s.name} ${as.map(_.toSource).mkString("(", ", ", ")")}"
+    case TypeXenoFunc(s, r, as)               => s"xeno ${r.toSource} ${s.name} ${as.map(_.toSource).mkString("(", ", ", ")")}"
+    case TypeStaticMethod(s, r, as)           => s"static ${r.toSource} ${s.name} ${as.map(_.toSource).mkString("(", ", ", ")")}"
+    case TypeNormalMethod(s, r, as)           => s"method ${r.toSource} ${s.name} ${as.map(_.toSource).mkString("(", ", ", ")")}"
     case _: TypePolyFunc                      => this.toString
     case TypeState(symbol)                    => s"state ${symbol.name}"
     case TypeMisc                             => this.toString

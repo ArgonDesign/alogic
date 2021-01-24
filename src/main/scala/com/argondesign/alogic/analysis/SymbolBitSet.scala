@@ -25,7 +25,7 @@ final class SymbolBitSet(val underlying: Map[Symbol, BitSet]) extends AnyVal {
 
   private def unionSingle(single: SymbolBitSet, big: SymbolBitSet): SymbolBitSet =
     SymbolBitSet {
-      val (symbol, other) = single.iterator.next
+      val (symbol, other) = single.iterator.next()
       big.updatedWith(symbol) {
         case Some(bits) => Some(bits union other)
         case None       => Some(other)
@@ -86,7 +86,7 @@ final class SymbolBitSet(val underlying: Map[Symbol, BitSet]) extends AnyVal {
       this
     } else if (that.sizeIs == 1) {
       SymbolBitSet {
-        val (symbol, other) = that.iterator.next
+        val (symbol, other) = that.iterator.next()
         underlying.updatedWith(symbol) {
           case Some(bits) =>
             val diff = bits diff other

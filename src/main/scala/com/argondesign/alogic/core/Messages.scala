@@ -61,8 +61,7 @@ object Messages {
         case IceCategory => msg.iterator.concat(Iterator.single("Please file a bug report"))
         case _           => msg.iterator
       }
-      (lines mkString (prefix, "\n" + prefix + "... ", "\n")) +
-        context(highlightStart, highlightEnd)
+      lines.mkString(prefix, "\n" + prefix + "... ", "\n") + context(highlightStart, highlightEnd)
     }
 
     def render: String = render("", "")
