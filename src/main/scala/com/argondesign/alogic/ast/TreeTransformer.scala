@@ -20,7 +20,7 @@ import com.argondesign.alogic.util.unreachable
 import scala.util.ChainingSyntax
 
 // Tree transformers are applied during a traversal of a Tree.
-abstract class TreeTransformer(implicit val cc: CompilerContext)
+abstract class TreeTransformer(private val cc: CompilerContext)
     extends (Tree => Tree)
     with ChainingSyntax {
 
@@ -171,7 +171,7 @@ abstract class TreeTransformer(implicit val cc: CompilerContext)
   // Nodes with children that have been rewritten and therefore copied by
   // TreeCopier need their types assigned
   final private def assignType(tree: Tree): Tree =
-    if (typed && !tree.hasTpe) TypeAssigner(tree) else tree
+    if (typed && !tree.hasTpe) TypeAssigner(tree)(cc) else tree
 
   // Walk child, propagate Thicket/Stump
   final private def splice(child: Spliceable, treeCopier: Tree => Splice): Tree =

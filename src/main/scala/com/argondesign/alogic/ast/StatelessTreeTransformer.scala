@@ -14,7 +14,7 @@ package com.argondesign.alogic.ast
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 
-abstract class StatelessTreeTransformer(implicit cc: CompilerContext) extends TreeTransformer {
+abstract class StatelessTreeTransformer(implicit cc: CompilerContext) extends TreeTransformer(cc) {
 
   //////////////////////////////////////////////////////////////////////////////
   // Implementation of walkTree
