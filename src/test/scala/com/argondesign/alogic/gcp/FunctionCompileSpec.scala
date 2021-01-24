@@ -63,7 +63,7 @@ final class FunctionCompileSpec
             if (value == "*") {
               // Wildcard: OK
             } else {
-              val expectedValue = io.circe.parser.parse(value).fold(_ => fail, identity)
+              val expectedValue = io.circe.parser.parse(value).fold(_ => fail(), identity)
               assert(json === expectedValue, s"'$key''")
             }
         }
@@ -112,15 +112,15 @@ final class FunctionCompileSpec
     def apply(expected: String): Unit = {
       getServicer(request, response)
       verify()
-      val resultJson = io.circe.parser.parse(getContent()).fold(_ => fail, identity)
-      val expectedJson = io.circe.parser.parse(expected).fold(_ => fail, identity)
+      val resultJson = io.circe.parser.parse(getContent()).fold(_ => fail(), identity)
+      val expectedJson = io.circe.parser.parse(expected).fold(_ => fail(), identity)
       resultJson shouldBe expectedJson
     }
 
     def apply(expected: (String, String)*): Unit = {
       getServicer(request, response)
       verify()
-      val resultJson = io.circe.parser.parse(getContent()).fold(_ => fail, identity)
+      val resultJson = io.circe.parser.parse(getContent()).fold(_ => fail(), identity)
       checkJson(resultJson, expected.toMap)
     }
 

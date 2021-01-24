@@ -33,7 +33,7 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
   private def typeCheck(tree: Tree): Unit =
     fe.typeCheck(tree) match {
       case Complete(_) =>
-      case Unknown(_)  => fail
+      case Unknown(_)  => fail()
       case Failure(ms) => ms foreach cc.addMessage
     }
 

@@ -177,7 +177,7 @@ final class TreeOpsSpec extends AnyFreeSpec with AlogicTest {
 
       "return an empty iterable when nothing matched" in {
         tree collect {
-          case ExprStr("99") => fail
+          case ExprStr("99") => fail()
         } shouldBe empty
       }
     }
@@ -200,7 +200,7 @@ final class TreeOpsSpec extends AnyFreeSpec with AlogicTest {
 
       "return an empty iterable when nothing matched" in {
         tree collectAll {
-          case ExprStr("99") => fail
+          case ExprStr("99") => fail()
         } shouldBe empty
       }
     }
@@ -222,7 +222,7 @@ final class TreeOpsSpec extends AnyFreeSpec with AlogicTest {
 
       "return an empty iterable when nothing matched" in {
         tree flatCollect {
-          case ExprStr("99") => fail
+          case ExprStr("99") => fail()
         } shouldBe empty
       }
     }
@@ -247,7 +247,7 @@ final class TreeOpsSpec extends AnyFreeSpec with AlogicTest {
 
       "return an empty iterable when nothing matched" in {
         tree flatCollect {
-          case ExprStr("99") => fail
+          case ExprStr("99") => fail()
         } shouldBe empty
       }
     }
@@ -269,7 +269,7 @@ final class TreeOpsSpec extends AnyFreeSpec with AlogicTest {
 
       "return None when nothing matched" in {
         tree collectFirst {
-          case ExprStr("99") => fail
+          case ExprStr("99") => fail()
         } shouldBe None
       }
     }
@@ -283,7 +283,7 @@ final class TreeOpsSpec extends AnyFreeSpec with AlogicTest {
 
       "return true when nothing matched" in {
         tree forall {
-          case ExprStr("99") => fail
+          case ExprStr("99") => fail()
         } shouldBe true
       }
     }
@@ -297,7 +297,7 @@ final class TreeOpsSpec extends AnyFreeSpec with AlogicTest {
 
       "return true when nothing matched" in {
         tree forallAll {
-          case ExprStr("99") => fail
+          case ExprStr("99") => fail()
         } shouldBe true
       }
     }
@@ -311,7 +311,7 @@ final class TreeOpsSpec extends AnyFreeSpec with AlogicTest {
 
       "return false when nothing matched" in {
         tree exists {
-          case ExprStr("99") => fail
+          case ExprStr("99") => fail()
         } shouldBe false
       }
     }
@@ -325,7 +325,7 @@ final class TreeOpsSpec extends AnyFreeSpec with AlogicTest {
 
       "return false when nothing matched" in {
         tree existsAll {
-          case ExprStr("99") => fail
+          case ExprStr("99") => fail()
         } shouldBe false
       }
     }

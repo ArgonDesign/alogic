@@ -357,7 +357,7 @@ final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {
           checkAttr(symbol, _.pushStackOnCall.value, goldenPushStackOnCall)
           checkAttr(symbol, _.popStackOnReturn.value, goldenPopStackOnReturn)
           checkAttr(symbol, _.staticReturnPoint.value map { _.name }, goldenStaticReturnPoint)
-        case _ => fail
+        case _ => fail()
       }
 
     def checkStack(defnEnt: DefnEntity, expected: Option[BigInt]): Unit = {

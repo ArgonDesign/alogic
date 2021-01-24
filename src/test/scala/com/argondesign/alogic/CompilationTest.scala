@@ -436,8 +436,8 @@ trait CompilationTest
       io.circe.Decoder.forProduct2("dir", "flow-control")(Port.apply)
     implicit val signalDecoder: io.circe.Decoder[Signal] = io.circe.generic.semiauto.deriveDecoder
 
-    val ports = topLevelManifest.downField("ports").as[ListMap[String, Port]].getOrElse(fail)
-    val signals = topLevelManifest.downField("signals").as[ListMap[String, Signal]].getOrElse(fail)
+    val ports = topLevelManifest.downField("ports").as[ListMap[String, Port]].getOrElse(fail())
+    val signals = topLevelManifest.downField("signals").as[ListMap[String, Signal]].getOrElse(fail())
 
     // All Verilog inputs
     val vInputs: Iterable[String] = signals collect {
@@ -855,7 +855,7 @@ trait CompilationTest
   private object EndToEndTest extends Tag("com.argondesign.alogic.tags.EndToEndTest")
 
   def defineTest(testName: String, sourceFile: File): Unit =
-    testName taggedAs EndToEndTest in { configMap: ConfigMap =>
+    testName taggedAs EndToEndTest in { (configMap: ConfigMap) =>
       // Parse the check file
       val (attr, dict, messageSpecs) = parseCheckFile(sourceFile)
 

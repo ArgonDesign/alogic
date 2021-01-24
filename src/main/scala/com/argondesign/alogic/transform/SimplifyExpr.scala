@@ -198,14 +198,14 @@ final class SimplifyExpr(implicit cc: CompilerContext)
           case e: ExprSel =>
             (
               e.expr,
-              { symbol: Symbol => symbol.name != e.selector },
-              { newTgt: Expr => e.copy(expr = newTgt) }
+              { (symbol: Symbol) => symbol.name != e.selector },
+              { (newTgt: Expr) => e.copy(expr = newTgt) }
             )
           case e: ExprSymSel =>
             (
               e.expr,
-              { symbol: Symbol => symbol != e.symbol },
-              { newTgt: Expr => e.copy(expr = newTgt) }
+              { (symbol: Symbol) => symbol != e.symbol },
+              { (newTgt: Expr) => e.copy(expr = newTgt) }
             )
           case _ => unreachable
         }

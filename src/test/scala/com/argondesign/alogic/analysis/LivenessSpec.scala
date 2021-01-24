@@ -43,7 +43,7 @@ class LivenessSpec extends AnyFreeSpec with AlogicTest {
 
   private val randBitCall = cc.builtins.get("@unknownu") pipe {
     case SymbolTable.Local(symbol) => symbol
-    case _                         => fail
+    case _                         => fail()
   } pipe { poly =>
     val args = (ArgP(Expr(1)) regularize Loc.synthetic) :: Nil
     ExprCall(ExprSym(poly.kind.asPolyFunc.resolve(args, None).get), args)

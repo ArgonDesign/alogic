@@ -39,7 +39,7 @@ trait AlogicTest
 
   final protected def beThe[T <: Message: ClassTag](
       lines: String*
-    ): Matcher[Message] = Matcher { message: Message =>
+    ): Matcher[Message] = Matcher { (message: Message) =>
     lazy val linesMatch = lines.length == message.msg.length && {
       val regexes = lines map { _.r }
       (regexes zip message.msg) forall { pair =>
@@ -69,7 +69,7 @@ trait AlogicTest
 
   def beSyntaxError: Matcher[Message] = beSyntaxError("")
 
-  def beSyntaxError(text: String): Matcher[Message] = Matcher { msg: Message =>
+  def beSyntaxError(text: String): Matcher[Message] = Matcher { (msg: Message) =>
     val matchesMessage = if (text.isEmpty) {
       msg.msg.head startsWith "Syntax error: "
     } else {

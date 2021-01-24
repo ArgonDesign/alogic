@@ -52,7 +52,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
       .pipe {
         case Complete(result) => result
         case Finished(result) => result
-        case _                => fail
+        case _                => fail()
       }
     expr.simplify
   }
@@ -2646,7 +2646,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
             cc.messages filterNot { _.isInstanceOf[Warning] } shouldBe empty
             val kind = kindSrc.asTree[Expr]() match {
               case ExprType(kind) => kind
-              case _              => fail
+              case _              => fail()
             }
             TypeAssigner(ExprCast(kind, expr) withLoc Loc.synthetic) rewrite {
               cc.simpifyExpr
