@@ -10,6 +10,7 @@ package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.analysis.ReadSymbols
 import com.argondesign.alogic.analysis.WrittenSymbols
+import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
@@ -18,6 +19,9 @@ import com.argondesign.alogic.core.Messages.Fatal
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.TypeAssigner
+import com.argondesign.alogic.core.Types.TypeCombFunc
+import com.argondesign.alogic.core.Types.TypeRecord
+import com.argondesign.alogic.core.Types.TypeType
 import com.argondesign.alogic.core.Types.TypeVoid
 import com.argondesign.alogic.transform.StatementFilter
 import com.argondesign.alogic.util.unreachable
@@ -25,7 +29,7 @@ import com.argondesign.alogic.util.unreachable
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-final class InlineMethods(implicit cc: CompilerContext) extends StatelessTreeTransformer { self =>
+final class InlineMethods(implicit cc: CompilerContext) extends StatefulTreeTransformer { self =>
 
   private val extraStmts = mutable.Stack[ListBuffer[Stmt]]()
 
@@ -302,6 +306,19 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatelessTreeTra
     }
   } tap { _ =>
     extraStmts.pop()
+  }
+
+  override def skip(tree: Tree): Boolean = tree match {
+    case _: Stmt =>
+      // Do not descend into statements inside a record
+      enclosingSymbols.exists(symbol =>
+        symbol.kind match {
+          case TypeType(_: TypeRecord) => true
+          case _: TypeCombFunc         => true
+          case _                       => false
+        }
+      )
+    case _ => false
   }
 
   override protected def enter(tree: Tree): Option[Tree] = tree match {
