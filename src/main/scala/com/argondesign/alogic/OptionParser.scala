@@ -19,7 +19,10 @@ import org.rogach.scallop.ArgType
 import org.rogach.scallop.ScallopConf
 import org.rogach.scallop.ScallopOption
 import org.rogach.scallop.ValueConverter
+import org.rogach.scallop.flagConverter
+import org.rogach.scallop.intConverter
 import org.rogach.scallop.singleArgConverter
+import org.rogach.scallop.stringConverter
 
 import java.io.File
 import java.nio.file.Path
