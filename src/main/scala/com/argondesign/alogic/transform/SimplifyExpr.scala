@@ -778,7 +778,7 @@ final class SimplifyExpr(implicit cc: CompilerContext)
     // Fold slices with known indices
     ////////////////////////////////////////////////////////////////////////////
 
-    case ExprSlice(expr, ExprInt(_, _, lIdx), op, ExprInt(_, _, rIdx)) =>
+    case ExprSlice(expr, lExpr @ Integral(_, lWOpt, lIdx), op, rExpr @ Integral(_, _, rIdx)) =>
       expr match {
         ////////////////////////////////////////////////////////////////////////
         // Fold known slice of concatenations
@@ -864,24 +864,33 @@ final class SimplifyExpr(implicit cc: CompilerContext)
           }
 
         ////////////////////////////////////////////////////////////////////////
-        // Fold full width slices
+        // Special cases
         ////////////////////////////////////////////////////////////////////////
 
         case _ =>
           op match {
             case ":" =>
               if (rIdx == 0 && lIdx == expr.tpe.width - 1) {
+                // Full width slice
                 if (expr.tpe.isSigned) expr.castUnsigned else expr
               } else {
                 tree
               }
             case "+:" | "-:" =>
-              // Note: This assumes the slice is well formed, i.e.:
-              // lIdx is 0 if "+:" or rIdx is size - 1 if "-:"
               if (rIdx == expr.tpe.width) {
+                // Full width slice. Note: This assumes the slice is well
+                // formed, i.e.: lIdx is 0 for '+:' or width - 1 for '-:'
                 if (expr.tpe.isSigned) expr.castUnsigned else expr
               } else {
-                tree
+                // Convert into : slice
+                val addend = TypeAssigner(
+                  lWOpt.fold[Expr](Expr(rIdx - 1))(ExprInt(false, _, rIdx - 1)) withLocOf rExpr
+                )
+                if (op.head == '+') {
+                  ExprSlice(expr, lExpr + addend, ":", lExpr) withLocOf tree
+                } else {
+                  ExprSlice(expr, lExpr, ":", lExpr - addend) withLocOf tree
+                }
               }
             case _ => unreachable
           }

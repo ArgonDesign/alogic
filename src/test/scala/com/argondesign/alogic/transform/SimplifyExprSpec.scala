@@ -1491,7 +1491,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
       }
     }
 
-    "index into sized integer literals" - {
+    "index into known sized values" - {
       for {
         (text, result, err) <- List(
           // format: off
@@ -1515,7 +1515,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
       }
     }
 
-    "slice into sized integer literals" - {
+    "slice into known sized values" - {
       for {
         (text, result, err) <- List(
           // format: off
@@ -1552,7 +1552,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
       }
     }
 
-    "index into unsized integer literals" - {
+    "index into unsized values" - {
       for {
         (text, result, err) <- List(
           // format: off
@@ -1580,7 +1580,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
       }
     }
 
-    "slice into unsized integer literals" - {
+    "slice into unsized values" - {
       for {
         (text, result, err) <- List(
           // format: off
@@ -1677,38 +1677,38 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
               ("a[9  : 4][1  : 0]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if l == 5 && r == 4 => }),
               ("a[8  : 4][2  : 1]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if l == 6 && r == 5 => }),
               ("a[9  : 4][2  : 1]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if l == 6 && r == 5 => }),
-              ("a[8  : 4][1 +: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if l == 5 && r == 2 => }),
-              ("a[9  : 4][1 +: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if l == 5 && r == 2 => }),
-              ("a[8  : 4][2 +: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if l == 6 && r == 2 => }),
-              ("a[9  : 4][2 +: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if l == 6 && r == 2 => }),
-              ("a[8  : 4][1 -: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if l == 5 && r == 2 => }),
-              ("a[9  : 4][1 -: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if l == 5 && r == 2 => }),
-              ("a[8  : 4][2 -: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if l == 6 && r == 2 => }),
-              ("a[9  : 4][2 -: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if l == 6 && r == 2 => }),
-              ("a[8 +: 4][1  : 0]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if l == 8 && r == 2 => }),
-              ("a[9 +: 4][1  : 0]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if l == 9 && r == 2 => }),
-              ("a[8 +: 4][2  : 1]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if l == 9 && r == 2 => }),
-              ("a[9 +: 4][2  : 1]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if l == 10 && r == 2 => }),
-              ("a[8 +: 4][1 +: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if l == 9 && r == 2 => }),
-              ("a[9 +: 4][1 +: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if l == 10 && r == 2 => }),
-              ("a[8 +: 4][2 +: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if l == 10 && r == 2 => }),
-              ("a[9 +: 4][2 +: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if l == 11 && r == 2 => }),
-              ("a[8 +: 4][1 -: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if l == 9 && r == 2 => }),
-              ("a[9 +: 4][1 -: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if l == 10 && r == 2 => }),
-              ("a[8 +: 4][2 -: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if l == 10 && r == 2 => }),
-              ("a[9 +: 4][2 -: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if l == 11 && r == 2 => }),
-              ("a[8 -: 4][1  : 0]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if l == 6 && r == 2 => }),
-              ("a[9 -: 4][1  : 0]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if l == 7 && r == 2 => }),
-              ("a[8 -: 4][2  : 1]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if l == 7 && r == 2 => }),
-              ("a[9 -: 4][2  : 1]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if l == 8 && r == 2 => }),
-              ("a[8 -: 4][1 +: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if l == 6 && r == 2 => }),
-              ("a[9 -: 4][1 +: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if l == 7 && r == 2 => }),
-              ("a[8 -: 4][2 +: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if l == 7 && r == 2 => }),
-              ("a[9 -: 4][2 +: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), "+:", ExprInt(false, 4, r)) if l == 8 && r == 2 => }),
-              ("a[8 -: 4][1 -: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if l == 6 && r == 2 => }),
-              ("a[9 -: 4][1 -: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if l == 7 && r == 2 => }),
-              ("a[8 -: 4][2 -: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if l == 7 && r == 2 => }),
-              ("a[9 -: 4][2 -: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), "-:", ExprInt(false, 4, r)) if l == 8 && r == 2 => })
+              ("a[8  : 4][1 +: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if l == 6 && r == 5 => }),
+              ("a[9  : 4][1 +: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if l == 6 && r == 5 => }),
+              ("a[8  : 4][2 +: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if l == 7 && r == 6 => }),
+              ("a[9  : 4][2 +: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if l == 7 && r == 6 => }),
+              ("a[8  : 4][1 -: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if l == 5 && r == 4 => }),
+              ("a[9  : 4][1 -: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if l == 5 && r == 4 => }),
+              ("a[8  : 4][2 -: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if l == 6 && r == 5 => }),
+              ("a[9  : 4][2 -: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if l == 6 && r == 5 => }),
+              ("a[8 +: 4][1  : 0]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if l == 9 && r == 8 => }),
+              ("a[9 +: 4][1  : 0]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if l == 10 && r == 9 => }),
+              ("a[8 +: 4][2  : 1]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if l == 10 && r == 9 => }),
+              ("a[9 +: 4][2  : 1]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if l == 11 && r == 10 => }),
+              ("a[8 +: 4][1 +: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if l == 10 && r == 9 => }),
+              ("a[9 +: 4][1 +: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if l == 11 && r == 10 => }),
+              ("a[8 +: 4][2 +: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if l == 11 && r == 10 => }),
+              ("a[9 +: 4][2 +: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if l == 12 && r == 11 => }),
+              ("a[8 +: 4][1 -: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if l == 9 && r == 8 => }),
+              ("a[9 +: 4][1 -: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if l == 10 && r == 9 => }),
+              ("a[8 +: 4][2 -: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if l == 10 && r == 9 => }),
+              ("a[9 +: 4][2 -: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if l == 11 && r == 10 => }),
+              ("a[8 -: 4][1  : 0]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if l == 6 && r == 5 => }),
+              ("a[9 -: 4][1  : 0]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if l == 7 && r == 6 => }),
+              ("a[8 -: 4][2  : 1]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if l == 7 && r == 6 => }),
+              ("a[9 -: 4][2  : 1]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if l == 8 && r == 7 => }),
+              ("a[8 -: 4][1 +: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if l == 7 && r == 6 => }),
+              ("a[9 -: 4][1 +: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if l == 8 && r == 7 => }),
+              ("a[8 -: 4][2 +: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if l == 8 && r == 7 => }),
+              ("a[9 -: 4][2 +: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if l == 9 && r == 8 => }),
+              ("a[8 -: 4][1 -: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if l == 6 && r == 5 => }),
+              ("a[9 -: 4][1 -: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if l == 7 && r == 6 => }),
+              ("a[8 -: 4][2 -: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if l == 7 && r == 6 => }),
+              ("a[9 -: 4][2 -: 2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 4, l), ":", ExprInt(false, 4, r)) if l == 8 && r == 7 => })
               // format: on
             )
           } {
@@ -1769,18 +1769,18 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
       for {
         (text, pattern) <- List[(String, PartialFunction[Any, Unit])](
           // format: off
-          ("$signed(a)[3'd1  : 3'd0]",   { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 3, l),  ":", ExprInt(false, 3, r)) if l == 1 && r == 0 => }),
-          ("$signed(a)[3'd2  : 3'd1]",   { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 3, l),  ":", ExprInt(false, 3, r)) if l == 2 && r == 1 => }),
-          ("$signed(a)[3'd0 +: 4'd2]",   { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 3, l), "+:", ExprInt(false, 4, r)) if l == 0 && r == 2 => }),
-          ("$signed(a)[3'd1 +: 4'd2]",   { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 3, l), "+:", ExprInt(false, 4, r)) if l == 1 && r == 2 => }),
-          ("$signed(a)[3'd2 -: 4'd2]",   { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 3, l), "-:", ExprInt(false, 4, r)) if l == 2 && r == 2 => }),
-          ("$signed(a)[3'd1 -: 4'd2]",   { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 3, l), "-:", ExprInt(false, 4, r)) if l == 1 && r == 2 => }),
-          ("$unsigned(a)[3'd1  : 3'd0]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 3, l),  ":", ExprInt(false, 3, r)) if l == 1 && r == 0 => }),
-          ("$unsigned(a)[3'd2  : 3'd1]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 3, l),  ":", ExprInt(false, 3, r)) if l == 2 && r == 1 => }),
-          ("$unsigned(a)[3'd0 +: 4'd2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 3, l), "+:", ExprInt(false, 4, r)) if l == 0 && r == 2 => }),
-          ("$unsigned(a)[3'd1 +: 4'd2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 3, l), "+:", ExprInt(false, 4, r)) if l == 1 && r == 2 => }),
-          ("$unsigned(a)[3'd2 -: 4'd2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 3, l), "-:", ExprInt(false, 4, r)) if l == 2 && r == 2 => }),
-          ("$unsigned(a)[3'd1 -: 4'd2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 3, l), "-:", ExprInt(false, 4, r)) if l == 1 && r == 2 => })
+          ("$signed(a)[3'd1  : 3'd0]",   { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 3, l), ":", ExprInt(false, 3, r)) if l == 1 && r == 0 => }),
+          ("$signed(a)[3'd2  : 3'd1]",   { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 3, l), ":", ExprInt(false, 3, r)) if l == 2 && r == 1 => }),
+          ("$signed(a)[3'd0 +: 4'd2]",   { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 3, l), ":", ExprInt(false, 3, r)) if l == 1 && r == 0 => }),
+          ("$signed(a)[3'd1 +: 4'd2]",   { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 3, l), ":", ExprInt(false, 3, r)) if l == 2 && r == 1 => }),
+          ("$signed(a)[3'd2 -: 4'd2]",   { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 3, l), ":", ExprInt(false, 3, r)) if l == 2 && r == 1 => }),
+          ("$signed(a)[3'd1 -: 4'd2]",   { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 3, l), ":", ExprInt(false, 3, r)) if l == 1 && r == 0 => }),
+          ("$unsigned(a)[3'd1  : 3'd0]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 3, l), ":", ExprInt(false, 3, r)) if l == 1 && r == 0 => }),
+          ("$unsigned(a)[3'd2  : 3'd1]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 3, l), ":", ExprInt(false, 3, r)) if l == 2 && r == 1 => }),
+          ("$unsigned(a)[3'd0 +: 4'd2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 3, l), ":", ExprInt(false, 3, r)) if l == 1 && r == 0 => }),
+          ("$unsigned(a)[3'd1 +: 4'd2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 3, l), ":", ExprInt(false, 3, r)) if l == 2 && r == 1 => }),
+          ("$unsigned(a)[3'd2 -: 4'd2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 3, l), ":", ExprInt(false, 3, r)) if l == 2 && r == 1 => }),
+          ("$unsigned(a)[3'd1 -: 4'd2]", { case ExprSlice(ExprSym(Symbol("a")), ExprInt(false, 3, l), ":", ExprInt(false, 3, r)) if l == 1 && r == 0 => })
           // format: on
         )
       } {
@@ -1980,7 +1980,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
       }
     }
 
-    "concatenation of sized integer literals" - {
+    "concatenation of known sized values" - {
       for {
         (text, result, err) <- List(
           // format: off
@@ -2000,7 +2000,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
       }
     }
 
-    "repetition of sized integer literals" - {
+    "repetition of known sized values" - {
       for {
         (text, result, err) <- List(
           // format: off
@@ -2590,6 +2590,30 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
           }
         }
       }
+    }
+
+    "+: and -: slices with a known base index" - {
+      List(
+        ("@unknownu(4)[0 +: 3]", 2, 0),
+        ("@unknownu(4)[1 +: 2]", 2, 1),
+        ("@unknownu(4)[1 +: 3]", 3, 1),
+        ("@unknownu(4)[3 -: 3]", 3, 1),
+        ("@unknownu(4)[2 -: 2]", 2, 1),
+        ("@unknownu(4)[2 -: 3]", 2, 0)
+      ) foreach {
+        case (text, lIdx, rIdx) =>
+          text in {
+            simplify(text) should matchPattern {
+              case ExprSlice(
+                    ExprCall(ExprSym(Symbol("@unknownu")), ArgP(Expr(4)) :: Nil),
+                    ExprInt(false, 2, l),
+                    ":",
+                    ExprInt(false, 2, r)
+                  ) if l == lIdx && r == rIdx =>
+            }
+          }
+      }
+
     }
 
     "cast" - {
