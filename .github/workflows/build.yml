@@ -16,7 +16,7 @@ jobs:
         os: [ubuntu-20.04]
         suite: [UnitTests, EndToEndTests]
         scala: [2.13.4, 3.0.0-M3]
-    name: Build + ${{ matrix.suite }} (Scala ${{ matrix.scala }}, Java ${{ matrix.java }})
+    name: ${{ matrix.suite }} Scala ${{ matrix.scala }} Java ${{ matrix.java }}
     runs-on: ${{ matrix.os }}
     steps:
       - name: Install APT dependencies
