@@ -329,9 +329,7 @@ object Trees {
   // Argument assignments
   //////////////////////////////////////////////////////////////////////////////
 
-  sealed trait Arg extends Tree with ArgOps
-
-  object Arg extends ArgObjOps
+  sealed trait Arg extends Tree { val expr: Expr }
 
   case class ArgP(override val expr: Expr) extends Arg
   case class ArgN(name: String, override val expr: Expr) extends Arg

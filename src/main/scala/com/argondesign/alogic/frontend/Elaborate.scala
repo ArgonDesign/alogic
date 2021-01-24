@@ -433,10 +433,10 @@ object Elaborate {
             )
           } else {
             fe.evaluate(cond, "'gen' condition") match {
-              case Success(v) if v == 0 => Complete(None)
-              case Success(_)           => Complete(Some(body))
-              case unknown: Unknown     => unknown
-              case failure: Failure     => failure
+              case Complete(v) if v == 0 => Complete(None)
+              case Complete(_)           => Complete(Some(body))
+              case unknown: Unknown      => unknown
+              case failure: Failure      => failure
             }
           }
         }
@@ -1122,12 +1122,12 @@ object Elaborate {
       case UsingAll(expr, exprt) =>
         fe.typeCheck(expr) pipe {
           // TODO: Clean up TypeType/TypeNone cases as they don't all make sense
-          case Success(t: TypeCompound)           => Complete(t.publicSymbols)
-          case Success(TypeType(t: TypeCompound)) => Complete(t.publicSymbols)
-          case Success(TypeNone(t: TypeCompound)) => Complete(t.publicSymbols)
-          case Success(_)                         => Failure(expr, "Target of 'using .*;' must be a compound type")
-          case unknown: Unknown                   => unknown
-          case failure: Failure                   => failure
+          case Complete(t: TypeCompound)           => Complete(t.publicSymbols)
+          case Complete(TypeType(t: TypeCompound)) => Complete(t.publicSymbols)
+          case Complete(TypeNone(t: TypeCompound)) => Complete(t.publicSymbols)
+          case Complete(_)                         => Failure(expr, "Target of 'using .*;' must be a compound type")
+          case unknown: Unknown                    => unknown
+          case failure: Failure                    => failure
         } flatMap { symbols =>
           val aliases: List[Desc] = symbols
             .filterNot(_.name startsWith "`")

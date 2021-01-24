@@ -58,6 +58,6 @@ trait DefnOps { this: Defn =>
 
 trait DefnObjOps { self: Defn.type =>
 
-  final def unapply(defn: Defn): Option[Symbol] = Some(defn.symbol)
+  final def unapply(defn: Defn): Some[Symbol] = Some(defn.symbol)
 
 }

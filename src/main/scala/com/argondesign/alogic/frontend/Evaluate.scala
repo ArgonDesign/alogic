@@ -40,7 +40,7 @@ private[frontend] object Evaluate {
 
         private def evaluate(symbol: Symbol, loc: Loc): Option[Expr] =
           fe.evaluate(symbol, loc, hint) match {
-            case Success(e) =>
+            case Complete(e) =>
               // Walk recursively so there are no symbols left anywhere
               Some(walkSame(e))
             case failure: Failure =>

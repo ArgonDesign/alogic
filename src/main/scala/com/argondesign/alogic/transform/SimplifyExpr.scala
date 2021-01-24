@@ -194,7 +194,9 @@ final class SimplifyExpr(implicit cc: CompilerContext)
 
     case expr @ (_: ExprSel | _: ExprSymSel) =>
       Some {
-        val (tgt, predicate, copy) = expr match {
+        // Note: the  type ascription on the scrutinee is needed to squelch a
+        // warning about exhaustvivity which differs in Scala 2.13 and 3
+        val (tgt, predicate, copy) = (expr: Tree) match {
           case e: ExprSel =>
             (
               e.expr,

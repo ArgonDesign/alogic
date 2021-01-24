@@ -91,7 +91,7 @@ object StaticEvaluation {
       case ExprBinary(l, _, r)   => p(l) || p(r)
       case ExprUnary(_, e)       => p(e)
       case ExprCond(c, ts, es)   => p(c) || p(ts) || p(es)
-      case ExprCall(e, as)       => p(e) || (as exists { case Arg(e) => p(e) })
+      case ExprCall(e, as)       => p(e) || (as exists { a => p(a.expr) })
       case ExprIndex(e, i)       => p(e) || p(i)
       case ExprSlice(e, l, _, r) => p(e) || p(l) || p(r)
       case ExprCat(ps)           => ps exists p

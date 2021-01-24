@@ -13,6 +13,6 @@ import com.argondesign.alogic.ast.Trees._
 
 trait AttrObjOps { self: Attr.type =>
 
-  final def unapply(attr: Attr): Option[String] = Some(attr.name)
+  final def unapply(attr: Attr): Some[String] = Some(attr.name)
 
 }

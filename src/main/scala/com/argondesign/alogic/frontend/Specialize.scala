@@ -168,6 +168,7 @@ private[frontend] object Specialize {
                   case Partial(body, _) => loop(body)
                   case unknown: Unknown => unknown
                   case failure: Failure => failure
+                  case _                => unreachable // Success covers the rest
                 }
               loop(body)
             }

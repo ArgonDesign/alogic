@@ -49,6 +49,6 @@ trait DeclOps { this: Decl =>
 
 trait DeclObjOps { self: Decl.type =>
 
-  final def unapply(decl: Decl): Option[Symbol] = Some(decl.symbol)
+  final def unapply(decl: Decl): Some[Symbol] = Some(decl.symbol)
 
 }

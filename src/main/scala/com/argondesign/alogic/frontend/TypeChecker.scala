@@ -372,7 +372,7 @@ final private class Checker(val root: Tree)(implicit cc: CompilerContext, fe: Fr
         // Compute and assign the type of the referenced symbol. We do this
         // via the frontend so we can spot circular dependencies.
         fe.typeOf(symbol, tree.loc) match {
-          case Success(kind) =>
+          case Complete(kind) =>
             tree withTpe {
               kind match {
                 case TypeConst(kind)   => kind
@@ -703,8 +703,6 @@ final private class Checker(val root: Tree)(implicit cc: CompilerContext, fe: Fr
               checkWidth(symbol.kind.width, init, "Initializer expression")
             }
           }
-
-        case _ => // ok
       }
 
     //////////////////////////////////////////////////////////////////////////

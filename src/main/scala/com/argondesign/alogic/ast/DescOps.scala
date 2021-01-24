@@ -139,6 +139,6 @@ trait DescOps { this: Desc =>
 
 trait DescObjOps { self: Desc.type =>
 
-  final def unapply(desc: Desc): Option[Ref] = Some(desc.ref)
+  final def unapply(desc: Desc): Some[Ref] = Some(desc.ref)
 
 }

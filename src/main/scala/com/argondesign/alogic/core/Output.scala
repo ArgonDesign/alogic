@@ -53,7 +53,6 @@ trait Output { this: CompilerContext =>
         (oDir resolve (base + suffix)).toFile
       case Left(_)         => ???
       case Right(fileName) => (oPath resolve fileName).toFile
-      case _               => unreachable
     }
   }
 

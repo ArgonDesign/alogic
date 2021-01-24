@@ -77,8 +77,8 @@ final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer 
     // Fold 'if' with known conditions
     case StmtIf(cond, thenStmts, elseStmts) =>
       cond.value match {
-        case Some(v) if v != 0 => Some(Thicket(walk(thenStmts)))
-        case Some(v) if v == 0 => Some(Thicket(walk(elseStmts)))
+        case Some(v) if v != 0    => Some(Thicket(walk(thenStmts)))
+        case Some(v) /* v == 0 */ => Some(Thicket(walk(elseStmts)))
         case None =>
           condLvl += 1
           None

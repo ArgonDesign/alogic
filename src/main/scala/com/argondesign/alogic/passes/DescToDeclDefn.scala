@@ -99,15 +99,9 @@ class DescToDeclDefn(implicit cc: CompilerContext) extends StatelessTreeTransfor
         case DescGenVar(Sym(symbol), _, spec, init) =>
           // Note: we are changing to 'const'
           (DeclConst(symbol, spec), DefnConst(symbol, init))
-        case _: DescFunc =>
-          // Handled in 'enter'
-          unreachable
-        case _: DescPackage =>
-          // Removed by DropPackages
-          unreachable
-        case _: DescGenIf | _: DescGenFor | _: DescGenRange | _: DescGenScope | _: DescAlias |
-            _: DescParametrized | Desc(_: Ident) =>
-          // Removed by the frontend
+        case _: Desc =>
+          // DescFunc removed in 'enter', DescPackage removed by DropPackages,
+          // and everything else is removed by the frontend
           unreachable
       } pipe {
         case (decl, defn) =>

@@ -13,6 +13,7 @@ import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Messages.Message
+import com.argondesign.alogic.util.unreachable
 
 object ResolveNames {
 
@@ -66,8 +67,10 @@ object ResolveNames {
                       case SymbolTable.Undefined =>
                         rAcc addOne ReasonUnresolved(i)
                         tree
+                      case _ => unreachable // Defined covers all
                     }
                 }
+              case _ => unreachable // Success covers all
             }
           }
         case _ => None

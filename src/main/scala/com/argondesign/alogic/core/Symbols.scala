@@ -31,7 +31,7 @@ trait Symbols { self: CompilerContext =>
   final def makeBuiltinCall(name: String, loc: Loc, args: List[Expr]): ExprCall = {
     val polySymbol = builtins.get(name) match {
       case SymbolTable.Defined(symbol) => symbol
-      case SymbolTable.Undefined       => throw Ice(s"Attempting to construct unknown builtin '$name'")
+      case _                           => throw Ice(s"Attempting to construct unknown builtin '$name'")
     }
     assert(polySymbol.isBuiltin)
     assert(args exists { _.hasTpe })

@@ -247,6 +247,7 @@ final class LowerSrams(
                 )
               case _ => unreachable
             }
+          case _ => unreachable // Above covers all
         } getOrElse {
           tree
         }
@@ -273,6 +274,8 @@ final class LowerSrams(
                 StmtAssign(oRef sel "ip", ExprCat(List(ExprInt(false, 1, 1), addr, data)))
               )
             )
+          case _ => unreachable // Above covers all
+
         } getOrElse {
           tree
         }
@@ -285,6 +288,7 @@ final class LowerSrams(
         sramMap.get(symbol) map {
           case SramInt(iSymbol)       => ExprSym(iSymbol) sel "rdata"
           case SramStruct(_, rSymbol) => ExprSym(rSymbol)
+          case _                      => unreachable // Above covers all
         } getOrElse {
           tree
         }

@@ -56,7 +56,6 @@ final class EntityDetails(val decl: DeclEntity, val defn: DefnEntity) {
   // Any symbol that is driven by a connect must be a net
   lazy val netSymbols: List[Symbol] = defn.assigns flatMap {
     case EntAssign(lhs, _) => lhs collect { case ExprSym(symbol) => symbol }
-    case _                 => Nil
   }
 
   // Group and sort interconnect symbols by instance, then by port declaration order
