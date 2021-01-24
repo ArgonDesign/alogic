@@ -94,7 +94,7 @@ jobs:
           key: format-SBT-${{ hashFiles('**/build.sbt') }}
           restore-keys: format-SBT-
       - name: Check code formatting
-        run: sbt scalafmtCheckAll
+        run: sbt scalafmtCheckAll scalafmtSbtCheck
   coverage:
     name: Measure test suite code coverage
     needs: build
