@@ -17,7 +17,7 @@ organization := "com.argondesign"
 // Scala compiler
 ////////////////////////////////////////////////////////////////////////////////
 
-scalaVersion := "2.13.2"
+scalaVersion := "2.13.4"
 
 crossScalaVersions := Seq(scalaVersion.value, "3.0.0-M3")
 
