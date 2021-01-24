@@ -1,1 +1,1 @@
--Dsbt.supershell=false
+-Dsbt.supershell=false -J-Xmx2g -J-XX:+UseG1GC
