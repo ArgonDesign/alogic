@@ -54,7 +54,7 @@ final class Replace1Stacks(implicit cc: CompilerContext) extends StatefulTreeTra
       //////////////////////////////////////////////////////////////////////////
 
       case ExprSel(ExprSym(s), "top") =>
-        stackMap.get(s) map ExprSym getOrElse tree
+        stackMap.get(s) map ExprSym.apply getOrElse tree
 
       case ExprSel(ExprSym(s), "old") =>
         stackMap.get(s) map { symbol => ExprOld(ExprSym(symbol)) } getOrElse tree

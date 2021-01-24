@@ -1181,7 +1181,7 @@ object Elaborate {
               ) withLocOf symbol.desc.ref
             }
             if (unresolved.nonEmpty) {
-              val rs = unresolved map ReasonUnelaborated
+              val rs = unresolved map ReasonUnelaborated.apply
               if (resolved.nonEmpty) {
                 val newUsing = u.copy(exclude = exclude ++ resolved) withLocOf u
                 Partial(Thicket(newUsing :: aliases), rs)

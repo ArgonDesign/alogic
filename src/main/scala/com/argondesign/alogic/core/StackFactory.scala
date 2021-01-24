@@ -113,7 +113,7 @@ object StackFactory extends ChainingSyntax {
     val setRef = ExprSym(setSymbol)
     val dRef = ExprSym(dSymbol)
     val qRef = ExprSym(qSymbol)
-    val sRefs = sSymbols map ExprSym
+    val sRefs = sSymbols map ExprSym.apply
 
     val statements = List(
       StmtIf(
@@ -151,7 +151,7 @@ object StackFactory extends ChainingSyntax {
     val assign = EntAssign(qRef, sRefs.head)
 
     val decls = pusDecl :: popDecl :: setDecl :: dDecl :: qDecl :: sDecls
-    val defns = (pusDefn :: popDefn :: setDefn :: dDefn :: qDefn :: sDefns) map EntSplice
+    val defns = (pusDefn :: popDefn :: setDefn :: dDefn :: qDefn :: sDefns) map EntSplice.apply
 
     val entitySymbol = cc.newSymbol(name, loc)
     val decl = DeclEntity(entitySymbol, decls) regularize loc

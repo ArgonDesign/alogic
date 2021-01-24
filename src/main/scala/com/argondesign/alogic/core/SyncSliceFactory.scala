@@ -321,9 +321,7 @@ object SyncSliceFactory extends ChainingSyntax {
       } else {
         List(ipvDefn, iprDefn, opvDefn, oprDefn, sDefn, vDefn)
       }
-    } map {
-      EntSplice
-    }
+    } map EntSplice.apply
 
     val connects = if (kind != TypeVoid) {
       nonVoidAssigns(ss, ipRef, opRef, ipvRef, iprRef, opvRef, oprRef, sRef, pRef, vRef)
@@ -417,7 +415,7 @@ object SyncSliceFactory extends ChainingSyntax {
 
     val iDefns = iSymbols map { _.mkDefn }
 
-    val iRefs = iSymbols map ExprSym
+    val iRefs = iSymbols map ExprSym.apply
 
     val assigns = new ListBuffer[EntAssign]()
 
@@ -463,9 +461,7 @@ object SyncSliceFactory extends ChainingSyntax {
       } else {
         List(ipvDefn, iprDefn, opvDefn, oprDefn, sDefn) ::: iDefns
       }
-    } map {
-      EntSplice
-    }
+    } map EntSplice.apply
 
     val entitySymbol = cc.newSymbol(name, loc)
     val decl = DeclEntity(entitySymbol, decls) regularize loc

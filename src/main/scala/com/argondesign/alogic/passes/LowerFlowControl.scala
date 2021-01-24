@@ -280,11 +280,11 @@ final class LowerFlowControlA(
             ref
           case (pSymbolOpt, Some(vSymbol), None) => // valid
             extraStmts.top append StmtWait(ExprSym(vSymbol))
-            pSymbolOpt map ExprSym getOrElse tree
+            pSymbolOpt map ExprSym.apply getOrElse tree
           case (pSymbolOpt, Some(vSymbol), Some(rSymbol)) => // ready
             extraStmts.top append assignTrue(ExprSym(rSymbol))
             extraStmts.top append StmtWait(ExprSym(vSymbol))
-            pSymbolOpt map ExprSym getOrElse tree
+            pSymbolOpt map ExprSym.apply getOrElse tree
           case _ => unreachable
         } getOrElse tree
 

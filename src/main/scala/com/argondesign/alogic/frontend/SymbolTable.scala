@@ -23,7 +23,7 @@ class SymbolTable private (
   import com.argondesign.alogic.frontend.SymbolTable.Undefined
 
   // Look up symbol name in ascending scopes
-  def get(name: String): Definition = local.get(name) map Local getOrElse {
+  def get(name: String): Definition = local.get(name) map Local.apply getOrElse {
     outer match {
       case None => Undefined
       case Some(symtab) =>

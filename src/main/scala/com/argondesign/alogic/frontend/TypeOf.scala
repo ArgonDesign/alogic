@@ -149,14 +149,14 @@ private[frontend] object TypeOf {
           simpleTypeFrom(spec) flatMap ensureNotNumNorVoid(
             spec,
             "Pipeline variable"
-          ) map TypePipeVar
+          ) map TypePipeVar.apply
         case DescPipeIn(_, _, fc)            => Complete(TypePipeIn(fc))
         case DescPipeOut(_, _, fc, st)       => Complete(TypePipeOut(fc, st))
         case d @ DescParam(_, _, _, None, _) =>
           // Missing parameter assignment caught in Elaborate
           Unknown(ReasonUnelaborated(d))
         case DescParam(_, _, spec, _, _) =>
-          simpleTypeFrom(spec) flatMap ensureNotVoid(spec, "Parameter") map TypeConst
+          simpleTypeFrom(spec) flatMap ensureNotVoid(spec, "Parameter") map TypeConst.apply
         case d @ DescParamType(_, _, _, false) =>
           Unknown(ReasonUnelaborated(d))
         case d @ DescParamType(_, _, None, _) =>
@@ -178,7 +178,7 @@ private[frontend] object TypeOf {
               }
           }
         case DescConst(_, _, spec, _) =>
-          simpleTypeFrom(spec) flatMap ensureNotVoid(spec, "Constant") map TypeConst
+          simpleTypeFrom(spec) flatMap ensureNotVoid(spec, "Constant") map TypeConst.apply
         case DescArray(_, _, elem, size) =>
           simpleTypeFrom(elem) flatMap ensureNotNumNorVoid(elem, "Array element") flatMap { e =>
             fe.evaluate(size, "Size of array") map { s => TypeArray(e, s) }
@@ -187,7 +187,7 @@ private[frontend] object TypeOf {
           simpleTypeFrom(elem) flatMap ensureNotNumNorVoid(elem, "SRAM element") flatMap { e =>
             fe.evaluate(size, "Size of SRAM") map { s => TypeSram(e, s, st) }
           }
-        case DescType(_, _, spec) => simpleTypeFrom(spec) map TypeType
+        case DescType(_, _, spec) => simpleTypeFrom(spec) map TypeType.apply
         case DescEntity(_, _, _, body) =>
           portSymbols(body) map { symbols => TypeType(TypeEntity(symbol, symbols)) }
         case DescRecord(_, _, body) =>
@@ -224,7 +224,7 @@ private[frontend] object TypeOf {
             .map(symbols => TypePackage(symbol, symbols))
 
         case DescGenVar(_, _, spec, _) =>
-          simpleTypeFrom(spec) flatMap ensureNotVoid(spec, "Constant") map TypeGen
+          simpleTypeFrom(spec) flatMap ensureNotVoid(spec, "Constant") map TypeGen.apply
         case d: DescGenIf    => Unknown(ReasonUnelaborated(d))
         case d: DescGenFor   => Unknown(ReasonUnelaborated(d))
         case d: DescGenRange => Unknown(ReasonUnelaborated(d))
