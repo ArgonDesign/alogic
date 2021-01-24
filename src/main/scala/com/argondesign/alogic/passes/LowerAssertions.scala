@@ -164,6 +164,7 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
             val rstInactive = cc.settings.resetStyle match {
               case ResetStyle.AsyncHigh | ResetStyle.SyncHigh => !ExprSym(defn.rst.get)
               case ResetStyle.AsyncLow | ResetStyle.SyncLow   => ExprSym(defn.rst.get)
+              case _                                          => unreachable
             }
             val cond = defn.go match {
               case Some(goSymbol) => ExprSym(goSymbol) && rstInactive

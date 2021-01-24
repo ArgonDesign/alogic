@@ -513,6 +513,7 @@ trait CompilationTest
                |  always @(posedge clk) $name <= 1'd1;
                |""".stripMargin
           }
+        case _ => unreachable
       }
     }
 
@@ -577,6 +578,7 @@ trait CompilationTest
             mpw.write(s"  always @(posedge clk) if (!$rst) assert(equiv);\n");
           case ResetStyle.SyncLow | ResetStyle.AsyncLow =>
             mpw.write(s"  always @(posedge clk) if ($rst) assert(equiv);\n");
+          case _ => unreachable
         }
     }
 

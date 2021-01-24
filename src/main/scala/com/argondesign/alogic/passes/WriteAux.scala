@@ -163,6 +163,7 @@ object WriteAux extends PairsTransformerPass {
             case ResetStyle.AsyncHigh => "async-high"
             case ResetStyle.SyncLow   => "sync-low"
             case ResetStyle.SyncHigh  => "sync-high"
+            case _                    => unreachable
           }
         }
       )

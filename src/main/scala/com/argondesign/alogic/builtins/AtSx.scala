@@ -16,6 +16,7 @@ import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.frontend.Complete
 import com.argondesign.alogic.frontend.Frontend
+import com.argondesign.alogic.util.unreachable
 
 private[builtins] class AtSx(implicit cc: CompilerContext) extends BuiltinPolyFunc {
 
@@ -36,11 +37,12 @@ private[builtins] class AtSx(implicit cc: CompilerContext) extends BuiltinPolyFu
 
   val isPure: Boolean = true
 
-  def simplify(loc: Loc, args: List[Expr]) = {
-    val List(width, expr) = args
-    AtMsb.fold(loc, expr) flatMap { msb =>
-      AtEx.fold(loc, msb, width, expr)
-    }
+  def simplify(loc: Loc, args: List[Expr]): Option[Expr] = args match {
+    case List(width, expr) =>
+      AtMsb.fold(loc, expr) flatMap { msb =>
+        AtEx.fold(loc, msb, width, expr)
+      }
+    case _ => unreachable
   }
 
 }

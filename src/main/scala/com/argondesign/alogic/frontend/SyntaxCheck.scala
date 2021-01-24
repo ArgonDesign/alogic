@@ -30,6 +30,7 @@ import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
 import com.argondesign.alogic.core.StorageTypes.StorageTypeSlices
 import com.argondesign.alogic.core.StorageTypes.StorageTypeWire
 import com.argondesign.alogic.core.enums.EntityVariant
+import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
 
@@ -67,6 +68,7 @@ final class SyntaxCheck(implicit cc: CompilerContext) extends StatefulTreeTransf
       case EntityVariant.Fsm => "fsm"
       case EntityVariant.Net => "network"
       case EntityVariant.Ver => "verbatim entity"
+      case _                 => unreachable
     }
     cc.error(node, s"'$variant' cannot contain $content")
     Stump
@@ -160,6 +162,7 @@ final class SyntaxCheck(implicit cc: CompilerContext) extends StatefulTreeTransf
             case _: DescFunc      => entErr(desc, "function definitions")
             case _                => tree
           }
+        case _ => unreachable
       }
 
     case EntSplice(assertion: Assertion) =>

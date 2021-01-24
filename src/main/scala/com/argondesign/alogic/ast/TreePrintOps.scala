@@ -69,6 +69,7 @@ trait TreePrintOps {
     case EntityVariant.Fsm => "fsm"
     case EntityVariant.Net => "network"
     case EntityVariant.Ver => "verbatim entity"
+    case _                 => unreachable
   }
 
   final private def vs(trees: List[Tree])(implicit indent: Int): String =

@@ -17,6 +17,7 @@ import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.frontend.Complete
 import com.argondesign.alogic.frontend.Frontend
+import com.argondesign.alogic.util.unreachable
 
 private[builtins] class AtZx(implicit cc: CompilerContext) extends BuiltinPolyFunc {
 
@@ -38,9 +39,10 @@ private[builtins] class AtZx(implicit cc: CompilerContext) extends BuiltinPolyFu
 
   val isPure: Boolean = true
 
-  def simplify(loc: Loc, args: List[Expr]) = {
-    val List(width, expr) = args
-    AtEx.fold(loc, TypeAssigner(ExprInt(false, 1, 0) withLoc loc), width, expr)
+  def simplify(loc: Loc, args: List[Expr]): Option[Expr] = args match {
+    case List(width, expr) =>
+      AtEx.fold(loc, TypeAssigner(ExprInt(false, 1, 0) withLoc loc), width, expr)
+    case _ => unreachable
   }
 
 }

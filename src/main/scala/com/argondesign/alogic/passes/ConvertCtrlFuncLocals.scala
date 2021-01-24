@@ -61,6 +61,7 @@ final class ConvertCtrlFuncLocals(implicit cc: CompilerContext) extends Stateful
             case (n, true)  => ExprInt(signed = true, n, BigInt(n, rng) - (BigInt(1) << (n - 1)))
             case (n, false) => ExprInt(signed = false, n, BigInt(n, rng))
           }
+        case _ => unreachable
       }
     }
   }
