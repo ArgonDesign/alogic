@@ -6,6 +6,7 @@
 // DESCRIPTION:
 // Factory to build stack entities
 ////////////////////////////////////////////////////////////////////////////////
+
 package com.argondesign.alogic.core
 
 import com.argondesign.alogic.ast.Trees._
@@ -14,9 +15,14 @@ import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.enums.EntityVariant
 
-import scala.util.ChainingSyntax
+import scala.collection.mutable
+import scala.util.chaining.scalaUtilChainingOps
 
-object StackFactory extends ChainingSyntax {
+final class StackFactory {
+
+  private val cache = mutable.Map[(TypeFund, Int), (DeclEntity, DefnEntity)]()
+
+  def items: Iterator[((TypeFund, Int), (DeclEntity, DefnEntity))] = cache.iterator
 
   // Build a stack
   //
@@ -59,20 +65,16 @@ object StackFactory extends ChainingSyntax {
   //      fence;
   //    }
   //  }
-  def apply(
-      name: String,
-      loc: Loc,
-      kind: TypeFund,
-      depth: Int
-    ): (DeclEntity, DefnEntity) = {
-    require(kind.isPacked)
-    require(kind != TypeVoid)
-    require(depth >= 2) // 1 deep stacks replaced in Replace1Stacks
 
+  private def build(kind: TypeFund, depth: Int): (DeclEntity, DefnEntity) = {
     val width = kind.width.toInt
     val signed = kind.isSigned
     val fcn = FlowControlTypeNone
     val stw = StorageTypeWire
+    val loc = kind match {
+      case k: TypeRecord => k.symbol.loc
+      case _             => Loc.synthetic
+    }
 
     val pusSymbol = Symbol("push", loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
     val popSymbol = Symbol("pop", loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
@@ -144,7 +146,7 @@ object StackFactory extends ChainingSyntax {
     val decls = pusDecl :: popDecl :: setDecl :: dDecl :: qDecl :: sDecls
     val defns = (pusDefn :: popDefn :: setDefn :: dDefn :: qDefn :: sDefns) map EntSplice.apply
 
-    val entitySymbol = Symbol(name, loc)
+    val entitySymbol = Symbol(s"stack_${depth}_${kind.toName}", loc)
     val decl = DeclEntity(entitySymbol, decls) regularize loc
     val defn = DefnEntity(
       entitySymbol,
@@ -152,6 +154,20 @@ object StackFactory extends ChainingSyntax {
       EntCombProcess(statements) :: assign :: defns
     ) regularize loc
     (decl, defn)
+  }
+
+  def apply(kind: TypeFund, depth: Int): Symbol = synchronized {
+    require(kind.isPacked)
+    require(kind.width > 0)
+    require(depth >= 2) // 1 deep stacks replaced in Replace1Stacks
+
+    // TODO: Sometimes record types attached to trees are a bit out of date. Fix...
+    val fixedKind = kind match {
+      case k: TypeRecord => k.symbol.kind.asType.kind
+      case other         => other
+    }
+
+    cache.getOrElseUpdate((fixedKind, depth), build(fixedKind, depth))._1.symbol
   }
 
 }

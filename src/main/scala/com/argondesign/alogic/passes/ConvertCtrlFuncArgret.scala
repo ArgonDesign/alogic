@@ -48,7 +48,8 @@ final class ConvertCtrlFuncArgret(implicit cc: CompilerContext) extends Stateful
           if (args.nonEmpty) {
             // Create the args structure type
             val mSymbols = args map { case Defn(symbol) => symbol.dup tap { _.kind = symbol.kind } }
-            val sSymbol = Symbol(s"${symbol.name}${cc.sep}args_t", symbol.loc)
+            val sSymbol = Symbol(s"args", symbol.loc)
+            sSymbol.scopeName = symbol.hierName
             val sKind = TypeRecord(sSymbol, mSymbols)
             sSymbol.kind = TypeType(sKind)
             extraTypeSymbols append sSymbol

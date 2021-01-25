@@ -72,6 +72,7 @@ object InferImplicationsTransform extends StatelessTreeTransformer {
 
 object InferImplications extends EntityTransformerPass(declFirst = true, parallel = true) {
   val name = "infer-implications"
+
   def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
     InferImplicationsTransform
 }

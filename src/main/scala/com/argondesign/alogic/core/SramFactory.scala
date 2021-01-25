@@ -6,19 +6,25 @@
 // DESCRIPTION:
 // Factory to build sram entities
 ////////////////////////////////////////////////////////////////////////////////
+
 package com.argondesign.alogic.core
 
-import com.argondesign.alogic.ast.Trees.StmtAssign
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.ast.Trees.StmtAssign
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.enums.EntityVariant
 import com.argondesign.alogic.lib.Math
 
-import scala.util.ChainingSyntax
+import scala.collection.mutable
+import scala.util.chaining.scalaUtilChainingOps
 
-object SramFactory extends ChainingSyntax {
+final class SramFactory {
+
+  private val cache = mutable.Map[(Int, Int), (DeclEntity, DefnEntity)]()
+
+  def items: Iterator[((Int, Int), (DeclEntity, DefnEntity))] = cache.iterator
 
   /*
     fsm sram {
@@ -45,14 +51,9 @@ object SramFactory extends ChainingSyntax {
 
    */
 
-  def apply(
-      name: String,
-      loc: Loc,
-      width: Int,
-      depth: Int
-    ): (DeclEntity, DefnEntity) = {
-
+  private def build(depth: Int, width: Int): (DeclEntity, DefnEntity) = {
     val fcn = FlowControlTypeNone
+    val loc = Loc.synthetic
 
     val addrKind = TypeUInt(Math.clog2(depth))
     val dataKind = TypeUInt(width)
@@ -109,7 +110,7 @@ object SramFactory extends ChainingSyntax {
     val decls = List(ceDecl, weDecl, adDecl, wdDecl, rdDecl, stDecl)
     val defns = List(ceDefn, weDefn, adDefn, wdDefn, rdDefn, stDefn) map EntSplice.apply
 
-    val entitySymbol = Symbol(name, loc)
+    val entitySymbol = Symbol(s"sram_${depth}x$width", loc)
     val decl = DeclEntity(entitySymbol, decls) regularize loc
     val defn = DefnEntity(
       entitySymbol,
@@ -118,6 +119,12 @@ object SramFactory extends ChainingSyntax {
     ) regularize loc
     entitySymbol.attr.sram set true
     (decl, defn)
+  }
+
+  def apply(depth: Int, width: Int): Symbol = synchronized {
+    require(depth > 0)
+    require(width > 0)
+    cache.getOrElseUpdate((depth, width), build(depth, width))._1.symbol
   }
 
 }

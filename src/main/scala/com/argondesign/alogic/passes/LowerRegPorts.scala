@@ -90,6 +90,5 @@ object LowerRegPorts extends EntityTransformerPass(declFirst = true, parallel = 
 
   override def skip(decl: DeclEntity, defn: DefnEntity): Boolean = defn.variant != EntityVariant.Fsm
 
-  override protected def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
-    new LowerRegPorts()
+  def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer = new LowerRegPorts()
 }

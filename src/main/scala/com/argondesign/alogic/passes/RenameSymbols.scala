@@ -177,9 +177,7 @@ object RenameSymbols {
 
         // Process each Entity, grouped by name
         input.asPar
-          .collect {
-            case (decl: DeclEntity, _) => decl
-          }
+          .collect { case (decl: DeclEntity, _) => decl }
           .groupBy(_.symbol.name) foreach {
           case (_, eDecls) =>
             // Process entities with the same name in a defined order to ensure
@@ -209,12 +207,14 @@ object RenameSymbols {
                   (eSymbol :: symbols) foreach { symbol =>
                     val newName = symbol.name
                       .replace("#[", cc.sep)
+                      .replace("[", "_")
                       .replace(",", "_")
                       .replace("]", "")
                       .replace("-", "n")
                       .replace("(", cc.sep)
                       .replace("=", "_")
                       .replace(")", "")
+                      .replace(".", cc.sep)
                     rename(symbol, fixIfKeyword(newName))
                   }
                 }

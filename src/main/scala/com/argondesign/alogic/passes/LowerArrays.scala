@@ -156,6 +156,5 @@ object LowerArrays extends EntityTransformerPass(declFirst = true, parallel = tr
 
   override def skip(decl: DeclEntity, defn: DefnEntity): Boolean = defn.variant != EntityVariant.Fsm
 
-  def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
-    new LowerArrays
+  def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer = new LowerArrays
 }

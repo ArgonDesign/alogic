@@ -5,7 +5,7 @@
 //
 // DESCRIPTION:
 // - Convert port flow control to stall statements
-// - Split ports with flow control into constituent signals
+// - Split ports with flow control into payload + control flow signals
 // - Lower output storage slices into output slice instances
 // - Update Instances/Connects
 // - Replace naked port references
@@ -14,11 +14,9 @@
 package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.StatefulTreeTransformer
-import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.SyncRegFactory
-import com.argondesign.alogic.core.SyncSliceFactory
 import com.argondesign.alogic.core.FlowControlTypes._
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.StorageTypes._
@@ -41,9 +39,8 @@ final class LowerFlowControlA(
 
   private val sep = cc.sep
 
-  // Map from output port symbol to output storage entity, instance symbol,
-  // and a boolean that is true if the storage is multiple output slices
-  private val oStorage = mutable.Map[Symbol, ((DeclEntity, DefnEntity), Symbol, Boolean)]()
+  // Map from output port symbol to port instance symbol,
+  private val oStorage = mutable.Map[Symbol, Symbol]()
 
   // Stack of extra statements to emit when finished with a statement
   private val extraStmts = mutable.Stack[mutable.ListBuffer[Stmt]]()
@@ -53,9 +50,6 @@ final class LowerFlowControlA(
 
   // Some statements can be completely removed, this flag marks them
   private var removeStmt = false
-
-  // New entities created in this pass
-  private val extraEntities = new ListBuffer[(DeclEntity, DefnEntity)]
 
   private var first = true
 
@@ -130,16 +124,14 @@ final class LowerFlowControlA(
             } else {
               // If a synchronous output register is required, construct it
               // TODO: mark inline
-              val eName = entitySymbol.name + sep + "or" + sep + pName
-              val sregEntity = SyncRegFactory(eName, loc, kind)
-              extraEntities append sregEntity
+              val sregEntitySymbol = cc.syncRegFactory(kind)
               val iSymbol = {
                 val iName = "or" + sep + pName
-                Symbol(iName, loc) tap { _.kind = sregEntity._1.symbol.kind.asType.kind }
+                Symbol(iName, loc) tap { _.kind = sregEntitySymbol.kind.asType.kind }
               }
               // Set attributes
-              oStorage(symbol) = (sregEntity, iSymbol, false)
-              entitySymbol.attr.interconnectClearOnStall.append((iSymbol, s"ip${sep}valid"))
+              oStorage(symbol) = iSymbol
+              entitySymbol.attr.interconnectClearOnStall.append((iSymbol, "i_valid"))
             }
 
           ////////////////////////////////////////////////////////////////////////////
@@ -208,18 +200,14 @@ final class LowerFlowControlA(
               case StorageTypeWire           =>
               case StorageTypeSlices(slices) =>
                 // TODO: mark inline
-                val ePrefix = entitySymbol.name + sep + pName
-                val sliceEntities = SyncSliceFactory(slices, ePrefix, loc, kind)
-                extraEntities appendAll sliceEntities
+                val sliceEntitiesSymbol = cc.syncSliceFactory(kind, slices)
                 val iSymbol = {
                   val iName = "os" + sep + pName
-                  Symbol(iName, loc) tap {
-                    _.kind = sliceEntities.head._1.symbol.kind.asType.kind
-                  }
+                  Symbol(iName, loc) tap { _.kind = sliceEntitiesSymbol.kind.asType.kind }
                 }
                 // Set attributes
-                oStorage(symbol) = (sliceEntities.head, iSymbol, sliceEntities.tail.nonEmpty)
-                entitySymbol.attr.interconnectClearOnStall.append((iSymbol, s"ip${sep}valid"))
+                oStorage(symbol) = iSymbol
+                entitySymbol.attr.interconnectClearOnStall.append((iSymbol, "i_valid"))
               case _ => unreachable
             }
 
@@ -285,20 +273,20 @@ final class LowerFlowControlA(
       case ExprCall(ExprSel(ref @ ExprSym(symbol), "write"), args) =>
         lazy val arg = args.head.asInstanceOf[ArgP].expr
         oStorage.get(symbol) match {
-          case Some((_, iSymbol, _)) =>
+          case Some(iSymbol) =>
             val iRef = ExprSym(iSymbol)
             portMap.get(symbol) map {
               case (pSymbolOpt, Some(_), None) => // valid
                 pSymbolOpt foreach { _ =>
-                  extraStmts.top append StmtAssign(iRef sel "ip", arg)
+                  extraStmts.top append StmtAssign(iRef sel "i_payload", arg)
                 }
-                extraStmts.top append assignTrue(iRef sel s"ip${sep}valid")
+                extraStmts.top append assignTrue(iRef sel "i_valid")
               case (pSymbolOpt, Some(_), Some(_)) => // ready
                 pSymbolOpt foreach { _ =>
-                  extraStmts.top append StmtAssign(iRef sel "ip", arg)
+                  extraStmts.top append StmtAssign(iRef sel "i_payload", arg)
                 }
-                extraStmts.top append assignTrue(iRef sel s"ip${sep}valid")
-                extraStmts.top append StmtWait(iRef sel s"ip${sep}ready")
+                extraStmts.top append assignTrue(iRef sel "i_valid")
+                extraStmts.top append StmtWait(iRef sel "i_ready")
               case _ => unreachable
             }
           case None =>
@@ -322,24 +310,22 @@ final class LowerFlowControlA(
         } getOrElse tree
 
       case ExprSel(ExprSym(symbol), "space") =>
-        oStorage.get(symbol) map {
-          case (_, iSymbol, _) => ExprSym(iSymbol) sel "space"
+        oStorage.get(symbol) map { iSymbol =>
+          ExprSym(iSymbol) sel "space"
         } getOrElse {
           tree
         }
 
       case ExprSel(ExprSym(symbol), "empty") =>
-        oStorage.get(symbol) map {
-          case (_, iSymbol, false) => ExprSym(iSymbol) sel "space"
-          case (_, iSymbol, true)  => ExprSym(iSymbol) sel "space" unary "&"
+        oStorage.get(symbol) map { iSymbol =>
+          ExprSym(iSymbol) sel "space" unary "&"
         } getOrElse {
           tree
         }
 
       case ExprSel(ExprSym(symbol), "full") =>
-        oStorage.get(symbol) map {
-          case (_, iSymbol, false) => ~(ExprSym(iSymbol) sel "space")
-          case (_, iSymbol, true)  => ~(ExprSym(iSymbol) sel "space" unary "|")
+        oStorage.get(symbol) map { iSymbol =>
+          ~(ExprSym(iSymbol) sel "space" unary "|")
         } getOrElse {
           tree
         }
@@ -356,8 +342,8 @@ final class LowerFlowControlA(
             case None                  => None
             case _                     => unreachable
           }
-          val storageDecl = oStorage.get(symbol).iterator map {
-            case (_, sSymbol, _) => sSymbol.mkDecl
+          val storageDecl = oStorage.get(symbol).iterator map { sSymbol =>
+            sSymbol.mkDecl
           }
           Thicket(List.from(portDecls ++ storageDecl))
         } getOrElse tree
@@ -376,22 +362,21 @@ final class LowerFlowControlA(
             case None                  => None
             case _                     => unreachable
           }
-          val storageDefnAndConnects = oStorage.get(symbol).iterator flatMap {
-            case (_, sSymbol, _) =>
-              Iterator.single(EntSplice(sSymbol.mkDefn)) ++ {
-                val iRef = ExprSym(sSymbol)
-                loweredSymbolOpts match {
-                  case (pSymbolOpt, Some(vSymbol), rSymbolOpt) =>
-                    (pSymbolOpt.iterator map { pSymbol =>
-                      EntAssign(ExprSym(pSymbol), iRef sel "op")
-                    }) ++ Iterator.single {
-                      EntAssign(ExprSym(vSymbol), iRef sel s"op${sep}valid")
-                    } ++ (rSymbolOpt.iterator map { rSymbol =>
-                      EntAssign(iRef sel s"op${sep}ready", ExprSym(rSymbol))
-                    })
-                  case _ => unreachable
-                }
+          val storageDefnAndConnects = oStorage.get(symbol).iterator flatMap { sSymbol =>
+            Iterator.single(EntSplice(sSymbol.mkDefn)) ++ {
+              val iRef = ExprSym(sSymbol)
+              loweredSymbolOpts match {
+                case (pSymbolOpt, Some(vSymbol), rSymbolOpt) =>
+                  (pSymbolOpt.iterator map { pSymbol =>
+                    EntAssign(ExprSym(pSymbol), iRef sel "o_payload")
+                  }) ++ Iterator.single {
+                    EntAssign(ExprSym(vSymbol), iRef sel "o_valid")
+                  } ++ (rSymbolOpt.iterator map { rSymbol =>
+                    EntAssign(iRef sel "o_ready", ExprSym(rSymbol))
+                  })
+                case _ => unreachable
               }
+            }
           }
           Thicket(List.from(portDefns ++ storageDefnAndConnects))
         } getOrElse tree
@@ -420,14 +405,6 @@ final class LowerFlowControlA(
     result2
   }
 
-  override def finish(tree: Tree): Tree = tree match {
-    case _: DeclEntity =>
-      Thicket(tree :: (extraEntities.toList map { _._1 }))
-    case _: DefnEntity =>
-      Thicket(tree :: (extraEntities.toList map { _._2 }))
-    case _ => unreachable
-  }
-
   override def finalCheck(tree: Tree): Unit = {
     assert(extraStmts.isEmpty)
 
@@ -441,7 +418,7 @@ final class LowerFlowControlA(
         throw Ice(node, "Input port with flow control remains")
       case node @ DeclOut(_, _, fc, _) if fc != FlowControlTypeNone =>
         throw Ice(node, "Output port with flow control remains")
-      case node @ DeclOut(_, _, _: StorageTypeSlices, _) =>
+      case node @ DeclOut(_, _, _, _: StorageTypeSlices) =>
         throw Ice(node, "Output port with slices remains")
     }
     // $COVERAGE-ON$

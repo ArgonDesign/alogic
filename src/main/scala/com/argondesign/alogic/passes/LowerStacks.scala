@@ -4,7 +4,7 @@
 // See the LICENSE file for the precise wording of the license.
 //
 // DESCRIPTION:
-// - Lower stack variables into stack instances
+// Lower stack variables into stack instances
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.passes
@@ -14,7 +14,6 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Messages.Ice
-import com.argondesign.alogic.core.StackFactory
 import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.core.Types.TypeStack
 import com.argondesign.alogic.core.enums.EntityVariant
@@ -26,8 +25,8 @@ import scala.collection.mutable.ListBuffer
 final class LowerStacks(implicit cc: CompilerContext) extends StatelessTreeTransformer {
 
   // Map from original stack variable symbol to the
-  // corresponding stack entity and instance symbols
-  private val stackMap = mutable.LinkedHashMap[Symbol, ((DeclEntity, DefnEntity), Symbol)]()
+  // corresponding stack instance symbols
+  private val stackMap = mutable.LinkedHashMap[Symbol, Symbol]()
 
   // Stack of extra statements to emit when finished with a statement
   private val extraStmts = mutable.Stack[mutable.ListBuffer[Stmt]]()
@@ -49,16 +48,15 @@ final class LowerStacks(implicit cc: CompilerContext) extends StatelessTreeTrans
             val loc = tree.loc
             val pName = symbol.name
             // TODO: mark inline
-            val eName = entitySymbol.name + cc.sep + "stack" + cc.sep + pName
-            val stackEntity = StackFactory(eName, loc, kind, depth.toInt)
-            val instanceSymbol = Symbol(pName, loc) tap {
-              _.kind = stackEntity._1.symbol.kind.asType.kind
+            val stackEntitySymbol = cc.stackFactory(kind, depth.toInt)
+            val iSymbol = Symbol(pName, loc) tap {
+              _.kind = stackEntitySymbol.kind.asType.kind
             }
-            stackMap(symbol) = (stackEntity, instanceSymbol)
+            stackMap(symbol) = iSymbol
             // Clear control signals on stall
-            entitySymbol.attr.interconnectClearOnStall.append((instanceSymbol, "push"))
-            entitySymbol.attr.interconnectClearOnStall.append((instanceSymbol, "pop"))
-            entitySymbol.attr.interconnectClearOnStall.append((instanceSymbol, "set"))
+            entitySymbol.attr.interconnectClearOnStall.append((iSymbol, "push"))
+            entitySymbol.attr.interconnectClearOnStall.append((iSymbol, "pop"))
+            entitySymbol.attr.interconnectClearOnStall.append((iSymbol, "set"))
 
           case _ =>
         }
@@ -85,13 +83,13 @@ final class LowerStacks(implicit cc: CompilerContext) extends StatelessTreeTrans
       //////////////////////////////////////////////////////////////////////////
 
       case StmtExpr(ExprCall(ExprSel(ExprSym(symbol), "push"), _)) =>
-        stackMap.get(symbol) map {
-          case (_, iSymbol) => assignTrue(ExprSym(iSymbol) sel "push")
+        stackMap.get(symbol) map { iSymbol =>
+          assignTrue(ExprSym(iSymbol) sel "push")
         } getOrElse tree
 
       case StmtExpr(ExprCall(ExprSel(ExprSym(symbol), "pop"), _)) =>
-        stackMap.get(symbol) map {
-          case (_, iSymbol) => assignTrue(ExprSym(iSymbol) sel "pop")
+        stackMap.get(symbol) map { iSymbol =>
+          assignTrue(ExprSym(iSymbol) sel "pop")
         } getOrElse tree
 
       //////////////////////////////////////////////////////////////////////////
@@ -99,22 +97,22 @@ final class LowerStacks(implicit cc: CompilerContext) extends StatelessTreeTrans
       //////////////////////////////////////////////////////////////////////////
 
       case ExprSel(ExprSym(symbol), "top") =>
-        stackMap.get(symbol) map {
-          case (_, iSymbol) => ExprSym(iSymbol) sel "d"
+        stackMap.get(symbol) map { iSymbol =>
+          ExprSym(iSymbol) sel "d"
         } getOrElse tree
 
       case ExprSel(ExprSym(symbol), "old") =>
-        stackMap.get(symbol) map {
-          case (_, iSymbol) => ExprSym(iSymbol) sel "q"
+        stackMap.get(symbol) map { iSymbol =>
+          ExprSym(iSymbol) sel "q"
         } getOrElse tree
 
       //////////////////////////////////////////////////////////////////////////
       // Replace Stack Decl/Defn with the Decl/Defn of the expanded symbols
       //////////////////////////////////////////////////////////////////////////
 
-      case DeclStack(symbol, _, _) => stackMap(symbol)._2.mkDecl
+      case DeclStack(symbol, _, _) => stackMap(symbol).mkDecl
 
-      case DefnStack(symbol) => stackMap(symbol)._2.mkDefn
+      case DefnStack(symbol) => stackMap(symbol).mkDefn
 
       //////////////////////////////////////////////////////////////////////////
       // Add stack connections
@@ -131,9 +129,7 @@ final class LowerStacks(implicit cc: CompilerContext) extends StatelessTreeTrans
               // Add leading statements to the state system
               assert(defn.combProcesses.lengthIs <= 1)
 
-              val leading = stackMap.values map {
-                _._2
-              } map { iSymbol =>
+              val leading = stackMap.values map { iSymbol =>
                 val iRef = ExprSym(iSymbol)
                 StmtBlock(
                   List(
@@ -175,12 +171,6 @@ final class LowerStacks(implicit cc: CompilerContext) extends StatelessTreeTrans
 
     // Done
     result2
-  }
-
-  override def finish(tree: Tree): Tree = tree match {
-    case _: DeclEntity => Thicket(tree :: List.from(stackMap.valuesIterator map { _._1._1 }))
-    case _: DefnEntity => Thicket(tree :: List.from(stackMap.valuesIterator map { _._1._2 }))
-    case _             => unreachable
   }
 
   override def finalCheck(tree: Tree): Unit = {

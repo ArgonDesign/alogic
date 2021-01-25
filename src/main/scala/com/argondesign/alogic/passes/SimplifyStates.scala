@@ -93,6 +93,5 @@ object SimplifyStates extends EntityTransformerPass(declFirst = false, parallel 
 
   override def skip(decl: DeclEntity, defn: DefnEntity): Boolean = defn.states.isEmpty
 
-  override protected def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
-    new SimplifyStates
+  def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer = new SimplifyStates
 }

@@ -14,6 +14,7 @@ import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Math
+import com.argondesign.alogic.util.unreachable
 
 object Types {
 
@@ -27,7 +28,7 @@ object Types {
   // Fundamental types (those which can be the value of a type expression)
   //////////////////////////////////////////////////////////////////////////////
 
-  sealed trait TypeFund extends Type
+  sealed trait TypeFund extends Type with TypeFundImpl
 
   // format: off
   sealed trait TypeInt extends TypeFund with TypeIntImpl
@@ -390,6 +391,22 @@ trait TypeSramImpl extends TypeCompound { this: TypeSram =>
     val rdata = new Symbol("rdata")
     rdata.kind = kind
     List(read, write, rdata)
+  }
+
+}
+
+trait TypeFundImpl { this: TypeFund =>
+
+  def toName: String = this match {
+    case TypeSInt(size)          => s"i$size"
+    case TypeUInt(size)          => s"u$size"
+    case TypeNum(true)           => "int"
+    case TypeNum(false)          => "uint"
+    case TypeVector(eType, size) => s"${eType.toName}[$size]"
+    case TypeVoid                => "void"
+    case TypeStr                 => unreachable
+    case TypeRecord(symbol, _)   => symbol.hierName
+    case TypeEntity(symbol, _)   => symbol.hierName
   }
 
 }

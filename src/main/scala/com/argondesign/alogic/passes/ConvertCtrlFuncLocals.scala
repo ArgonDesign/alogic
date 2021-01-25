@@ -84,7 +84,7 @@ final class ConvertCtrlFuncLocals(implicit cc: CompilerContext) extends Stateles
             case DeclVal(symbol, _) => Option.unless(symbol.attr.combSignal.isSet)(symbol)
             case _: DeclStatic      => None
             case _: DeclConst       => None
-            case d: Decl            => unreachable
+            case _: Decl            => unreachable
           }
         }
       }
@@ -95,7 +95,8 @@ final class ConvertCtrlFuncLocals(implicit cc: CompilerContext) extends Stateles
       // Create the storage structure
       lSymbolOpt = Option.when(localSymbols.nonEmpty) {
         // Create the locals structure type
-        val sSymbol = Symbol(s"${symbol.name}${cc.sep}locals_t", symbol.loc)
+        val sSymbol = Symbol(s"locals", symbol.loc)
+        sSymbol.scopeName = symbol.hierName
         val sKind = TypeRecord(sSymbol, mSymbols)
         sSymbol.kind = TypeType(sKind)
         extraTypeSymbols append sSymbol

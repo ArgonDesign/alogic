@@ -27,6 +27,7 @@ import scala.annotation.tailrec
 import scala.collection.immutable.ListMap
 
 final class LowerPipelineStage(
+    stageSymbol: Symbol,
     pipeInSymbols: List[Symbol], // List of incoming PipeVar symbols
     pipeOutSymbols: List[Symbol], // List of outgoing PipeVar symbols
     pipeAllSymbols: List[Symbol] // List of all active PipeVar symbols
@@ -48,13 +49,14 @@ final class LowerPipelineStage(
     case Nil => TypeVoid
     case _ =>
       val recSymbol = Symbol(name, Loc.synthetic)
+      recSymbol.scopeName = stageSymbol.hierName
       val kind = TypeRecord(recSymbol, symbols map dupDropPipeVar)
       recSymbol.kind = TypeType(kind)
       kind
   }
 
-  private lazy val iPortType = makePortType("pipeline_in_t", pipeInSymbols)
-  private lazy val oPortType = makePortType("pipeline_out_t", pipeOutSymbols)
+  private lazy val iPortType = makePortType("pipeline_in", pipeInSymbols)
+  private lazy val oPortType = makePortType("pipeline_out", pipeOutSymbols)
 
   // New symbols added to the transformed entity
   private def newSymbols: Iterator[Symbol] = pipeSymbolMap.valuesIterator concat {
@@ -306,7 +308,7 @@ final class LowerPipelineHost extends StatefulTreeTransformer {
           val pipeOutSymbols = (actNext & actCurr).toList.sorted
           val pipeAllSymbols = actCurr.toList.sorted
 
-          stage -> new LowerPipelineStage(pipeInSymbols, pipeOutSymbols, pipeAllSymbols)
+          stage -> new LowerPipelineStage(stage, pipeInSymbols, pipeOutSymbols, pipeAllSymbols)
         }
       }
 

@@ -158,6 +158,7 @@ private object OptimizeClearOnSallTransform extends StatelessTreeTransformer {
 
 object OptimizeClearOnStall extends EntityTransformerPass(declFirst = true, parallel = true) {
   val name = "optimize-clear-on-stall"
+
   def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
     OptimizeClearOnSallTransform
 }

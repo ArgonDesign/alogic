@@ -60,6 +60,7 @@ object PropagateImplicationsTransform extends StatelessTreeTransformer {
 
 object PropagateImplications extends EntityTransformerPass(declFirst = true) {
   val name = "propagate-implications"
+
   def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
     PropagateImplicationsTransform
 }

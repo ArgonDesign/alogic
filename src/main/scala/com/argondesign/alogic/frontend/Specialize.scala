@@ -44,21 +44,10 @@ private[frontend] object Specialize {
             .get
             .pipe(v => s"${d.name}=$v")
         case d: DescParamType =>
-          def typeToName(kind: TypeFund): String = kind match {
-            case TypeSInt(size)          => s"i$size"
-            case TypeUInt(size)          => s"u$size"
-            case TypeNum(true)           => "int"
-            case TypeNum(false)          => "uint"
-            case TypeVector(eType, size) => s"${typeToName(eType)}[$size]"
-            case TypeVoid                => "void"
-            case TypeStr                 => unreachable
-            case TypeRecord(symbol, _)   => symbol.name
-            case TypeEntity(symbol, _)   => symbol.name
-          }
           fe.typeOf(d.symbol, d.symbol.loc)
-            .map(kind => typeToName(kind.asType.kind))
+            .map(_.asType.kind.toName)
             .get
-            .pipe(name => s"${d.name}=$name")
+            .pipe(name => s"${d.name}_$name")
         case _ => unreachable
       }
       .mkString("(", ",", ")")
