@@ -56,12 +56,17 @@ object BigIntOps {
 
   }
 
-  implicit final class ObjectOps(private val value: BigInt.type) extends AnyVal {
+  implicit final class ObjectOps(private val subject: BigInt.type) extends AnyVal {
     def mask(width: Int): BigInt = (BigInt(1) << width) - 1
     def mask(width: BigInt): BigInt = (BigInt(1) << width.toInt) - 1
 
     def oneHot(bit: Int): BigInt = BigInt(1) << bit
     def oneHot(bit: BigInt): BigInt = BigInt(1) << bit.toInt
+
+    def uMax(width: Int): BigInt = mask(width)
+
+    def iMin(width: Int): BigInt = BigInt(-1) << (width - 1)
+    def iMax(width: Int): BigInt = mask(width - 1)
   }
 
 }

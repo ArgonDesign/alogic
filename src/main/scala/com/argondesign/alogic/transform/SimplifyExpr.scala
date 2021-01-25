@@ -1,16 +1,12 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2018 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler
-// Author: Geza Lore
-//
 // DESCRIPTION:
-//
-// Constant expression folding
+// Transform that simplifies expressions, including constant folding, but also
+// more.
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.transform
@@ -38,43 +34,89 @@ final class SimplifyExpr(implicit cc: CompilerContext)
 
   implicit private def boolean2BigInt(bool: Boolean): BigInt = if (bool) BigInt(1) else BigInt(0)
 
-  private def foldBinOpOneKnown(
-      kSigned: Boolean,
-      kWidthOpt: Option[Int],
-      kValue: BigInt,
-      op: String,
-      unk: Expr,
-      lKnown: Boolean
-    ): Option[Expr] = {
-    val tpe = unk.tpe
-    lazy val width = tpe.width.toInt
-    lazy val allOnes = kValue.extract(0, width) == BigInt.mask(width)
-    val bPack = kWidthOpt.isDefined && tpe.isPacked
-    op partialMatch {
+  // simplify commutative and comparison operator with one known operand
+  private def simplifyComBinary(unknown: Expr, op: String, known: ExprInt): Option[Expr] = {
+    val ExprInt(ks, w, v) = known
+    require(unknown.tpe.width == w)
+    val s = unknown.tpe.isSigned && ks
+    op match {
+      // Comparisons
+      case "==" | "!=" => None
+      case "<" =>
+        if (s) {
+          Option.when(v == BigInt.iMin(w))(ExprInt(false, 1, 0))
+        } else {
+          Option.when(v.asU(w) == 0)(ExprInt(false, 1, 0))
+        }
+      case ">" =>
+        if (s) {
+          Option.when(v == BigInt.iMax(w))(ExprInt(false, 1, 0))
+        } else {
+          Option.when(v.asU(w) == BigInt.uMax(w))(ExprInt(false, 1, 0))
+        }
+      case "<=" =>
+        if (s) {
+          Option.when(v == BigInt.iMax(w))(ExprInt(false, 1, 1))
+        } else {
+          Option.when(v.asU(w) == BigInt.uMax(w))(ExprInt(false, 1, 1))
+        }
+      case ">=" =>
+        if (s) {
+          Option.when(v == BigInt.iMin(w))(ExprInt(false, 1, 1))
+        } else {
+          Option.when(v.asU(w) == 0)(ExprInt(false, 1, 1))
+        }
+
       // Arithmetic
-      case "*" if bPack && kValue == 0           => ExprInt(kSigned && tpe.isSigned, width, 0)
-      case "*" if bPack && kValue == 1           => if (kSigned || !tpe.isSigned) unk else unk.castUnsigned
-      case "/" if bPack && kValue == 0 && lKnown => ExprInt(kSigned && tpe.isSigned, width, 0)
-      case "/" if bPack && kValue == 1 && !lKnown =>
-        if (kSigned || !tpe.isSigned) unk else unk.castUnsigned
-      case "%" if bPack && kValue == 0 && lKnown  => ExprInt(kSigned && tpe.isSigned, width, 0)
-      case "%" if bPack && kValue == 1 && !lKnown => ExprInt(kSigned && tpe.isSigned, width, 0)
-      case "+" if bPack && kValue == 0            => if (kSigned || !tpe.isSigned) unk else unk.castUnsigned
-      case "-" if bPack && kValue == 0 && lKnown =>
-        if (kSigned || !tpe.isSigned) -unk else (-unk).castUnsigned
-      case "-" if bPack && kValue == 0 => if (kSigned || !tpe.isSigned) unk else unk.castUnsigned
-      // Logical
-      case "&&" if kValue == 0                => ExprInt(false, 1, 0)
-      case "&&" if tpe.isPacked && width == 1 => if (tpe.isSigned) unk.castUnsigned else unk
-      case "||" if kValue != 0                => ExprInt(false, 1, 1)
-      case "||" if tpe.isPacked && width == 1 => if (tpe.isSigned) unk.castUnsigned else unk
+      case "+" =>
+        if (v == 0) {
+          Some(unknown.withSignedness(s))
+        } else {
+          None
+        }
+      case "*" =>
+        if (v == 0) {
+          Some(ExprInt(s, w, 0))
+        } else if (v == 1) {
+          Some(unknown.withSignedness(s))
+        } else {
+          None
+        }
+
       // Bitwise
-      case "&" if bPack && kValue == 0 => ExprInt(kSigned && tpe.isSigned, width, 0)
-      case "&" if bPack && allOnes     => if (kSigned || !tpe.isSigned) unk else unk.castUnsigned
-      case "|" if bPack && kValue == 0 => if (kSigned || !tpe.isSigned) unk else unk.castUnsigned
-      case "|" if bPack && allOnes     => ExprInt(kSigned && tpe.isSigned, width, 0)
-      case "^" if bPack && kValue == 0 => if (kSigned || !tpe.isSigned) unk else unk.castUnsigned
-      case "^" if bPack && allOnes     => if (kSigned || !tpe.isSigned) ~unk else (~unk).castUnsigned
+      case "&" =>
+        if (v == 0) {
+          Some(ExprInt(s, w, 0))
+        } else if (v.asI(w) == -1) {
+          Some(unknown.withSignedness(s))
+        } else {
+          None
+        }
+      case "|" =>
+        if (v == 0) {
+          Some(unknown.withSignedness(s))
+        } else if (v.asI(w) == -1) {
+          Some(ExprInt(s, w, if (s) -1 else BigInt.mask(w)))
+        } else {
+          None
+        }
+      case "^" =>
+        if (v == 0) {
+          Some(unknown.withSignedness(s))
+        } else if (v.asI(w) == -1) {
+          Some((~unknown).withSignedness(s))
+        } else {
+          None
+        }
+
+      // Boolean
+      case "&&" =>
+        Some(if (v == 0) ExprInt(false, 1, 0) else unknown.asUnsigned)
+      case "||" =>
+        Some(if (v != 0) ExprInt(false, 1, 1) else unknown.asUnsigned)
+
+      //
+      case _ => unreachable
     }
   }
 
@@ -297,6 +339,9 @@ final class SimplifyExpr(implicit cc: CompilerContext)
 
     case _ => tree
   } tap { result =>
+    if (!result.hasLoc) {
+      result withLoc tree.loc
+    }
     if (!result.hasTpe) {
       TypeAssigner(result)
     }
@@ -410,11 +455,11 @@ final class SimplifyExpr(implicit cc: CompilerContext)
 
     case ExprUnary(op, ExprNum(s, v)) =>
       op match {
-        case "-" => assert(s || v == 0); ExprNum(s, -v) withLocOf tree
-        case "~" => assert(s); ExprNum(true, ~v) withLocOf tree
-        case "&" => ExprInt(false, 1, v == -1) withLocOf tree
-        case "|" => ExprInt(false, 1, v != 0) withLocOf tree
-        case "^" => assert(v >= 0); ExprInt(false, 1, v.bitCount & 1) withLocOf tree
+        case "-" => assert(s || v == 0); ExprNum(s, -v)
+        case "~" => assert(s); ExprNum(true, ~v)
+        case "&" => ExprInt(false, 1, v == -1)
+        case "|" => ExprInt(false, 1, v != 0)
+        case "^" => assert(v >= 0); ExprInt(false, 1, v.bitCount & 1)
         case _   => unreachable // Includes "!" which must have a 1 bit operand
       }
 
@@ -424,12 +469,12 @@ final class SimplifyExpr(implicit cc: CompilerContext)
 
     case ExprUnary(op, ExprInt(s, w, v)) =>
       op match {
-        case "-" => ExprInt(s, w, (-v).extract(0, w, s)) withLocOf tree
-        case "~" => ExprInt(s, w, (~v).extract(0, w, s)) withLocOf tree
-        case "&" => ExprInt(false, 1, v.asU(w) == BigInt.mask(w)) withLocOf tree
-        case "|" => ExprInt(false, 1, v != 0) withLocOf tree
-        case "^" => ExprInt(false, 1, v.asU(w).bitCount & 1) withLocOf tree
-        case "!" => ExprInt(false, 1, v == 0) withLocOf tree
+        case "-" => ExprInt(s, w, (-v).extract(0, w, s))
+        case "~" => ExprInt(s, w, (~v).extract(0, w, s))
+        case "&" => ExprInt(false, 1, v.asU(w) == BigInt.mask(w))
+        case "|" => ExprInt(false, 1, v != 0)
+        case "^" => ExprInt(false, 1, v.asU(w).bitCount & 1)
+        case "!" => ExprInt(false, 1, v == 0)
         case _   => unreachable
       }
 
@@ -440,9 +485,9 @@ final class SimplifyExpr(implicit cc: CompilerContext)
     case ExprUnary(aOp, ExprUnary(bOp, expr)) =>
       (aOp, bOp) match {
         case ("~", "~") => expr
-        case ("~", "!") => if (expr.tpe.isSigned) expr.castUnsigned else expr
-        case ("!", "~") => if (expr.tpe.isSigned) expr.castUnsigned else expr
-        case ("!", "!") => if (expr.tpe.isSigned) expr.castUnsigned else expr
+        case ("~", "!") => expr.asUnsigned
+        case ("!", "~") => expr.asUnsigned
+        case ("!", "!") => expr.asUnsigned
         case ("-", "-") => expr
         case _          => tree
         // TODO: Is bubble pushing (De Morgan) any useful? &~ => ~| and |~ => ~&
@@ -455,9 +500,9 @@ final class SimplifyExpr(implicit cc: CompilerContext)
     case ExprUnary(op, expr) if expr.tpe.width == 1 =>
       op match {
         case "-" => expr
-        case "&" => if (expr.tpe.isSigned) expr.castUnsigned else expr
-        case "|" => if (expr.tpe.isSigned) expr.castUnsigned else expr
-        case "^" => if (expr.tpe.isSigned) expr.castUnsigned else expr
+        case "&" => expr.asUnsigned
+        case "|" => expr.asUnsigned
+        case "^" => expr.asUnsigned
         case _   => tree
       }
 
@@ -468,7 +513,7 @@ final class SimplifyExpr(implicit cc: CompilerContext)
   private def transformBinary(tree: ExprBinary): Expr = tree match {
 
     ////////////////////////////////////////////////////////////////////////////
-    // Fold binary '
+    // Binary '
     ////////////////////////////////////////////////////////////////////////////
 
     case ExprBinary(lhs, "'", rhs) =>
@@ -480,14 +525,14 @@ final class SimplifyExpr(implicit cc: CompilerContext)
       val rhsWidth = rhs.tpe.width.toInt // Must be packed so must know width
       require(width >= rhsWidth)
       rhs match {
-        case expr: ExprInt          => expr.copy(width = width) withLoc tree.loc
+        case expr: ExprInt          => expr.copy(width = width)
         case _ if width == rhsWidth => rhs
         case _ if rhs.tpe.isSigned  => rhs sx width
         case _                      => rhs zx width
       }
 
     ////////////////////////////////////////////////////////////////////////////
-    // Fold shifts with an known right hand side
+    // Shifts with an known right hand side
     ////////////////////////////////////////////////////////////////////////////
 
     case expr @ ExprBinary(lhs, op @ ("<<" | ">>" | "<<<" | ">>>"), Integral(_, _, rv)) =>
@@ -499,24 +544,24 @@ final class SimplifyExpr(implicit cc: CompilerContext)
         lhs match {
           case ExprNum(s, v) =>
             assert(v >= 0 || op != ">>", "'>>' is not well defined for negative unsized values")
-            op pipe {
+            op match {
               case "<<" | "<<<" => ExprNum(s, v << shift)
               case ">>" | ">>>" => ExprNum(s, v >> shift)
               case _            => unreachable
-            } withLocOf expr
+            }
           case ExprInt(false, w, v) =>
-            op pipe {
+            op match {
               case "<<" | "<<<" => ExprInt(false, w, (v << shift).asU(w))
               case ">>" | ">>>" => ExprInt(false, w, (v >> shift).asU(w))
               case _            => unreachable
-            } withLocOf expr
+            }
           case ExprInt(true, w, v) =>
-            op pipe {
+            op match {
               case "<<" | "<<<" => ExprInt(true, w, (v << shift).asI(w))
               case ">>>"        => ExprInt(true, w, (v >> shift).asI(w))
               case ">>"         => ExprInt(true, w, (v >> shift).asU((w - shift) max 0))
               case _            => unreachable
-            } withLocOf expr
+            }
           case _ =>
             assert(lhs.tpe.isPacked)
             val w = lhs.tpe.width.toInt
@@ -524,9 +569,9 @@ final class SimplifyExpr(implicit cc: CompilerContext)
               // Shift by width or more
               val s = lhs.tpe.isSigned
               if (s && op == ">>>") {
-                ExprInt(true, w, -1) withLocOf expr
+                ExprInt(true, w, -1)
               } else {
-                ExprInt(s, w, 0) withLocOf expr
+                ExprInt(s, w, 0)
               }
             } else {
               expr
@@ -535,28 +580,29 @@ final class SimplifyExpr(implicit cc: CompilerContext)
       }
 
     ////////////////////////////////////////////////////////////////////////////
-    // Fold shifts with a zero left hand side
+    // Shifts with an unknown right hand side
     ////////////////////////////////////////////////////////////////////////////
 
-    case ExprBinary(lhs @ Integral(_, _, lv), "<<" | ">>" | "<<<" | ">>>", _) if lv == 0 =>
-      lhs
+    case ExprBinary(lhs, "<<" | ">>" | "<<<" | ">>>", _) =>
+      lhs match {
+        case Integral(_, _, lv) if lv == 0 => lhs
+        case _                             => tree
+      }
 
     ////////////////////////////////////////////////////////////////////////////
-    // Fold other binary expressions with known unsized operands
+    // Other binary operators with known unsized operands
     ////////////////////////////////////////////////////////////////////////////
 
     case ExprBinary(ExprNum(ls, lv), op, ExprNum(rs, rv)) =>
-      def makeNum(signed: Boolean, value: BigInt) = {
-        if (signed || value >= 0) {
-          ExprNum(signed, value)
-        } else {
-          cc.error(tree, s"Result of operator '$op' is unsigned, but value is negative: $value")
-          ExprError()
-        }
+      def makeNum(signed: Boolean, value: BigInt): Expr = if (signed || value >= 0) {
+        ExprNum(signed, value)
+      } else {
+        cc.error(tree, s"Result of operator '$op' is unsigned, but value is negative: $value")
+        ExprError()
       }
 
       val s = ls && rs
-      val num = op match {
+      op match {
         // Comparison
         case ">"  => ExprInt(false, 1, lv > rv)
         case "<"  => ExprInt(false, 1, lv < rv)
@@ -577,19 +623,19 @@ final class SimplifyExpr(implicit cc: CompilerContext)
         case "|" => ExprNum(s, lv | rv)
         case "^" => ExprNum(s, lv ^ rv)
 
-        case _ => unreachable
+        //
+        case _ => unreachable // Covers '&&' and '||' which must have 1 bit operands
       }
-      num withLoc tree.loc
 
     ////////////////////////////////////////////////////////////////////////////
-    // Fold other binary expressions with known sized operands
+    // Other binary operators with known sized operands
     ////////////////////////////////////////////////////////////////////////////
 
     case ExprBinary(ExprInt(ls, lw, lv), op, ExprInt(rs, rw, rv)) =>
       assert(lw == rw)
       val w = lw
       val s = ls && rs
-      val num = op match {
+      op match {
         // Comparison
         case ">"  => ExprInt(false, 1, if (ls == rs) lv > rv else lv.asU(w) > rv.asU(w))
         case "<"  => ExprInt(false, 1, if (ls == rs) lv < rv else lv.asU(w) < rv.asU(w))
@@ -617,28 +663,57 @@ final class SimplifyExpr(implicit cc: CompilerContext)
         //
         case _ => unreachable
       }
-      if (num.hasLoc) num else num withLoc tree.loc
 
     ////////////////////////////////////////////////////////////////////////////
-    // Fold binary operators with one known operand if possible
+    // Commutative and comparison operators with one known operand
     ////////////////////////////////////////////////////////////////////////////
 
-    case ExprBinary(Integral(ks, kw, kv), op, unk) =>
-      foldBinOpOneKnown(ks, kw, kv, op, unk, lKnown = true) getOrElse {
-        tree
-      } tap {
-        case result if result.hasLoc => result
-        case result                  => result withLoc tree.loc
+    case ExprBinary(
+          lhs,
+          op @ ("<" | ">" | "<=" | ">=" | "==" | "!=" | "+" | "*" | "&" | "|" | "^" | "&&" | "||"),
+          rhs: ExprInt
+        ) =>
+      simplifyComBinary(lhs, op, rhs) getOrElse tree
+
+    case ExprBinary(
+          lhs: ExprInt,
+          op @ ("<" | ">" | "<=" | ">=" | "==" | "!=" | "+" | "*" | "&" | "|" | "^" | "&&" | "||"),
+          rhs
+        ) =>
+      def swap(s: String): String = s map {
+        case '<'   => '>'
+        case '>'   => '<'
+        case other => other
+      }
+      simplifyComBinary(rhs, swap(op), lhs) getOrElse tree
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Non commutative operators with a known right hand side
+    ////////////////////////////////////////////////////////////////////////////
+
+    case ExprBinary(lhs, op @ ("/" | "%" | "-"), ExprInt(rs, w, v)) =>
+      assert(lhs.tpe.width == w)
+      val s = lhs.tpe.isSigned && rs
+      op match {
+        case "/" => if (v == 1) lhs.withSignedness(s) else tree
+        case "%" => if (v == 1) ExprInt(s, w, 0) else tree
+        case "-" => if (v == 0) lhs.withSignedness(s) else tree
       }
 
-    case ExprBinary(unk, op, Integral(ks, kw, kv)) =>
-      foldBinOpOneKnown(ks, kw, kv, op, unk, lKnown = false) getOrElse {
-        tree
-      } tap {
-        case result if result.hasLoc => result
-        case result                  => result withLoc tree.loc
+    ////////////////////////////////////////////////////////////////////////////
+    // Non commutative operators with a known left hand side
+    ////////////////////////////////////////////////////////////////////////////
+
+    case ExprBinary(ExprInt(ls, w, v), op @ ("/" | "%" | "-"), rhs) =>
+      assert(w == rhs.tpe.width)
+      val s = ls && rhs.tpe.isSigned
+      op match {
+        case "/" => if (v == 0) ExprInt(s, w, 0) else tree
+        case "%" => if (v == 0) ExprInt(s, w, 0) else tree
+        case "-" => if (v == 0) (-rhs).withSignedness(s) else tree
       }
 
+    //
     case _ => tree
   }
 

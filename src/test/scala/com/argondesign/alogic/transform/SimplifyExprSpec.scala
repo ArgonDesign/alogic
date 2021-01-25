@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
@@ -24,11 +24,9 @@ import com.argondesign.alogic.frontend.Finished
 import com.argondesign.alogic.frontend.Frontend
 import com.argondesign.alogic.frontend.ResolveNames
 import com.argondesign.alogic.passes._
+import com.argondesign.alogic.ExprExtractors._
 import org.scalatest.freespec.AnyFreeSpec
 
-import scala.annotation.nowarn
-
-@nowarn("msg=A repeated case parameter or extracted sequence is not matched by a sequence wildcard")
 final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
 
   implicit private val cc: CompilerContext = new CompilerContext
@@ -58,33 +56,6 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
         case _                => fail()
       }
     expr.simplify
-  }
-
-  // Extractor for ExprCall to symbol with name with positional Int arguments
-  private object Call {
-
-    def unapplySeq(expr: Expr): Option[(String, Seq[Int])] = expr match {
-      case ExprCall(ExprSym(symbol), args) =>
-        val argValues = args map {
-          case ArgP(Expr(v)) => Some(v)
-          case _             => None
-        }
-        Option.when(argValues.forall(_.nonEmpty)) {
-          (symbol.name, argValues.flatten)
-        }
-      case _ => None
-    }
-
-  }
-
-  // Extractor for call to $unsigned
-  private object Unsigned {
-
-    def unapply(expr: Expr): Option[Expr] = expr match {
-      case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(expr) :: Nil) => Some(expr)
-      case _                                                         => None
-    }
-
   }
 
   private def checkExact(tests: (String, Expr)*): Unit = tests foreach {
@@ -257,1197 +228,1318 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
         "+ is identity" - {
           checkPattern(
             // unsigned
-            ("+@unknownu(1)", { case Call("@unknownu", 1) => }),
-            ("+@unknownu(2)", { case Call("@unknownu", 2) => }),
+            ("+@unknownu(1)", { case UnknownU(1) => }),
+            ("+@unknownu(2)", { case UnknownU(2) => }),
             // signed
-            ("+@unknowni(1)", { case Call("@unknowni", 1) => }),
-            ("+@unknowni(2)", { case Call("@unknowni", 2) => })
+            ("+@unknowni(1)", { case UnknownI(1) => }),
+            ("+@unknowni(2)", { case UnknownI(2) => })
           )
         }
 
         "unary over 1 bit values" - {
           checkPattern(
             // unsigned
-            ("-@unknownu(1)", { case Call("@unknownu", 1) => }),
-            ("&@unknownu(1)", { case Call("@unknownu", 1) => }),
-            ("|@unknownu(1)", { case Call("@unknownu", 1) => }),
-            ("^@unknownu(1)", { case Call("@unknownu", 1) => }),
+            ("-@unknownu(1)", { case UnknownU(1) => }),
+            ("&@unknownu(1)", { case UnknownU(1) => }),
+            ("|@unknownu(1)", { case UnknownU(1) => }),
+            ("^@unknownu(1)", { case UnknownU(1) => }),
             // signed
-            ("-@unknowni(1)", { case Call("@unknowni", 1) => }),
-            ("&@unknowni(1)", { case Unsigned(Call("@unknowni", 1)) => }),
-            ("|@unknowni(1)", { case Unsigned(Call("@unknowni", 1)) => }),
-            ("^@unknowni(1)", { case Unsigned(Call("@unknowni", 1)) => })
+            ("-@unknowni(1)", { case UnknownI(1) => }),
+            ("&@unknowni(1)", { case Unsigned(UnknownI(1)) => }),
+            ("|@unknowni(1)", { case Unsigned(UnknownI(1)) => }),
+            ("^@unknowni(1)", { case Unsigned(UnknownI(1)) => })
           )
         }
 
         "unary over unary" - {
           checkPattern(
             // ~~
-            ("~~@unknownu(4)", { case Call("@unknownu", 4) => }),
-            ("~~@unknownu(1)", { case Call("@unknownu", 1) => }),
-            ("~~@unknowni(4)", { case Call("@unknowni", 4) => }),
-            ("~~@unknowni(1)", { case Call("@unknowni", 1) => }),
+            ("~~@unknownu(4)", { case UnknownU(4) => }),
+            ("~~@unknownu(1)", { case UnknownU(1) => }),
+            ("~~@unknowni(4)", { case UnknownI(4) => }),
+            ("~~@unknowni(1)", { case UnknownI(1) => }),
             // !!
-            ("!!@unknownu(1)", { case Call("@unknownu", 1) => }),
-            ("!!@unknowni(1)", { case Unsigned(Call("@unknowni", 1)) => }),
+            ("!!@unknownu(1)", { case UnknownU(1) => }),
+            ("!!@unknowni(1)", { case Unsigned(UnknownI(1)) => }),
             // ! and ~ combinations
-            ("~!@unknownu(1)", { case Call("@unknownu", 1) => }),
-            ("!~@unknownu(1)", { case Call("@unknownu", 1) => }),
-            ("~!@unknowni(1)", { case Unsigned(Call("@unknowni", 1)) => }),
-            ("!~@unknowni(1)", { case Unsigned(Call("@unknowni", 1)) => }),
+            ("~!@unknownu(1)", { case UnknownU(1) => }),
+            ("!~@unknownu(1)", { case UnknownU(1) => }),
+            ("~!@unknowni(1)", { case Unsigned(UnknownI(1)) => }),
+            ("!~@unknowni(1)", { case Unsigned(UnknownI(1)) => }),
             // --
-            ("-(-@unknownu(4))", { case Call("@unknownu", 4) => }),
-            ("-(-@unknowni(4))", { case Call("@unknowni", 4) => })
+            ("-(-@unknownu(4))", { case UnknownU(4) => }),
+            ("-(-@unknowni(4))", { case UnknownI(4) => })
           )
         }
       }
     }
 
-    "binary operators with both operands known" - {
-      "+" - {
-        List(
-          //// Unsized
-          // - unsigned unsigned
-          (" 10  +  3 ", ExprNum(false, 13)),
-          // - unsigned signed
-          (" 10  +  3s", ExprNum(false, 13)),
-          (" 10  + -3s", ExprNum(false, 7)),
-          // - signed unsigned
-          (" 10s +  3 ", ExprNum(false, 13)),
-          // - signed signed
-          (" 10s +  3s", ExprNum(true, 13)),
-          (" 10s + -3s", ExprNum(true, 7)),
-          ("-10s +  3s", ExprNum(true, -7)),
-          ("-10s + -3s", ExprNum(true, -13)),
-          //// Sized
-          // - unsigned unsigned
-          ("  8'd10  +   8'd3 ", ExprInt(false, 8, 13)),
-          ("  8'd10  + -(8'd3)", ExprInt(false, 8, 7)),
-          ("-(8'd10) +   8'd3 ", ExprInt(false, 8, 249)),
-          ("-(8'd10) + -(8'd3)", ExprInt(false, 8, 243)),
-          // - unsigned signed
-          ("  8'd10  +   8'sd3", ExprInt(false, 8, 13)),
-          ("  8'd10  +  -8'sd3", ExprInt(false, 8, 7)),
-          ("-(8'd10) +   8'sd3", ExprInt(false, 8, 249)),
-          ("-(8'd10) +  -8'sd3", ExprInt(false, 8, 243)),
-          // - signed unsigned
-          ("  8'sd10 +   8'd3 ", ExprInt(false, 8, 13)),
-          ("  8'sd10 + -(8'd3)", ExprInt(false, 8, 7)),
-          (" -8'sd10 +   8'd3 ", ExprInt(false, 8, 249)),
-          (" -8'sd10 + -(8'd3)", ExprInt(false, 8, 243)),
-          // - signed signed
-          ("  8'sd10 +   8'sd3", ExprInt(true, 8, 13)),
-          ("  8'sd10 +  -8'sd3", ExprInt(true, 8, 7)),
-          (" -8'sd10 +   8'sd3", ExprInt(true, 8, -7)),
-          (" -8'sd10 +  -8'sd3", ExprInt(true, 8, -13))
-        ) foreach {
-          case (text, result) => text in { simplify(text) shouldBe result }
+    "binary operators" - {
+      "with both operands known" - {
+        "+" - {
+          checkExact(
+            //// Unsized
+            // - unsigned unsigned
+            (" 10  +  3 ", ExprNum(false, 13)),
+            // - unsigned signed
+            (" 10  +  3s", ExprNum(false, 13)),
+            (" 10  + -3s", ExprNum(false, 7)),
+            // - signed unsigned
+            (" 10s +  3 ", ExprNum(false, 13)),
+            // - signed signed
+            (" 10s +  3s", ExprNum(true, 13)),
+            (" 10s + -3s", ExprNum(true, 7)),
+            ("-10s +  3s", ExprNum(true, -7)),
+            ("-10s + -3s", ExprNum(true, -13)),
+            //// Sized
+            // - unsigned unsigned
+            ("  8'd10  +   8'd3 ", ExprInt(false, 8, 13)),
+            ("  8'd10  + -(8'd3)", ExprInt(false, 8, 7)),
+            ("-(8'd10) +   8'd3 ", ExprInt(false, 8, 249)),
+            ("-(8'd10) + -(8'd3)", ExprInt(false, 8, 243)),
+            // - unsigned signed
+            ("  8'd10  +   8'sd3", ExprInt(false, 8, 13)),
+            ("  8'd10  +  -8'sd3", ExprInt(false, 8, 7)),
+            ("-(8'd10) +   8'sd3", ExprInt(false, 8, 249)),
+            ("-(8'd10) +  -8'sd3", ExprInt(false, 8, 243)),
+            // - signed unsigned
+            ("  8'sd10 +   8'd3 ", ExprInt(false, 8, 13)),
+            ("  8'sd10 + -(8'd3)", ExprInt(false, 8, 7)),
+            (" -8'sd10 +   8'd3 ", ExprInt(false, 8, 249)),
+            (" -8'sd10 + -(8'd3)", ExprInt(false, 8, 243)),
+            // - signed signed
+            ("  8'sd10 +   8'sd3", ExprInt(true, 8, 13)),
+            ("  8'sd10 +  -8'sd3", ExprInt(true, 8, 7)),
+            (" -8'sd10 +   8'sd3", ExprInt(true, 8, -7)),
+            (" -8'sd10 +  -8'sd3", ExprInt(true, 8, -13))
+          )
+        }
+
+        "-" - {
+          checkExact(
+            //// Unsized
+            // - unsigned unsigned
+            (" 10  -  3 ", ExprNum(false, 7)),
+            // - unsigned signed
+            (" 10  -  3s", ExprNum(false, 7)),
+            (" 10  - -3s", ExprNum(false, 13)),
+            // - signed unsigned
+            (" 10s -  3 ", ExprNum(false, 7)),
+            // - signed signed
+            (" 10s -  3s", ExprNum(true, 7)),
+            (" 10s - -3s", ExprNum(true, 13)),
+            ("-10s -  3s", ExprNum(true, -13)),
+            ("-10s - -3s", ExprNum(true, -7)),
+            //// Sized
+            // - unsigned unsigned
+            ("  8'd10  -   8'd3 ", ExprInt(false, 8, 7)),
+            ("  8'd10  - -(8'd3)", ExprInt(false, 8, 13)),
+            ("-(8'd10) -   8'd3 ", ExprInt(false, 8, 243)),
+            ("-(8'd10) - -(8'd3)", ExprInt(false, 8, 249)),
+            // - unsigned signed
+            ("  8'd10  -   8'sd3", ExprInt(false, 8, 7)),
+            ("  8'd10  -  -8'sd3", ExprInt(false, 8, 13)),
+            ("-(8'd10) -   8'sd3", ExprInt(false, 8, 243)),
+            ("-(8'd10) -  -8'sd3", ExprInt(false, 8, 249)),
+            // - signed unsigned
+            ("  8'sd10 -   8'd3 ", ExprInt(false, 8, 7)),
+            ("  8'sd10 - -(8'd3)", ExprInt(false, 8, 13)),
+            (" -8'sd10 -   8'd3 ", ExprInt(false, 8, 243)),
+            (" -8'sd10 - -(8'd3)", ExprInt(false, 8, 249)),
+            // - signed signed
+            ("  8'sd10 -   8'sd3", ExprInt(true, 8, 7)),
+            ("  8'sd10 -  -8'sd3", ExprInt(true, 8, 13)),
+            (" -8'sd10 -   8'sd3", ExprInt(true, 8, -13)),
+            (" -8'sd10 -  -8'sd3", ExprInt(true, 8, -7))
+          )
+        }
+
+        "*" - {
+          checkExact(
+            //// Unsized
+            // - unsigned unsigned
+            (" 10  *  3 ", ExprNum(false, 30)),
+            // - unsigned signed
+            (" 10  *  3s", ExprNum(false, 30)),
+            // - signed unsigned
+            (" 10s *  3 ", ExprNum(false, 30)),
+            // - signed signed
+            (" 10s *  3s", ExprNum(true, 30)),
+            (" 10s * -3s", ExprNum(true, -30)),
+            ("-10s *  3s", ExprNum(true, -30)),
+            ("-10s * -3s", ExprNum(true, 30)),
+            //// Sized
+            // - unsigned unsigned
+            ("  8'd10  *   8'd3 ", ExprInt(false, 8, 30)),
+            ("  8'd10  * -(8'd3)", ExprInt(false, 8, 226)),
+            ("-(8'd10) *   8'd3 ", ExprInt(false, 8, 226)),
+            ("-(8'd10) * -(8'd3)", ExprInt(false, 8, 30)),
+            // - unsigned signed
+            ("  8'd10  *   8'sd3", ExprInt(false, 8, 30)),
+            ("  8'd10  *  -8'sd3", ExprInt(false, 8, 226)),
+            ("-(8'd10) *   8'sd3", ExprInt(false, 8, 226)),
+            ("-(8'd10) *  -8'sd3", ExprInt(false, 8, 30)),
+            // - signed unsigned
+            ("  8'sd10 *   8'd3 ", ExprInt(false, 8, 30)),
+            ("  8'sd10 * -(8'd3)", ExprInt(false, 8, 226)),
+            (" -8'sd10 *   8'd3 ", ExprInt(false, 8, 226)),
+            (" -8'sd10 * -(8'd3)", ExprInt(false, 8, 30)),
+            // - signed signed
+            ("  8'sd10 *   8'sd3", ExprInt(true, 8, 30)),
+            ("  8'sd10 *  -8'sd3", ExprInt(true, 8, -30)),
+            (" -8'sd10 *   8'sd3", ExprInt(true, 8, -30)),
+            (" -8'sd10 *  -8'sd3", ExprInt(true, 8, 30))
+          )
+        }
+
+        "/" - {
+          checkExact(
+            //// Unsized
+            // - unsigned unsigned
+            (" 10  /  3 ", ExprNum(false, 3)),
+            // - unsigned signed
+            (" 10  /  3s", ExprNum(false, 3)),
+            // - signed unsigned
+            (" 10s /  3 ", ExprNum(false, 3)),
+            // - signed signed
+            (" 10s /  3s", ExprNum(true, 3)),
+            (" 10s / -3s", ExprNum(true, -3)),
+            ("-10s /  3s", ExprNum(true, -3)),
+            ("-10s / -3s", ExprNum(true, 3)),
+            //// Sized
+            // - unsigned unsigned
+            ("  8'd10  /   8'd3 ", ExprInt(false, 8, 3)),
+            ("  8'd10  / -(8'd3)", ExprInt(false, 8, 0)),
+            ("-(8'd10) /   8'd3 ", ExprInt(false, 8, 82)),
+            ("-(8'd10) / -(8'd3)", ExprInt(false, 8, 0)),
+            // - unsigned signed
+            ("  8'd10  /   8'sd3", ExprInt(false, 8, 3)),
+            ("  8'd10  /  -8'sd3", ExprInt(false, 8, 0)),
+            ("-(8'd10) /   8'sd3", ExprInt(false, 8, 82)),
+            ("-(8'd10) /  -8'sd3", ExprInt(false, 8, 0)),
+            // - signed unsigned
+            ("  8'sd10 /   8'd3 ", ExprInt(false, 8, 3)),
+            ("  8'sd10 / -(8'd3)", ExprInt(false, 8, 0)),
+            (" -8'sd10 /   8'd3 ", ExprInt(false, 8, 82)),
+            (" -8'sd10 / -(8'd3)", ExprInt(false, 8, 0)),
+            // - signed signed
+            ("  8'sd10 /   8'sd3", ExprInt(true, 8, 3)),
+            ("  8'sd10 /  -8'sd3", ExprInt(true, 8, -3)),
+            (" -8'sd10 /   8'sd3", ExprInt(true, 8, -3)),
+            (" -8'sd10 /  -8'sd3", ExprInt(true, 8, 3))
+          )
+        }
+
+        "%" - {
+          checkExact(
+            // Unsized
+            // - unsigned unsigned
+            ("  10  %  3 ", ExprNum(false, 1)),
+            // - unsigned signed
+            ("  10  %  3s", ExprNum(false, 1)),
+            // - signed unsigned
+            ("  10s %  3 ", ExprNum(false, 1)),
+            // - signed signed
+            ("  10s %  3s", ExprNum(true, 1)),
+            ("  10s % -3s", ExprNum(true, 1)),
+            (" -10s %  3s", ExprNum(true, -1)),
+            (" -10s % -3s", ExprNum(true, -1)),
+            // Sized
+            // - unsigned unsigned
+            ("  8'd10  %   8'd3 ", ExprInt(false, 8, 1)),
+            ("  8'd10  % -(8'd3)", ExprInt(false, 8, 10)),
+            ("-(8'd10) %   8'd3 ", ExprInt(false, 8, 0)),
+            ("-(8'd10) % -(8'd3)", ExprInt(false, 8, 246)),
+            // - unsigned signed
+            ("  8'd10  %   8'sd3", ExprInt(false, 8, 1)),
+            ("  8'd10  %  -8'sd3", ExprInt(false, 8, 10)),
+            ("-(8'd10) %   8'sd3", ExprInt(false, 8, 0)),
+            ("-(8'd10) %  -8'sd3", ExprInt(false, 8, 246)),
+            // - signed unsigned
+            ("  8'sd10 %   8'd3 ", ExprInt(false, 8, 1)),
+            ("  8'sd10 % -(8'd3)", ExprInt(false, 8, 10)),
+            (" -8'sd10 %   8'd3 ", ExprInt(false, 8, 0)),
+            (" -8'sd10 % -(8'd3)", ExprInt(false, 8, 246)),
+            // - signed signed
+            ("  8'sd10 %   8'sd3", ExprInt(true, 8, 1)),
+            ("  8'sd10 %  -8'sd3", ExprInt(true, 8, 1)),
+            (" -8'sd10 %   8'sd3", ExprInt(true, 8, -1)),
+            (" -8'sd10 %  -8'sd3", ExprInt(true, 8, -1))
+          )
+        }
+
+        "&" - {
+          checkExact(
+            //// Unsized
+            // - unsigned unsigned
+            (" 10  &  7 ", ExprNum(false, 2)),
+            // - unsigned signed
+            (" 10  &  7s", ExprNum(false, 2)),
+            (" 10  & -7s", ExprNum(false, 8)),
+            // - signed unsigned
+            (" 10s &  7 ", ExprNum(false, 2)),
+            ("-10s &  7 ", ExprNum(false, 6)),
+            // - signed signed
+            (" 10s &  7s", ExprNum(true, 2)),
+            (" 10s & -7s", ExprNum(true, 8)),
+            ("-10s &  7s", ExprNum(true, 6)),
+            ("-10s & -7s", ExprNum(true, -16)),
+            //// Sized
+            // - unsigned unsigned
+            ("  8'd10  &   8'd7 ", ExprInt(false, 8, 2)),
+            ("  8'd10  & -(8'd7)", ExprInt(false, 8, 8)),
+            ("-(8'd10) &   8'd7 ", ExprInt(false, 8, 6)),
+            ("-(8'd10) & -(8'd7)", ExprInt(false, 8, 240)),
+            // - unsigned signed
+            ("  8'd10  &   8'sd7", ExprInt(false, 8, 2)),
+            ("  8'd10  &  -8'sd7", ExprInt(false, 8, 8)),
+            ("-(8'd10) &   8'sd7", ExprInt(false, 8, 6)),
+            ("-(8'd10) &  -8'sd7", ExprInt(false, 8, 240)),
+            // - signed unsigned
+            ("  8'sd10 &   8'd7 ", ExprInt(false, 8, 2)),
+            ("  8'sd10 & -(8'd7)", ExprInt(false, 8, 8)),
+            (" -8'sd10 &   8'd7 ", ExprInt(false, 8, 6)),
+            (" -8'sd10 & -(8'd7)", ExprInt(false, 8, 240)),
+            // - signed signed
+            ("  8'sd10 &   8'sd7", ExprInt(true, 8, 2)),
+            ("  8'sd10 &  -8'sd7", ExprInt(true, 8, 8)),
+            (" -8'sd10 &   8'sd7", ExprInt(true, 8, 6)),
+            (" -8'sd10 &  -8'sd7", ExprInt(true, 8, -16))
+          )
+        }
+
+        "|" - {
+          checkExact(
+            // Unsized
+            // - unsigned unsigned
+            ("  10  |  4 ", ExprNum(false, 14)),
+            // - unsigned signed
+            ("  10  |  4s", ExprNum(false, 14)),
+            // - signed unsigned
+            ("  10s |  4 ", ExprNum(false, 14)),
+            // - signed signed
+            ("  10s |  4s", ExprNum(true, 14)),
+            ("  10s | -4s", ExprNum(true, -2)),
+            (" -10s |  4s", ExprNum(true, -10)),
+            (" -10s | -4s", ExprNum(true, -2)),
+            // Sized
+            // - unsigned unsigned
+            ("  8'd10  |   8'd4 ", ExprInt(false, 8, 14)),
+            ("  8'd10  | -(8'd4)", ExprInt(false, 8, 254)),
+            ("-(8'd10) |   8'd4 ", ExprInt(false, 8, 246)),
+            ("-(8'd10) | -(8'd4)", ExprInt(false, 8, 254)),
+            // - unsigned signed
+            ("  8'd10  |   8'sd4", ExprInt(false, 8, 14)),
+            ("  8'd10  |  -8'sd4", ExprInt(false, 8, 254)),
+            ("-(8'd10) |   8'sd4", ExprInt(false, 8, 246)),
+            ("-(8'd10) |  -8'sd4", ExprInt(false, 8, 254)),
+            // - signed unsigned
+            ("  8'sd10 |   8'd4 ", ExprInt(false, 8, 14)),
+            ("  8'sd10 | -(8'd4)", ExprInt(false, 8, 254)),
+            (" -8'sd10 |   8'd4 ", ExprInt(false, 8, 246)),
+            (" -8'sd10 | -(8'd4)", ExprInt(false, 8, 254)),
+            // - signed signed
+            ("  8'sd10 |   8'sd4", ExprInt(true, 8, 14)),
+            ("  8'sd10 |  -8'sd4", ExprInt(true, 8, -2)),
+            (" -8'sd10 |   8'sd4", ExprInt(true, 8, -10)),
+            (" -8'sd10 |  -8'sd4", ExprInt(true, 8, -2))
+          )
+        }
+
+        "^" - {
+          checkExact(
+            // Unsized
+            // - unsigned unsigned
+            ("  10  ^  4 ", ExprNum(false, 14)),
+            // - unsigned signed
+            ("  10  ^  4s", ExprNum(false, 14)),
+            // - signed unsigned
+            ("  10s ^  4 ", ExprNum(false, 14)),
+            // - signed signed
+            ("  10s ^  4s", ExprNum(true, 14)),
+            ("  10s ^ -4s", ExprNum(true, -10)),
+            (" -10s ^  4s", ExprNum(true, -14)),
+            (" -10s ^ -4s", ExprNum(true, 10)),
+            // Sized
+            // - unsigned unsigned
+            ("  8'd10  ^   8'd4 ", ExprInt(false, 8, 14)),
+            ("  8'd10  ^ -(8'd4)", ExprInt(false, 8, 246)),
+            ("-(8'd10) ^   8'd4 ", ExprInt(false, 8, 242)),
+            ("-(8'd10) ^ -(8'd4)", ExprInt(false, 8, 10)),
+            // - unsigned signed
+            ("  8'd10  ^   8'sd4", ExprInt(false, 8, 14)),
+            ("  8'd10  ^  -8'sd4", ExprInt(false, 8, 246)),
+            ("-(8'd10) ^   8'sd4", ExprInt(false, 8, 242)),
+            ("-(8'd10) ^  -8'sd4", ExprInt(false, 8, 10)),
+            // - signed unsigned
+            ("  8'sd10 ^   8'd4 ", ExprInt(false, 8, 14)),
+            ("  8'sd10 ^ -(8'd4)", ExprInt(false, 8, 246)),
+            (" -8'sd10 ^   8'd4 ", ExprInt(false, 8, 242)),
+            (" -8'sd10 ^ -(8'd4)", ExprInt(false, 8, 10)),
+            // - signed signed
+            ("  8'sd10 ^   8'sd4", ExprInt(true, 8, 14)),
+            ("  8'sd10 ^  -8'sd4", ExprInt(true, 8, -10)),
+            (" -8'sd10 ^   8'sd4", ExprInt(true, 8, -14)),
+            (" -8'sd10 ^  -8'sd4", ExprInt(true, 8, 10))
+          )
+        }
+
+        ">" - {
+          checkExact(
+            //// Unsized
+            // - unsigned unsigned
+            (" 10  >   7 ", ExprInt(false, 1, 1)),
+            ("  7  >  10 ", ExprInt(false, 1, 0)),
+            ("  5  >   5 ", ExprInt(false, 1, 0)),
+            // - unsigned signed
+            (" 10  >  7s ", ExprInt(false, 1, 1)),
+            (" 10  > -7s ", ExprInt(false, 1, 1)),
+            ("  7  >  10s", ExprInt(false, 1, 0)),
+            ("  7  > -10s", ExprInt(false, 1, 1)),
+            ("  5  >  5s ", ExprInt(false, 1, 0)),
+            // - signed unsigned
+            (" 10s >   7 ", ExprInt(false, 1, 1)),
+            ("-10s >   7 ", ExprInt(false, 1, 0)),
+            ("  7s >  10 ", ExprInt(false, 1, 0)),
+            (" -7s >  10 ", ExprInt(false, 1, 0)),
+            ("  5s >   5 ", ExprInt(false, 1, 0)),
+            // - signed signed
+            (" 10s >  7s ", ExprInt(false, 1, 1)),
+            (" 10s > -7s ", ExprInt(false, 1, 1)),
+            ("-10s >  7s ", ExprInt(false, 1, 0)),
+            ("-10s > -7s ", ExprInt(false, 1, 0)),
+            ("  7s >  10s", ExprInt(false, 1, 0)),
+            ("  7s > -10s", ExprInt(false, 1, 1)),
+            (" -7s >  10s", ExprInt(false, 1, 0)),
+            (" -7s > -10s", ExprInt(false, 1, 1)),
+            ("  5s >  5s ", ExprInt(false, 1, 0)),
+            (" -5s > -5s ", ExprInt(false, 1, 0)),
+            //// Sized
+            // - unsigned unsigned
+            ("  8'd10  >   8'd7  ", ExprInt(false, 1, 1)),
+            ("  8'd10  > -(8'd7) ", ExprInt(false, 1, 0)),
+            ("-(8'd10) >   8'd7  ", ExprInt(false, 1, 1)),
+            ("-(8'd10) > -(8'd7) ", ExprInt(false, 1, 0)),
+            ("  8'd7   >   8'd10 ", ExprInt(false, 1, 0)),
+            ("  8'd7   > -(8'd10)", ExprInt(false, 1, 0)),
+            ("-(8'd7)  >   8'd10 ", ExprInt(false, 1, 1)),
+            ("-(8'd7)  > -(8'd10)", ExprInt(false, 1, 1)),
+            ("  8'd5   >   8'd5  ", ExprInt(false, 1, 0)),
+            // - unsigned signed
+            ("  8'd10  >   8'sd7 ", ExprInt(false, 1, 1)),
+            ("  8'd10  >  -8'sd7 ", ExprInt(false, 1, 0)),
+            ("-(8'd10) >   8'sd7 ", ExprInt(false, 1, 1)),
+            ("-(8'd10) >  -8'sd7 ", ExprInt(false, 1, 0)),
+            ("  8'd7   >   8'sd10", ExprInt(false, 1, 0)),
+            ("  8'd7   >  -8'sd10", ExprInt(false, 1, 0)),
+            ("-(8'd7)  >   8'sd10", ExprInt(false, 1, 1)),
+            ("-(8'd7)  >  -8'sd10", ExprInt(false, 1, 1)),
+            ("  8'd5   >   8'sd5 ", ExprInt(false, 1, 0)),
+            // - signed unsigned
+            ("  8'sd10 >   8'd7  ", ExprInt(false, 1, 1)),
+            ("  8'sd10 > -(8'd7) ", ExprInt(false, 1, 0)),
+            (" -8'sd10 >   8'd7  ", ExprInt(false, 1, 1)),
+            (" -8'sd10 > -(8'd7) ", ExprInt(false, 1, 0)),
+            ("  8'sd7  >   8'd10 ", ExprInt(false, 1, 0)),
+            ("  8'sd7  > -(8'd10)", ExprInt(false, 1, 0)),
+            (" -8'sd7  >   8'd10 ", ExprInt(false, 1, 1)),
+            (" -8'sd7  > -(8'd10)", ExprInt(false, 1, 1)),
+            ("  8'sd5  >   8'd5  ", ExprInt(false, 1, 0)),
+            // - signed signed
+            ("  8'sd10 >   8'sd7 ", ExprInt(false, 1, 1)),
+            ("  8'sd10 >  -8'sd7 ", ExprInt(false, 1, 1)),
+            (" -8'sd10 >   8'sd7 ", ExprInt(false, 1, 0)),
+            (" -8'sd10 >  -8'sd7 ", ExprInt(false, 1, 0)),
+            ("  8'sd7  >   8'sd10", ExprInt(false, 1, 0)),
+            ("  8'sd7  >  -8'sd10", ExprInt(false, 1, 1)),
+            (" -8'sd7  >   8'sd10", ExprInt(false, 1, 0)),
+            (" -8'sd7  >  -8'sd10", ExprInt(false, 1, 1)),
+            ("  8'sd5  >   8'sd5 ", ExprInt(false, 1, 0)),
+            (" -8'sd5  >  -8'sd5 ", ExprInt(false, 1, 0))
+          )
+        }
+
+        ">=" - {
+          checkExact(
+            //// Unsized
+            // - unsigned unsigned
+            (" 10  >=   7 ", ExprInt(false, 1, 1)),
+            ("  7  >=  10 ", ExprInt(false, 1, 0)),
+            ("  5  >=   5 ", ExprInt(false, 1, 1)),
+            // - unsigned signed
+            (" 10  >=  7s ", ExprInt(false, 1, 1)),
+            (" 10  >= -7s ", ExprInt(false, 1, 1)),
+            ("  7  >=  10s", ExprInt(false, 1, 0)),
+            ("  7  >= -10s", ExprInt(false, 1, 1)),
+            ("  5  >=  5s ", ExprInt(false, 1, 1)),
+            // - signed unsigned
+            (" 10s >=   7 ", ExprInt(false, 1, 1)),
+            ("-10s >=   7 ", ExprInt(false, 1, 0)),
+            ("  7s >=  10 ", ExprInt(false, 1, 0)),
+            (" -7s >=  10 ", ExprInt(false, 1, 0)),
+            ("  5s >=   5 ", ExprInt(false, 1, 1)),
+            // - signed signed
+            (" 10s >=  7s ", ExprInt(false, 1, 1)),
+            (" 10s >= -7s ", ExprInt(false, 1, 1)),
+            ("-10s >=  7s ", ExprInt(false, 1, 0)),
+            ("-10s >= -7s ", ExprInt(false, 1, 0)),
+            ("  7s >=  10s", ExprInt(false, 1, 0)),
+            ("  7s >= -10s", ExprInt(false, 1, 1)),
+            (" -7s >=  10s", ExprInt(false, 1, 0)),
+            (" -7s >= -10s", ExprInt(false, 1, 1)),
+            ("  5s >=  5s ", ExprInt(false, 1, 1)),
+            (" -5s >= -5s ", ExprInt(false, 1, 1)),
+            //// Sized
+            // - unsigned unsigned
+            ("  8'd10  >=   8'd7  ", ExprInt(false, 1, 1)),
+            ("  8'd10  >= -(8'd7) ", ExprInt(false, 1, 0)),
+            ("-(8'd10) >=   8'd7  ", ExprInt(false, 1, 1)),
+            ("-(8'd10) >= -(8'd7) ", ExprInt(false, 1, 0)),
+            ("  8'd7   >=   8'd10 ", ExprInt(false, 1, 0)),
+            ("  8'd7   >= -(8'd10)", ExprInt(false, 1, 0)),
+            ("-(8'd7)  >=   8'd10 ", ExprInt(false, 1, 1)),
+            ("-(8'd7)  >= -(8'd10)", ExprInt(false, 1, 1)),
+            ("  8'd5   >=   8'd5  ", ExprInt(false, 1, 1)),
+            // - unsigned signed
+            ("  8'd10  >=   8'sd7 ", ExprInt(false, 1, 1)),
+            ("  8'd10  >=  -8'sd7 ", ExprInt(false, 1, 0)),
+            ("-(8'd10) >=   8'sd7 ", ExprInt(false, 1, 1)),
+            ("-(8'd10) >=  -8'sd7 ", ExprInt(false, 1, 0)),
+            ("  8'd7   >=   8'sd10", ExprInt(false, 1, 0)),
+            ("  8'd7   >=  -8'sd10", ExprInt(false, 1, 0)),
+            ("-(8'd7)  >=   8'sd10", ExprInt(false, 1, 1)),
+            ("-(8'd7)  >=  -8'sd10", ExprInt(false, 1, 1)),
+            ("  8'd5   >=   8'sd5 ", ExprInt(false, 1, 1)),
+            // - signed unsigned
+            ("  8'sd10 >=   8'd7  ", ExprInt(false, 1, 1)),
+            ("  8'sd10 >= -(8'd7) ", ExprInt(false, 1, 0)),
+            (" -8'sd10 >=   8'd7  ", ExprInt(false, 1, 1)),
+            (" -8'sd10 >= -(8'd7) ", ExprInt(false, 1, 0)),
+            ("  8'sd7  >=   8'd10 ", ExprInt(false, 1, 0)),
+            ("  8'sd7  >= -(8'd10)", ExprInt(false, 1, 0)),
+            (" -8'sd7  >=   8'd10 ", ExprInt(false, 1, 1)),
+            (" -8'sd7  >= -(8'd10)", ExprInt(false, 1, 1)),
+            ("  8'sd5  >=   8'd5  ", ExprInt(false, 1, 1)),
+            // - signed signed
+            ("  8'sd10 >=   8'sd7 ", ExprInt(false, 1, 1)),
+            ("  8'sd10 >=  -8'sd7 ", ExprInt(false, 1, 1)),
+            (" -8'sd10 >=   8'sd7 ", ExprInt(false, 1, 0)),
+            (" -8'sd10 >=  -8'sd7 ", ExprInt(false, 1, 0)),
+            ("  8'sd7  >=   8'sd10", ExprInt(false, 1, 0)),
+            ("  8'sd7  >=  -8'sd10", ExprInt(false, 1, 1)),
+            (" -8'sd7  >=   8'sd10", ExprInt(false, 1, 0)),
+            (" -8'sd7  >=  -8'sd10", ExprInt(false, 1, 1)),
+            ("  8'sd5  >=   8'sd5 ", ExprInt(false, 1, 1)),
+            (" -8'sd5  >=  -8'sd5 ", ExprInt(false, 1, 1))
+          )
+        }
+
+        "<" - {
+          checkExact(
+            //// Unsized
+            // - unsigned unsigned
+            (" 10  <   7 ", ExprInt(false, 1, 0)),
+            ("  7  <  10 ", ExprInt(false, 1, 1)),
+            ("  5  <   5 ", ExprInt(false, 1, 0)),
+            // - unsigned signed
+            (" 10  <  7s ", ExprInt(false, 1, 0)),
+            (" 10  < -7s ", ExprInt(false, 1, 0)),
+            ("  7  <  10s", ExprInt(false, 1, 1)),
+            ("  7  < -10s", ExprInt(false, 1, 0)),
+            ("  5  <  5s ", ExprInt(false, 1, 0)),
+            // - signed unsigned
+            (" 10s <   7 ", ExprInt(false, 1, 0)),
+            ("-10s <   7 ", ExprInt(false, 1, 1)),
+            ("  7s <  10 ", ExprInt(false, 1, 1)),
+            (" -7s <  10 ", ExprInt(false, 1, 1)),
+            ("  5s <   5 ", ExprInt(false, 1, 0)),
+            // - signed signed
+            (" 10s <  7s ", ExprInt(false, 1, 0)),
+            (" 10s < -7s ", ExprInt(false, 1, 0)),
+            ("-10s <  7s ", ExprInt(false, 1, 1)),
+            ("-10s < -7s ", ExprInt(false, 1, 1)),
+            ("  7s <  10s", ExprInt(false, 1, 1)),
+            ("  7s < -10s", ExprInt(false, 1, 0)),
+            (" -7s <  10s", ExprInt(false, 1, 1)),
+            (" -7s < -10s", ExprInt(false, 1, 0)),
+            ("  5s <  5s ", ExprInt(false, 1, 0)),
+            (" -5s < -5s ", ExprInt(false, 1, 0)),
+            //// Sized
+            // - unsigned unsigned
+            ("  8'd10  <   8'd7  ", ExprInt(false, 1, 0)),
+            ("  8'd10  < -(8'd7) ", ExprInt(false, 1, 1)),
+            ("-(8'd10) <   8'd7  ", ExprInt(false, 1, 0)),
+            ("-(8'd10) < -(8'd7) ", ExprInt(false, 1, 1)),
+            ("  8'd7   <   8'd10 ", ExprInt(false, 1, 1)),
+            ("  8'd7   < -(8'd10)", ExprInt(false, 1, 1)),
+            ("-(8'd7)  <   8'd10 ", ExprInt(false, 1, 0)),
+            ("-(8'd7)  < -(8'd10)", ExprInt(false, 1, 0)),
+            ("  8'd5   <   8'd5  ", ExprInt(false, 1, 0)),
+            // - unsigned signed
+            ("  8'd10  <   8'sd7 ", ExprInt(false, 1, 0)),
+            ("  8'd10  <  -8'sd7 ", ExprInt(false, 1, 1)),
+            ("-(8'd10) <   8'sd7 ", ExprInt(false, 1, 0)),
+            ("-(8'd10) <  -8'sd7 ", ExprInt(false, 1, 1)),
+            ("  8'd7   <   8'sd10", ExprInt(false, 1, 1)),
+            ("  8'd7   <  -8'sd10", ExprInt(false, 1, 1)),
+            ("-(8'd7)  <   8'sd10", ExprInt(false, 1, 0)),
+            ("-(8'd7)  <  -8'sd10", ExprInt(false, 1, 0)),
+            ("  8'd5   <   8'sd5 ", ExprInt(false, 1, 0)),
+            // - signed unsigned
+            ("  8'sd10 <   8'd7  ", ExprInt(false, 1, 0)),
+            ("  8'sd10 < -(8'd7) ", ExprInt(false, 1, 1)),
+            (" -8'sd10 <   8'd7  ", ExprInt(false, 1, 0)),
+            (" -8'sd10 < -(8'd7) ", ExprInt(false, 1, 1)),
+            ("  8'sd7  <   8'd10 ", ExprInt(false, 1, 1)),
+            ("  8'sd7  < -(8'd10)", ExprInt(false, 1, 1)),
+            (" -8'sd7  <   8'd10 ", ExprInt(false, 1, 0)),
+            (" -8'sd7  < -(8'd10)", ExprInt(false, 1, 0)),
+            ("  8'sd5  <   8'd5  ", ExprInt(false, 1, 0)),
+            // - signed signed
+            ("  8'sd10 <   8'sd7 ", ExprInt(false, 1, 0)),
+            ("  8'sd10 <  -8'sd7 ", ExprInt(false, 1, 0)),
+            (" -8'sd10 <   8'sd7 ", ExprInt(false, 1, 1)),
+            (" -8'sd10 <  -8'sd7 ", ExprInt(false, 1, 1)),
+            ("  8'sd7  <   8'sd10", ExprInt(false, 1, 1)),
+            ("  8'sd7  <  -8'sd10", ExprInt(false, 1, 0)),
+            (" -8'sd7  <   8'sd10", ExprInt(false, 1, 1)),
+            (" -8'sd7  <  -8'sd10", ExprInt(false, 1, 0)),
+            ("  8'sd5  <   8'sd5 ", ExprInt(false, 1, 0)),
+            (" -8'sd5  <  -8'sd5 ", ExprInt(false, 1, 0))
+          )
+        }
+
+        "<=" - {
+          checkExact(
+            //// Unsized
+            // - unsigned unsigned
+            (" 10  <=   7 ", ExprInt(false, 1, 0)),
+            ("  7  <=  10 ", ExprInt(false, 1, 1)),
+            ("  5  <=   5 ", ExprInt(false, 1, 1)),
+            // - unsigned signed
+            (" 10  <=  7s ", ExprInt(false, 1, 0)),
+            (" 10  <= -7s ", ExprInt(false, 1, 0)),
+            ("  7  <=  10s", ExprInt(false, 1, 1)),
+            ("  7  <= -10s", ExprInt(false, 1, 0)),
+            ("  5  <=  5s ", ExprInt(false, 1, 1)),
+            // - signed unsigned
+            (" 10s <=   7 ", ExprInt(false, 1, 0)),
+            ("-10s <=   7 ", ExprInt(false, 1, 1)),
+            ("  7s <=  10 ", ExprInt(false, 1, 1)),
+            (" -7s <=  10 ", ExprInt(false, 1, 1)),
+            ("  5s <=   5 ", ExprInt(false, 1, 1)),
+            // - signed signed
+            (" 10s <=  7s ", ExprInt(false, 1, 0)),
+            (" 10s <= -7s ", ExprInt(false, 1, 0)),
+            ("-10s <=  7s ", ExprInt(false, 1, 1)),
+            ("-10s <= -7s ", ExprInt(false, 1, 1)),
+            ("  7s <=  10s", ExprInt(false, 1, 1)),
+            ("  7s <= -10s", ExprInt(false, 1, 0)),
+            (" -7s <=  10s", ExprInt(false, 1, 1)),
+            (" -7s <= -10s", ExprInt(false, 1, 0)),
+            ("  5s <=  5s ", ExprInt(false, 1, 1)),
+            (" -5s <= -5s ", ExprInt(false, 1, 1)),
+            //// Sized
+            // - unsigned unsigned
+            ("  8'd10  <=   8'd7  ", ExprInt(false, 1, 0)),
+            ("  8'd10  <= -(8'd7) ", ExprInt(false, 1, 1)),
+            ("-(8'd10) <=   8'd7  ", ExprInt(false, 1, 0)),
+            ("-(8'd10) <= -(8'd7) ", ExprInt(false, 1, 1)),
+            ("  8'd7   <=   8'd10 ", ExprInt(false, 1, 1)),
+            ("  8'd7   <= -(8'd10)", ExprInt(false, 1, 1)),
+            ("-(8'd7)  <=   8'd10 ", ExprInt(false, 1, 0)),
+            ("-(8'd7)  <= -(8'd10)", ExprInt(false, 1, 0)),
+            ("  8'd5   <=   8'd5  ", ExprInt(false, 1, 1)),
+            // - unsigned signed
+            ("  8'd10  <=   8'sd7 ", ExprInt(false, 1, 0)),
+            ("  8'd10  <=  -8'sd7 ", ExprInt(false, 1, 1)),
+            ("-(8'd10) <=   8'sd7 ", ExprInt(false, 1, 0)),
+            ("-(8'd10) <=  -8'sd7 ", ExprInt(false, 1, 1)),
+            ("  8'd7   <=   8'sd10", ExprInt(false, 1, 1)),
+            ("  8'd7   <=  -8'sd10", ExprInt(false, 1, 1)),
+            ("-(8'd7)  <=   8'sd10", ExprInt(false, 1, 0)),
+            ("-(8'd7)  <=  -8'sd10", ExprInt(false, 1, 0)),
+            ("  8'd5   <=   8'sd5 ", ExprInt(false, 1, 1)),
+            // - signed unsigned
+            ("  8'sd10 <=   8'd7  ", ExprInt(false, 1, 0)),
+            ("  8'sd10 <= -(8'd7) ", ExprInt(false, 1, 1)),
+            (" -8'sd10 <=   8'd7  ", ExprInt(false, 1, 0)),
+            (" -8'sd10 <= -(8'd7) ", ExprInt(false, 1, 1)),
+            ("  8'sd7  <=   8'd10 ", ExprInt(false, 1, 1)),
+            ("  8'sd7  <= -(8'd10)", ExprInt(false, 1, 1)),
+            (" -8'sd7  <=   8'd10 ", ExprInt(false, 1, 0)),
+            (" -8'sd7  <= -(8'd10)", ExprInt(false, 1, 0)),
+            ("  8'sd5  <=   8'd5  ", ExprInt(false, 1, 1)),
+            // - signed signed
+            ("  8'sd10 <=   8'sd7 ", ExprInt(false, 1, 0)),
+            ("  8'sd10 <=  -8'sd7 ", ExprInt(false, 1, 0)),
+            (" -8'sd10 <=   8'sd7 ", ExprInt(false, 1, 1)),
+            (" -8'sd10 <=  -8'sd7 ", ExprInt(false, 1, 1)),
+            ("  8'sd7  <=   8'sd10", ExprInt(false, 1, 1)),
+            ("  8'sd7  <=  -8'sd10", ExprInt(false, 1, 0)),
+            (" -8'sd7  <=   8'sd10", ExprInt(false, 1, 1)),
+            (" -8'sd7  <=  -8'sd10", ExprInt(false, 1, 0)),
+            ("  8'sd5  <=   8'sd5 ", ExprInt(false, 1, 1)),
+            (" -8'sd5  <=  -8'sd5 ", ExprInt(false, 1, 1))
+          )
+        }
+
+        "==" - {
+          checkExact(
+            //// Unsized
+            // - unsigned unsigned
+            (" 10  ==   7 ", ExprInt(false, 1, 0)),
+            ("  7  ==  10 ", ExprInt(false, 1, 0)),
+            ("  5  ==   5 ", ExprInt(false, 1, 1)),
+            // - unsigned signed
+            (" 10  ==  7s ", ExprInt(false, 1, 0)),
+            (" 10  == -7s ", ExprInt(false, 1, 0)),
+            ("  7  ==  10s", ExprInt(false, 1, 0)),
+            ("  7  == -10s", ExprInt(false, 1, 0)),
+            ("  5  ==  5s ", ExprInt(false, 1, 1)),
+            // - signed unsigned
+            (" 10s ==   7 ", ExprInt(false, 1, 0)),
+            ("-10s ==   7 ", ExprInt(false, 1, 0)),
+            ("  7s ==  10 ", ExprInt(false, 1, 0)),
+            (" -7s ==  10 ", ExprInt(false, 1, 0)),
+            ("  5s ==   5 ", ExprInt(false, 1, 1)),
+            // - signed signed
+            (" 10s ==  7s ", ExprInt(false, 1, 0)),
+            (" 10s == -7s ", ExprInt(false, 1, 0)),
+            ("-10s ==  7s ", ExprInt(false, 1, 0)),
+            ("-10s == -7s ", ExprInt(false, 1, 0)),
+            ("  7s ==  10s", ExprInt(false, 1, 0)),
+            ("  7s == -10s", ExprInt(false, 1, 0)),
+            (" -7s ==  10s", ExprInt(false, 1, 0)),
+            (" -7s == -10s", ExprInt(false, 1, 0)),
+            ("  5s ==  5s ", ExprInt(false, 1, 1)),
+            (" -5s == -5s ", ExprInt(false, 1, 1)),
+            //// Sized
+            // - unsigned unsigned
+            ("  8'd10  ==   8'd7  ", ExprInt(false, 1, 0)),
+            ("  8'd10  == -(8'd7) ", ExprInt(false, 1, 0)),
+            ("-(8'd10) ==   8'd7  ", ExprInt(false, 1, 0)),
+            ("-(8'd10) == -(8'd7) ", ExprInt(false, 1, 0)),
+            ("  8'd7   ==   8'd10 ", ExprInt(false, 1, 0)),
+            ("  8'd7   == -(8'd10)", ExprInt(false, 1, 0)),
+            ("-(8'd7)  ==   8'd10 ", ExprInt(false, 1, 0)),
+            ("-(8'd7)  == -(8'd10)", ExprInt(false, 1, 0)),
+            ("  8'd5   ==   8'd5  ", ExprInt(false, 1, 1)),
+            // - unsigned signed
+            ("  8'd10  ==   8'sd7 ", ExprInt(false, 1, 0)),
+            ("  8'd10  ==  -8'sd7 ", ExprInt(false, 1, 0)),
+            ("-(8'd10) ==   8'sd7 ", ExprInt(false, 1, 0)),
+            ("-(8'd10) ==  -8'sd7 ", ExprInt(false, 1, 0)),
+            ("  8'd7   ==   8'sd10", ExprInt(false, 1, 0)),
+            ("  8'd7   ==  -8'sd10", ExprInt(false, 1, 0)),
+            ("-(8'd7)  ==   8'sd10", ExprInt(false, 1, 0)),
+            ("-(8'd7)  ==  -8'sd10", ExprInt(false, 1, 0)),
+            ("  8'd5   ==   8'sd5 ", ExprInt(false, 1, 1)),
+            // - signed unsigned
+            ("  8'sd10 ==   8'd7  ", ExprInt(false, 1, 0)),
+            ("  8'sd10 == -(8'd7) ", ExprInt(false, 1, 0)),
+            (" -8'sd10 ==   8'd7  ", ExprInt(false, 1, 0)),
+            (" -8'sd10 == -(8'd7) ", ExprInt(false, 1, 0)),
+            ("  8'sd7  ==   8'd10 ", ExprInt(false, 1, 0)),
+            ("  8'sd7  == -(8'd10)", ExprInt(false, 1, 0)),
+            (" -8'sd7  ==   8'd10 ", ExprInt(false, 1, 0)),
+            (" -8'sd7  == -(8'd10)", ExprInt(false, 1, 0)),
+            ("  8'sd5  ==   8'd5  ", ExprInt(false, 1, 1)),
+            // - signed signed
+            ("  8'sd10 ==   8'sd7 ", ExprInt(false, 1, 0)),
+            ("  8'sd10 ==  -8'sd7 ", ExprInt(false, 1, 0)),
+            (" -8'sd10 ==   8'sd7 ", ExprInt(false, 1, 0)),
+            (" -8'sd10 ==  -8'sd7 ", ExprInt(false, 1, 0)),
+            ("  8'sd7  ==   8'sd10", ExprInt(false, 1, 0)),
+            ("  8'sd7  ==  -8'sd10", ExprInt(false, 1, 0)),
+            (" -8'sd7  ==   8'sd10", ExprInt(false, 1, 0)),
+            (" -8'sd7  ==  -8'sd10", ExprInt(false, 1, 0)),
+            ("  8'sd5  ==   8'sd5 ", ExprInt(false, 1, 1)),
+            (" -8'sd5  ==  -8'sd5 ", ExprInt(false, 1, 1))
+          )
+        }
+
+        "!=" - {
+          checkExact(
+            //// Unsized
+            // - unsigned unsigned
+            (" 10  !=   7 ", ExprInt(false, 1, 1)),
+            ("  7  !=  10 ", ExprInt(false, 1, 1)),
+            ("  5  !=   5 ", ExprInt(false, 1, 0)),
+            // - unsigned signed
+            (" 10  !=  7s ", ExprInt(false, 1, 1)),
+            (" 10  != -7s ", ExprInt(false, 1, 1)),
+            ("  7  !=  10s", ExprInt(false, 1, 1)),
+            ("  7  != -10s", ExprInt(false, 1, 1)),
+            ("  5  !=  5s ", ExprInt(false, 1, 0)),
+            // - signed unsigned
+            (" 10s !=   7 ", ExprInt(false, 1, 1)),
+            ("-10s !=   7 ", ExprInt(false, 1, 1)),
+            ("  7s !=  10 ", ExprInt(false, 1, 1)),
+            (" -7s !=  10 ", ExprInt(false, 1, 1)),
+            ("  5s !=   5 ", ExprInt(false, 1, 0)),
+            // - signed signed
+            (" 10s !=  7s ", ExprInt(false, 1, 1)),
+            (" 10s != -7s ", ExprInt(false, 1, 1)),
+            ("-10s !=  7s ", ExprInt(false, 1, 1)),
+            ("-10s != -7s ", ExprInt(false, 1, 1)),
+            ("  7s !=  10s", ExprInt(false, 1, 1)),
+            ("  7s != -10s", ExprInt(false, 1, 1)),
+            (" -7s !=  10s", ExprInt(false, 1, 1)),
+            (" -7s != -10s", ExprInt(false, 1, 1)),
+            ("  5s !=  5s ", ExprInt(false, 1, 0)),
+            (" -5s != -5s ", ExprInt(false, 1, 0)),
+            //// Sized
+            // - unsigned unsigned
+            ("  8'd10  !=   8'd7  ", ExprInt(false, 1, 1)),
+            ("  8'd10  != -(8'd7) ", ExprInt(false, 1, 1)),
+            ("-(8'd10) !=   8'd7  ", ExprInt(false, 1, 1)),
+            ("-(8'd10) != -(8'd7) ", ExprInt(false, 1, 1)),
+            ("  8'd7   !=   8'd10 ", ExprInt(false, 1, 1)),
+            ("  8'd7   != -(8'd10)", ExprInt(false, 1, 1)),
+            ("-(8'd7)  !=   8'd10 ", ExprInt(false, 1, 1)),
+            ("-(8'd7)  != -(8'd10)", ExprInt(false, 1, 1)),
+            ("  8'd5   !=   8'd5  ", ExprInt(false, 1, 0)),
+            // - unsigned signed
+            ("  8'd10  !=   8'sd7 ", ExprInt(false, 1, 1)),
+            ("  8'd10  !=  -8'sd7 ", ExprInt(false, 1, 1)),
+            ("-(8'd10) !=   8'sd7 ", ExprInt(false, 1, 1)),
+            ("-(8'd10) !=  -8'sd7 ", ExprInt(false, 1, 1)),
+            ("  8'd7   !=   8'sd10", ExprInt(false, 1, 1)),
+            ("  8'd7   !=  -8'sd10", ExprInt(false, 1, 1)),
+            ("-(8'd7)  !=   8'sd10", ExprInt(false, 1, 1)),
+            ("-(8'd7)  !=  -8'sd10", ExprInt(false, 1, 1)),
+            ("  8'd5   !=   8'sd5 ", ExprInt(false, 1, 0)),
+            // - signed unsigned
+            ("  8'sd10 !=   8'd7  ", ExprInt(false, 1, 1)),
+            ("  8'sd10 != -(8'd7) ", ExprInt(false, 1, 1)),
+            (" -8'sd10 !=   8'd7  ", ExprInt(false, 1, 1)),
+            (" -8'sd10 != -(8'd7) ", ExprInt(false, 1, 1)),
+            ("  8'sd7  !=   8'd10 ", ExprInt(false, 1, 1)),
+            ("  8'sd7  != -(8'd10)", ExprInt(false, 1, 1)),
+            (" -8'sd7  !=   8'd10 ", ExprInt(false, 1, 1)),
+            (" -8'sd7  != -(8'd10)", ExprInt(false, 1, 1)),
+            ("  8'sd5  !=   8'd5  ", ExprInt(false, 1, 0)),
+            // - signed signed
+            ("  8'sd10 !=   8'sd7 ", ExprInt(false, 1, 1)),
+            ("  8'sd10 !=  -8'sd7 ", ExprInt(false, 1, 1)),
+            (" -8'sd10 !=   8'sd7 ", ExprInt(false, 1, 1)),
+            (" -8'sd10 !=  -8'sd7 ", ExprInt(false, 1, 1)),
+            ("  8'sd7  !=   8'sd10", ExprInt(false, 1, 1)),
+            ("  8'sd7  !=  -8'sd10", ExprInt(false, 1, 1)),
+            (" -8'sd7  !=   8'sd10", ExprInt(false, 1, 1)),
+            (" -8'sd7  !=  -8'sd10", ExprInt(false, 1, 1)),
+            ("  8'sd5  !=   8'sd5 ", ExprInt(false, 1, 0)),
+            (" -8'sd5  !=  -8'sd5 ", ExprInt(false, 1, 0))
+          )
+        }
+
+        "&&" - {
+          checkExact(
+            // - unsigned unsigned
+            (" 1'd0  &&  1'd0 ", ExprInt(false, 1, 0)),
+            (" 1'd0  &&  1'd1 ", ExprInt(false, 1, 0)),
+            (" 1'd1  &&  1'd0 ", ExprInt(false, 1, 0)),
+            (" 1'd1  &&  1'd1 ", ExprInt(false, 1, 1)),
+            // - unsigned signed
+            (" 1'd0  &&  1'sd0", ExprInt(false, 1, 0)),
+            (" 1'd0  && -1'sd1", ExprInt(false, 1, 0)),
+            (" 1'd1  &&  1'sd0", ExprInt(false, 1, 0)),
+            (" 1'd1  && -1'sd1", ExprInt(false, 1, 1)),
+            // - signed unsigned
+            (" 1'sd0 &&  1'd0 ", ExprInt(false, 1, 0)),
+            (" 1'sd0 &&  1'd1 ", ExprInt(false, 1, 0)),
+            ("-1'sd1 &&  1'd0 ", ExprInt(false, 1, 0)),
+            ("-1'sd1 &&  1'd1 ", ExprInt(false, 1, 1)),
+            // - signed signed
+            (" 1'sd0 &&  1'sd0  ", ExprInt(false, 1, 0)),
+            (" 1'sd0 && -1'sd1  ", ExprInt(false, 1, 0)),
+            ("-1'sd1 &&  1'sd0  ", ExprInt(false, 1, 0)),
+            ("-1'sd1 && -1'sd1  ", ExprInt(false, 1, 1))
+          )
+        }
+
+        "||" - {
+          checkExact(
+            // - unsigned unsigned
+            (" 1'd0  ||  1'd0 ", ExprInt(false, 1, 0)),
+            (" 1'd0  ||  1'd1 ", ExprInt(false, 1, 1)),
+            (" 1'd1  ||  1'd0 ", ExprInt(false, 1, 1)),
+            (" 1'd1  ||  1'd1 ", ExprInt(false, 1, 1)),
+            // - unsigned signed
+            (" 1'd0  ||  1'sd0", ExprInt(false, 1, 0)),
+            (" 1'd0  || -1'sd1", ExprInt(false, 1, 1)),
+            (" 1'd1  ||  1'sd0", ExprInt(false, 1, 1)),
+            (" 1'd1  || -1'sd1", ExprInt(false, 1, 1)),
+            // - signed unsigned
+            (" 1'sd0 ||  1'd0 ", ExprInt(false, 1, 0)),
+            (" 1'sd0 ||  1'd1 ", ExprInt(false, 1, 1)),
+            ("-1'sd1 ||  1'd0 ", ExprInt(false, 1, 1)),
+            ("-1'sd1 ||  1'd1 ", ExprInt(false, 1, 1)),
+            // - signed signed
+            (" 1'sd0 ||  1'sd0  ", ExprInt(false, 1, 0)),
+            (" 1'sd0 || -1'sd1  ", ExprInt(false, 1, 1)),
+            ("-1'sd1 ||  1'sd0  ", ExprInt(false, 1, 1)),
+            ("-1'sd1 || -1'sd1  ", ExprInt(false, 1, 1))
+          )
+        }
+
+        "<<" - {
+          checkExact(
+            //// Unsized unsized
+            // - unsigned unsigned
+            (" 10  << 2 ", ExprNum(false, 40)),
+            // - unsigned signed
+            (" 10  << 2s", ExprNum(false, 40)),
+            // - signed unsigned
+            (" 10s << 2 ", ExprNum(true, 40)),
+            ("-10s << 2 ", ExprNum(true, -40)),
+            // - signed signed
+            (" 10s << 2s", ExprNum(true, 40)),
+            ("-10s << 2s", ExprNum(true, -40)),
+            //// Unsized sized
+            // - unsigned unsigned
+            (" 10  << 8'd2 ", ExprNum(false, 40)),
+            // - unsigned signed
+            (" 10  << 8'sd2", ExprNum(false, 40)),
+            // - signed unsigned
+            (" 10s << 8'd2 ", ExprNum(true, 40)),
+            ("-10s << 8'd2 ", ExprNum(true, -40)),
+            // - signed signed
+            (" 10s << 8'sd2", ExprNum(true, 40)),
+            ("-10s << 8'sd2", ExprNum(true, -40)),
+            //// Sized unsized
+            // - unsigned unsigned
+            ("  8'd10  << 2 ", ExprInt(false, 8, 40)),
+            ("-(8'd10) << 2 ", ExprInt(false, 8, 216)),
+            // - unsigned signed
+            ("  8'd10  << 2s", ExprInt(false, 8, 40)),
+            ("-(8'd10) << 2s", ExprInt(false, 8, 216)),
+            // - signed unsigned
+            ("  8'sd10 << 2 ", ExprInt(true, 8, 40)),
+            (" -8'sd10 << 2 ", ExprInt(true, 8, -40)),
+            // - signed signed
+            ("  8'sd10 << 2s", ExprInt(true, 8, 40)),
+            (" -8'sd10 << 2s", ExprInt(true, 8, -40)),
+            //// Sized sized
+            // - unsigned unsigned
+            ("  8'd10  << 8'd2 ", ExprInt(false, 8, 40)),
+            ("-(8'd10) << 8'd2 ", ExprInt(false, 8, 216)),
+            // - unsigned signed
+            ("  8'd10  << 8'sd2", ExprInt(false, 8, 40)),
+            ("-(8'd10) << 8'sd2", ExprInt(false, 8, 216)),
+            // - signed unsigned
+            ("  8'sd10 << 8'd2 ", ExprInt(true, 8, 40)),
+            (" -8'sd10 << 8'd2 ", ExprInt(true, 8, -40)),
+            // - signed signed
+            ("  8'sd10 << 8'sd2", ExprInt(true, 8, 40)),
+            (" -8'sd10 << 8'sd2", ExprInt(true, 8, -40))
+          )
+        }
+
+        "<<<" - {
+          checkExact(
+            //// Unsized unsized
+            // - unsigned unsigned
+            (" 10  <<< 2 ", ExprNum(false, 40)),
+            // - unsigned signed
+            (" 10  <<< 2s", ExprNum(false, 40)),
+            // - signed unsigned
+            (" 10s <<< 2 ", ExprNum(true, 40)),
+            ("-10s <<< 2 ", ExprNum(true, -40)),
+            // - signed signed
+            (" 10s <<< 2s", ExprNum(true, 40)),
+            ("-10s <<< 2s", ExprNum(true, -40)),
+            //// Unsized sized
+            // - unsigned unsigned
+            (" 10  <<< 8'd2 ", ExprNum(false, 40)),
+            // - unsigned signed
+            (" 10  <<< 8'sd2", ExprNum(false, 40)),
+            // - signed unsigned
+            (" 10s <<< 8'd2 ", ExprNum(true, 40)),
+            ("-10s <<< 8'd2 ", ExprNum(true, -40)),
+            // - signed signed
+            (" 10s <<< 8'sd2", ExprNum(true, 40)),
+            ("-10s <<< 8'sd2", ExprNum(true, -40)),
+            //// Sized unsized
+            // - unsigned unsigned
+            ("  8'd10  <<< 2 ", ExprInt(false, 8, 40)),
+            ("-(8'd10) <<< 2 ", ExprInt(false, 8, 216)),
+            // - unsigned signed
+            ("  8'd10  <<< 2s", ExprInt(false, 8, 40)),
+            ("-(8'd10) <<< 2s", ExprInt(false, 8, 216)),
+            // - signed unsigned
+            ("  8'sd10 <<< 2 ", ExprInt(true, 8, 40)),
+            (" -8'sd10 <<< 2 ", ExprInt(true, 8, -40)),
+            // - signed signed
+            ("  8'sd10 <<< 2s", ExprInt(true, 8, 40)),
+            (" -8'sd10 <<< 2s", ExprInt(true, 8, -40)),
+            //// Sized sized
+            // - unsigned unsigned
+            ("  8'd10  <<< 8'd2 ", ExprInt(false, 8, 40)),
+            ("-(8'd10) <<< 8'd2 ", ExprInt(false, 8, 216)),
+            // - unsigned signed
+            ("  8'd10  <<< 8'sd2", ExprInt(false, 8, 40)),
+            ("-(8'd10) <<< 8'sd2", ExprInt(false, 8, 216)),
+            // - signed unsigned
+            ("  8'sd10 <<< 8'd2 ", ExprInt(true, 8, 40)),
+            (" -8'sd10 <<< 8'd2 ", ExprInt(true, 8, -40)),
+            // - signed signed
+            ("  8'sd10 <<< 8'sd2", ExprInt(true, 8, 40)),
+            (" -8'sd10 <<< 8'sd2", ExprInt(true, 8, -40))
+          )
+        }
+
+        ">>" - {
+          checkExact(
+            //// Unsized unsized
+            // - unsigned unsigned
+            (" 10  >> 2 ", ExprNum(false, 2)),
+            // - unsigned signed
+            (" 10  >> 2s", ExprNum(false, 2)),
+            // - signed unsigned
+            (" 10s >> 2 ", ExprNum(true, 2)),
+            // - signed signed
+            (" 10s >> 2s", ExprNum(true, 2)),
+            //// Unsized sized
+            // - unsigned unsigned
+            (" 10  >> 8'd2 ", ExprNum(false, 2)),
+            // - unsigned signed
+            (" 10  >> 8'sd2", ExprNum(false, 2)),
+            // - signed unsigned
+            (" 10s >> 8'd2 ", ExprNum(true, 2)),
+            // - signed signed
+            (" 10s >> 8'sd2", ExprNum(true, 2)),
+            //// Sized unsized
+            // - unsigned unsigned
+            ("  8'd10  >> 2 ", ExprInt(false, 8, 2)),
+            ("-(8'd10) >> 2 ", ExprInt(false, 8, 61)),
+            // - unsigned signed
+            ("  8'd10  >> 2s", ExprInt(false, 8, 2)),
+            ("-(8'd10) >> 2s", ExprInt(false, 8, 61)),
+            // - signed unsigned
+            ("  8'sd10 >> 2 ", ExprInt(true, 8, 2)),
+            (" -8'sd10 >> 2 ", ExprInt(true, 8, 61)),
+            // - signed signed
+            ("  8'sd10 >> 2s", ExprInt(true, 8, 2)),
+            (" -8'sd10 >> 2s", ExprInt(true, 8, 61)),
+            //// Sized sized
+            // - unsigned unsigned
+            ("  8'd10  >> 8'd2 ", ExprInt(false, 8, 2)),
+            ("-(8'd10) >> 8'd2 ", ExprInt(false, 8, 61)),
+            // - unsigned signed
+            ("  8'd10  >> 8'sd2", ExprInt(false, 8, 2)),
+            ("-(8'd10) >> 8'sd2", ExprInt(false, 8, 61)),
+            // - signed unsigned
+            ("  8'sd10 >> 8'd2 ", ExprInt(true, 8, 2)),
+            (" -8'sd10 >> 8'd2 ", ExprInt(true, 8, 61)),
+            // - signed signed
+            ("  8'sd10 >> 8'sd2", ExprInt(true, 8, 2)),
+            (" -8'sd10 >> 8'sd2", ExprInt(true, 8, 61))
+          )
+        }
+
+        ">>>" - {
+          checkExact(
+            //// Unsized unsized
+            // - unsigned unsigned
+            (" 10  >>> 2 ", ExprNum(false, 2)),
+            // - unsigned signed
+            (" 10  >>> 2s", ExprNum(false, 2)),
+            // - signed unsigned
+            (" 10s >>> 2 ", ExprNum(true, 2)),
+            ("-10s >>> 2 ", ExprNum(true, -3)),
+            // - signed signed
+            (" 10s >>> 2s", ExprNum(true, 2)),
+            ("-10s >>> 2s", ExprNum(true, -3)),
+            //// Unsized sized
+            // - unsigned unsigned
+            (" 10  >>> 8'd2 ", ExprNum(false, 2)),
+            // - unsigned signed
+            (" 10  >>> 8'sd2", ExprNum(false, 2)),
+            // - signed unsigned
+            (" 10s >>> 8'd2 ", ExprNum(true, 2)),
+            ("-10s >>> 8'd2 ", ExprNum(true, -3)),
+            // - signed signed
+            (" 10s >>> 8'sd2", ExprNum(true, 2)),
+            ("-10s >>> 8'sd2", ExprNum(true, -3)),
+            //// Sized unsized
+            // - unsigned unsigned
+            ("  8'd10  >>> 2 ", ExprInt(false, 8, 2)),
+            ("-(8'd10) >>> 2 ", ExprInt(false, 8, 61)),
+            // - unsigned signed
+            ("  8'd10  >>> 2s", ExprInt(false, 8, 2)),
+            ("-(8'd10) >>> 2s", ExprInt(false, 8, 61)),
+            // - signed unsigned
+            ("  8'sd10 >>> 2 ", ExprInt(true, 8, 2)),
+            (" -8'sd10 >>> 2 ", ExprInt(true, 8, -3)),
+            // - signed signed
+            ("  8'sd10 >>> 2s", ExprInt(true, 8, 2)),
+            (" -8'sd10 >>> 2s", ExprInt(true, 8, -3)),
+            //// Sized sized
+            // - unsigned unsigned
+            ("  8'd10  >>> 8'd2 ", ExprInt(false, 8, 2)),
+            ("-(8'd10) >>> 8'd2 ", ExprInt(false, 8, 61)),
+            // - unsigned signed
+            ("  8'd10  >>> 8'sd2", ExprInt(false, 8, 2)),
+            ("-(8'd10) >>> 8'sd2", ExprInt(false, 8, 61)),
+            // - signed unsigned
+            ("  8'sd10 >>> 8'd2 ", ExprInt(true, 8, 2)),
+            (" -8'sd10 >>> 8'd2 ", ExprInt(true, 8, -3)),
+            // - signed signed
+            ("  8'sd10 >>> 8'sd2", ExprInt(true, 8, 2)),
+            (" -8'sd10 >>> 8'sd2", ExprInt(true, 8, -3))
+          )
         }
       }
 
-      "-" - {
-        List(
-          //// Unsized
-          // - unsigned unsigned
-          (" 10  -  3 ", ExprNum(false, 7)),
-          // - unsigned signed
-          (" 10  -  3s", ExprNum(false, 7)),
-          (" 10  - -3s", ExprNum(false, 13)),
-          // - signed unsigned
-          (" 10s -  3 ", ExprNum(false, 7)),
-          // - signed signed
-          (" 10s -  3s", ExprNum(true, 7)),
-          (" 10s - -3s", ExprNum(true, 13)),
-          ("-10s -  3s", ExprNum(true, -13)),
-          ("-10s - -3s", ExprNum(true, -7)),
-          //// Sized
-          // - unsigned unsigned
-          ("  8'd10  -   8'd3 ", ExprInt(false, 8, 7)),
-          ("  8'd10  - -(8'd3)", ExprInt(false, 8, 13)),
-          ("-(8'd10) -   8'd3 ", ExprInt(false, 8, 243)),
-          ("-(8'd10) - -(8'd3)", ExprInt(false, 8, 249)),
-          // - unsigned signed
-          ("  8'd10  -   8'sd3", ExprInt(false, 8, 7)),
-          ("  8'd10  -  -8'sd3", ExprInt(false, 8, 13)),
-          ("-(8'd10) -   8'sd3", ExprInt(false, 8, 243)),
-          ("-(8'd10) -  -8'sd3", ExprInt(false, 8, 249)),
-          // - signed unsigned
-          ("  8'sd10 -   8'd3 ", ExprInt(false, 8, 7)),
-          ("  8'sd10 - -(8'd3)", ExprInt(false, 8, 13)),
-          (" -8'sd10 -   8'd3 ", ExprInt(false, 8, 243)),
-          (" -8'sd10 - -(8'd3)", ExprInt(false, 8, 249)),
-          // - signed signed
-          ("  8'sd10 -   8'sd3", ExprInt(true, 8, 7)),
-          ("  8'sd10 -  -8'sd3", ExprInt(true, 8, 13)),
-          (" -8'sd10 -   8'sd3", ExprInt(true, 8, -13)),
-          (" -8'sd10 -  -8'sd3", ExprInt(true, 8, -7))
-        ) foreach {
-          case (text, result) => text in { simplify(text) shouldBe result }
-        }
-      }
+      "special cases" - {
+        "shifts" - {
+          "zero left hand side" - {
+            checkExact(
+              /// Unsized
+              // unsigned
+              ("0 >>  @unknownu(4)", ExprNum(false, 0)),
+              ("0 >>> @unknownu(4)", ExprNum(false, 0)),
+              ("0 <<  @unknownu(4)", ExprNum(false, 0)),
+              ("0 <<< @unknownu(4)", ExprNum(false, 0)),
+              // signed
+              ("0s >>  @unknownu(4)", ExprNum(true, 0)),
+              ("0s >>> @unknownu(4)", ExprNum(true, 0)),
+              ("0s <<  @unknownu(4)", ExprNum(true, 0)),
+              ("0s <<< @unknownu(4)", ExprNum(true, 0)),
+              // Sized
+              // unsigned
+              ("8'd0 >>  @unknownu(4)", ExprInt(false, 8, 0)),
+              ("8'd0 >>> @unknownu(4)", ExprInt(false, 8, 0)),
+              ("8'd0 <<  @unknownu(4)", ExprInt(false, 8, 0)),
+              ("8'd0 <<< @unknownu(4)", ExprInt(false, 8, 0)),
+              // signed
+              ("8'sd0 >>  @unknownu(4)", ExprInt(true, 8, 0)),
+              ("8'sd0 >>> @unknownu(4)", ExprInt(true, 8, 0)),
+              ("8'sd0 <<  @unknownu(4)", ExprInt(true, 8, 0)),
+              ("8'sd0 <<< @unknownu(4)", ExprInt(true, 8, 0))
+            )
+          }
 
-      "*" - {
-        List(
-          //// Unsized
-          // - unsigned unsigned
-          (" 10  *  3 ", ExprNum(false, 30)),
-          // - unsigned signed
-          (" 10  *  3s", ExprNum(false, 30)),
-          // - signed unsigned
-          (" 10s *  3 ", ExprNum(false, 30)),
-          // - signed signed
-          (" 10s *  3s", ExprNum(true, 30)),
-          (" 10s * -3s", ExprNum(true, -30)),
-          ("-10s *  3s", ExprNum(true, -30)),
-          ("-10s * -3s", ExprNum(true, 30)),
-          //// Sized
-          // - unsigned unsigned
-          ("  8'd10  *   8'd3 ", ExprInt(false, 8, 30)),
-          ("  8'd10  * -(8'd3)", ExprInt(false, 8, 226)),
-          ("-(8'd10) *   8'd3 ", ExprInt(false, 8, 226)),
-          ("-(8'd10) * -(8'd3)", ExprInt(false, 8, 30)),
-          // - unsigned signed
-          ("  8'd10  *   8'sd3", ExprInt(false, 8, 30)),
-          ("  8'd10  *  -8'sd3", ExprInt(false, 8, 226)),
-          ("-(8'd10) *   8'sd3", ExprInt(false, 8, 226)),
-          ("-(8'd10) *  -8'sd3", ExprInt(false, 8, 30)),
-          // - signed unsigned
-          ("  8'sd10 *   8'd3 ", ExprInt(false, 8, 30)),
-          ("  8'sd10 * -(8'd3)", ExprInt(false, 8, 226)),
-          (" -8'sd10 *   8'd3 ", ExprInt(false, 8, 226)),
-          (" -8'sd10 * -(8'd3)", ExprInt(false, 8, 30)),
-          // - signed signed
-          ("  8'sd10 *   8'sd3", ExprInt(true, 8, 30)),
-          ("  8'sd10 *  -8'sd3", ExprInt(true, 8, -30)),
-          (" -8'sd10 *   8'sd3", ExprInt(true, 8, -30)),
-          (" -8'sd10 *  -8'sd3", ExprInt(true, 8, 30))
-        ) foreach {
-          case (text, result) => text in { simplify(text) shouldBe result }
-        }
-      }
+          "zero shift amount" - {
+            checkPattern(
+              /// Unsized
+              // unsigned unsigned
+              ("@unknownu(4) >>  0 ", { case UnknownU(4) => }),
+              ("@unknownu(4) >>> 0 ", { case UnknownU(4) => }),
+              ("@unknownu(4) <<  0 ", { case UnknownU(4) => }),
+              ("@unknownu(4) <<< 0 ", { case UnknownU(4) => }),
+              // unsigned signed
+              ("@unknownu(4) >>  0s", { case UnknownU(4) => }),
+              ("@unknownu(4) >>> 0s", { case UnknownU(4) => }),
+              ("@unknownu(4) <<  0s", { case UnknownU(4) => }),
+              ("@unknownu(4) <<< 0s", { case UnknownU(4) => }),
+              // signed unsigned
+              ("@unknowni(4) >>  0 ", { case UnknownI(4) => }),
+              ("@unknowni(4) >>> 0 ", { case UnknownI(4) => }),
+              ("@unknowni(4) <<  0 ", { case UnknownI(4) => }),
+              ("@unknowni(4) <<< 0 ", { case UnknownI(4) => }),
+              // signed signed
+              ("@unknowni(4) >>  0s", { case UnknownI(4) => }),
+              ("@unknowni(4) >>> 0s", { case UnknownI(4) => }),
+              ("@unknowni(4) <<  0s", { case UnknownI(4) => }),
+              ("@unknowni(4) <<< 0s", { case UnknownI(4) => }),
+              // Sized
+              // unsigne unsigned
+              ("@unknownu(4) >>  8'd0 ", { case UnknownU(4) => }),
+              ("@unknownu(4) >>> 8'd0 ", { case UnknownU(4) => }),
+              ("@unknownu(4) <<  8'd0 ", { case UnknownU(4) => }),
+              ("@unknownu(4) <<< 8'd0 ", { case UnknownU(4) => }),
+              // unsigned signed
+              ("@unknownu(4) >>  8'sd0", { case UnknownU(4) => }),
+              ("@unknownu(4) >>> 8'sd0", { case UnknownU(4) => }),
+              ("@unknownu(4) <<  8'sd0", { case UnknownU(4) => }),
+              ("@unknownu(4) <<< 8'sd0", { case UnknownU(4) => }),
+              // signed unsigned
+              ("@unknowni(4) >>  8'd0 ", { case UnknownI(4) => }),
+              ("@unknowni(4) >>> 8'd0 ", { case UnknownI(4) => }),
+              ("@unknowni(4) <<  8'd0 ", { case UnknownI(4) => }),
+              ("@unknowni(4) <<< 8'd0 ", { case UnknownI(4) => }),
+              // signed signed
+              ("@unknowni(4) >>  8'sd0", { case UnknownI(4) => }),
+              ("@unknowni(4) >>> 8'sd0", { case UnknownI(4) => }),
+              ("@unknowni(4) <<  8'sd0", { case UnknownI(4) => }),
+              ("@unknowni(4) <<< 8'sd0", { case UnknownI(4) => })
+            )
+          }
 
-      "/" - {
-        List(
-          //// Unsized
-          // - unsigned unsigned
-          (" 10  /  3 ", ExprNum(false, 3)),
-          // - unsigned signed
-          (" 10  /  3s", ExprNum(false, 3)),
-          // - signed unsigned
-          (" 10s /  3 ", ExprNum(false, 3)),
-          // - signed signed
-          (" 10s /  3s", ExprNum(true, 3)),
-          (" 10s / -3s", ExprNum(true, -3)),
-          ("-10s /  3s", ExprNum(true, -3)),
-          ("-10s / -3s", ExprNum(true, 3)),
-          //// Sized
-          // - unsigned unsigned
-          ("  8'd10  /   8'd3 ", ExprInt(false, 8, 3)),
-          ("  8'd10  / -(8'd3)", ExprInt(false, 8, 0)),
-          ("-(8'd10) /   8'd3 ", ExprInt(false, 8, 82)),
-          ("-(8'd10) / -(8'd3)", ExprInt(false, 8, 0)),
-          // - unsigned signed
-          ("  8'd10  /   8'sd3", ExprInt(false, 8, 3)),
-          ("  8'd10  /  -8'sd3", ExprInt(false, 8, 0)),
-          ("-(8'd10) /   8'sd3", ExprInt(false, 8, 82)),
-          ("-(8'd10) /  -8'sd3", ExprInt(false, 8, 0)),
-          // - signed unsigned
-          ("  8'sd10 /   8'd3 ", ExprInt(false, 8, 3)),
-          ("  8'sd10 / -(8'd3)", ExprInt(false, 8, 0)),
-          (" -8'sd10 /   8'd3 ", ExprInt(false, 8, 82)),
-          (" -8'sd10 / -(8'd3)", ExprInt(false, 8, 0)),
-          // - signed signed
-          ("  8'sd10 /   8'sd3", ExprInt(true, 8, 3)),
-          ("  8'sd10 /  -8'sd3", ExprInt(true, 8, -3)),
-          (" -8'sd10 /   8'sd3", ExprInt(true, 8, -3)),
-          (" -8'sd10 /  -8'sd3", ExprInt(true, 8, 3))
-        ) foreach {
-          case (text, result) => text in { simplify(text) shouldBe result }
-        }
-      }
-
-      "%" - {
-        List(
-          // Unsized
-          // - unsigned unsigned
-          ("  10  %  3 ", ExprNum(false, 1)),
-          // - unsigned signed
-          ("  10  %  3s", ExprNum(false, 1)),
-          // - signed unsigned
-          ("  10s %  3 ", ExprNum(false, 1)),
-          // - signed signed
-          ("  10s %  3s", ExprNum(true, 1)),
-          ("  10s % -3s", ExprNum(true, 1)),
-          (" -10s %  3s", ExprNum(true, -1)),
-          (" -10s % -3s", ExprNum(true, -1)),
-          // Sized
-          // - unsigned unsigned
-          ("  8'd10  %   8'd3 ", ExprInt(false, 8, 1)),
-          ("  8'd10  % -(8'd3)", ExprInt(false, 8, 10)),
-          ("-(8'd10) %   8'd3 ", ExprInt(false, 8, 0)),
-          ("-(8'd10) % -(8'd3)", ExprInt(false, 8, 246)),
-          // - unsigned signed
-          ("  8'd10  %   8'sd3", ExprInt(false, 8, 1)),
-          ("  8'd10  %  -8'sd3", ExprInt(false, 8, 10)),
-          ("-(8'd10) %   8'sd3", ExprInt(false, 8, 0)),
-          ("-(8'd10) %  -8'sd3", ExprInt(false, 8, 246)),
-          // - signed unsigned
-          ("  8'sd10 %   8'd3 ", ExprInt(false, 8, 1)),
-          ("  8'sd10 % -(8'd3)", ExprInt(false, 8, 10)),
-          (" -8'sd10 %   8'd3 ", ExprInt(false, 8, 0)),
-          (" -8'sd10 % -(8'd3)", ExprInt(false, 8, 246)),
-          // - signed signed
-          ("  8'sd10 %   8'sd3", ExprInt(true, 8, 1)),
-          ("  8'sd10 %  -8'sd3", ExprInt(true, 8, 1)),
-          (" -8'sd10 %   8'sd3", ExprInt(true, 8, -1)),
-          (" -8'sd10 %  -8'sd3", ExprInt(true, 8, -1))
-        ) foreach {
-          case (text, result) => text in { simplify(text) shouldBe result }
-        }
-      }
-
-      "&" - {
-        List(
-          //// Unsized
-          // - unsigned unsigned
-          (" 10  &  7 ", ExprNum(false, 2)),
-          // - unsigned signed
-          (" 10  &  7s", ExprNum(false, 2)),
-          (" 10  & -7s", ExprNum(false, 8)),
-          // - signed unsigned
-          (" 10s &  7 ", ExprNum(false, 2)),
-          ("-10s &  7 ", ExprNum(false, 6)),
-          // - signed signed
-          (" 10s &  7s", ExprNum(true, 2)),
-          (" 10s & -7s", ExprNum(true, 8)),
-          ("-10s &  7s", ExprNum(true, 6)),
-          ("-10s & -7s", ExprNum(true, -16)),
-          //// Sized
-          // - unsigned unsigned
-          ("  8'd10  &   8'd7 ", ExprInt(false, 8, 2)),
-          ("  8'd10  & -(8'd7)", ExprInt(false, 8, 8)),
-          ("-(8'd10) &   8'd7 ", ExprInt(false, 8, 6)),
-          ("-(8'd10) & -(8'd7)", ExprInt(false, 8, 240)),
-          // - unsigned signed
-          ("  8'd10  &   8'sd7", ExprInt(false, 8, 2)),
-          ("  8'd10  &  -8'sd7", ExprInt(false, 8, 8)),
-          ("-(8'd10) &   8'sd7", ExprInt(false, 8, 6)),
-          ("-(8'd10) &  -8'sd7", ExprInt(false, 8, 240)),
-          // - signed unsigned
-          ("  8'sd10 &   8'd7 ", ExprInt(false, 8, 2)),
-          ("  8'sd10 & -(8'd7)", ExprInt(false, 8, 8)),
-          (" -8'sd10 &   8'd7 ", ExprInt(false, 8, 6)),
-          (" -8'sd10 & -(8'd7)", ExprInt(false, 8, 240)),
-          // - signed signed
-          ("  8'sd10 &   8'sd7", ExprInt(true, 8, 2)),
-          ("  8'sd10 &  -8'sd7", ExprInt(true, 8, 8)),
-          (" -8'sd10 &   8'sd7", ExprInt(true, 8, 6)),
-          (" -8'sd10 &  -8'sd7", ExprInt(true, 8, -16))
-        ) foreach {
-          case (text, result) => text in { simplify(text) shouldBe result }
-        }
-      }
-
-      "|" - {
-        List(
-          // Unsized
-          // - unsigned unsigned
-          ("  10  |  4 ", ExprNum(false, 14)),
-          // - unsigned signed
-          ("  10  |  4s", ExprNum(false, 14)),
-          // - signed unsigned
-          ("  10s |  4 ", ExprNum(false, 14)),
-          // - signed signed
-          ("  10s |  4s", ExprNum(true, 14)),
-          ("  10s | -4s", ExprNum(true, -2)),
-          (" -10s |  4s", ExprNum(true, -10)),
-          (" -10s | -4s", ExprNum(true, -2)),
-          // Sized
-          // - unsigned unsigned
-          ("  8'd10  |   8'd4 ", ExprInt(false, 8, 14)),
-          ("  8'd10  | -(8'd4)", ExprInt(false, 8, 254)),
-          ("-(8'd10) |   8'd4 ", ExprInt(false, 8, 246)),
-          ("-(8'd10) | -(8'd4)", ExprInt(false, 8, 254)),
-          // - unsigned signed
-          ("  8'd10  |   8'sd4", ExprInt(false, 8, 14)),
-          ("  8'd10  |  -8'sd4", ExprInt(false, 8, 254)),
-          ("-(8'd10) |   8'sd4", ExprInt(false, 8, 246)),
-          ("-(8'd10) |  -8'sd4", ExprInt(false, 8, 254)),
-          // - signed unsigned
-          ("  8'sd10 |   8'd4 ", ExprInt(false, 8, 14)),
-          ("  8'sd10 | -(8'd4)", ExprInt(false, 8, 254)),
-          (" -8'sd10 |   8'd4 ", ExprInt(false, 8, 246)),
-          (" -8'sd10 | -(8'd4)", ExprInt(false, 8, 254)),
-          // - signed signed
-          ("  8'sd10 |   8'sd4", ExprInt(true, 8, 14)),
-          ("  8'sd10 |  -8'sd4", ExprInt(true, 8, -2)),
-          (" -8'sd10 |   8'sd4", ExprInt(true, 8, -10)),
-          (" -8'sd10 |  -8'sd4", ExprInt(true, 8, -2))
-        ) foreach {
-          case (text, result) => text in { simplify(text) shouldBe result }
-        }
-      }
-
-      "^" - {
-        List(
-          // Unsized
-          // - unsigned unsigned
-          ("  10  ^  4 ", ExprNum(false, 14)),
-          // - unsigned signed
-          ("  10  ^  4s", ExprNum(false, 14)),
-          // - signed unsigned
-          ("  10s ^  4 ", ExprNum(false, 14)),
-          // - signed signed
-          ("  10s ^  4s", ExprNum(true, 14)),
-          ("  10s ^ -4s", ExprNum(true, -10)),
-          (" -10s ^  4s", ExprNum(true, -14)),
-          (" -10s ^ -4s", ExprNum(true, 10)),
-          // Sized
-          // - unsigned unsigned
-          ("  8'd10  ^   8'd4 ", ExprInt(false, 8, 14)),
-          ("  8'd10  ^ -(8'd4)", ExprInt(false, 8, 246)),
-          ("-(8'd10) ^   8'd4 ", ExprInt(false, 8, 242)),
-          ("-(8'd10) ^ -(8'd4)", ExprInt(false, 8, 10)),
-          // - unsigned signed
-          ("  8'd10  ^   8'sd4", ExprInt(false, 8, 14)),
-          ("  8'd10  ^  -8'sd4", ExprInt(false, 8, 246)),
-          ("-(8'd10) ^   8'sd4", ExprInt(false, 8, 242)),
-          ("-(8'd10) ^  -8'sd4", ExprInt(false, 8, 10)),
-          // - signed unsigned
-          ("  8'sd10 ^   8'd4 ", ExprInt(false, 8, 14)),
-          ("  8'sd10 ^ -(8'd4)", ExprInt(false, 8, 246)),
-          (" -8'sd10 ^   8'd4 ", ExprInt(false, 8, 242)),
-          (" -8'sd10 ^ -(8'd4)", ExprInt(false, 8, 10)),
-          // - signed signed
-          ("  8'sd10 ^   8'sd4", ExprInt(true, 8, 14)),
-          ("  8'sd10 ^  -8'sd4", ExprInt(true, 8, -10)),
-          (" -8'sd10 ^   8'sd4", ExprInt(true, 8, -14)),
-          (" -8'sd10 ^  -8'sd4", ExprInt(true, 8, 10))
-        ) foreach {
-          case (text, result) => text in { simplify(text) shouldBe result }
-        }
-      }
-
-      ">" - {
-        List(
-          //// Unsized
-          // - unsigned unsigned
-          (" 10  >   7 ", ExprInt(false, 1, 1)),
-          ("  7  >  10 ", ExprInt(false, 1, 0)),
-          ("  5  >   5 ", ExprInt(false, 1, 0)),
-          // - unsigned signed
-          (" 10  >  7s ", ExprInt(false, 1, 1)),
-          (" 10  > -7s ", ExprInt(false, 1, 1)),
-          ("  7  >  10s", ExprInt(false, 1, 0)),
-          ("  7  > -10s", ExprInt(false, 1, 1)),
-          ("  5  >  5s ", ExprInt(false, 1, 0)),
-          // - signed unsigned
-          (" 10s >   7 ", ExprInt(false, 1, 1)),
-          ("-10s >   7 ", ExprInt(false, 1, 0)),
-          ("  7s >  10 ", ExprInt(false, 1, 0)),
-          (" -7s >  10 ", ExprInt(false, 1, 0)),
-          ("  5s >   5 ", ExprInt(false, 1, 0)),
-          // - signed signed
-          (" 10s >  7s ", ExprInt(false, 1, 1)),
-          (" 10s > -7s ", ExprInt(false, 1, 1)),
-          ("-10s >  7s ", ExprInt(false, 1, 0)),
-          ("-10s > -7s ", ExprInt(false, 1, 0)),
-          ("  7s >  10s", ExprInt(false, 1, 0)),
-          ("  7s > -10s", ExprInt(false, 1, 1)),
-          (" -7s >  10s", ExprInt(false, 1, 0)),
-          (" -7s > -10s", ExprInt(false, 1, 1)),
-          ("  5s >  5s ", ExprInt(false, 1, 0)),
-          (" -5s > -5s ", ExprInt(false, 1, 0)),
-          //// Sized
-          // - unsigned unsigned
-          ("  8'd10  >   8'd7  ", ExprInt(false, 1, 1)),
-          ("  8'd10  > -(8'd7) ", ExprInt(false, 1, 0)),
-          ("-(8'd10) >   8'd7  ", ExprInt(false, 1, 1)),
-          ("-(8'd10) > -(8'd7) ", ExprInt(false, 1, 0)),
-          ("  8'd7   >   8'd10 ", ExprInt(false, 1, 0)),
-          ("  8'd7   > -(8'd10)", ExprInt(false, 1, 0)),
-          ("-(8'd7)  >   8'd10 ", ExprInt(false, 1, 1)),
-          ("-(8'd7)  > -(8'd10)", ExprInt(false, 1, 1)),
-          ("  8'd5   >   8'd5  ", ExprInt(false, 1, 0)),
-          // - unsigned signed
-          ("  8'd10  >   8'sd7 ", ExprInt(false, 1, 1)),
-          ("  8'd10  >  -8'sd7 ", ExprInt(false, 1, 0)),
-          ("-(8'd10) >   8'sd7 ", ExprInt(false, 1, 1)),
-          ("-(8'd10) >  -8'sd7 ", ExprInt(false, 1, 0)),
-          ("  8'd7   >   8'sd10", ExprInt(false, 1, 0)),
-          ("  8'd7   >  -8'sd10", ExprInt(false, 1, 0)),
-          ("-(8'd7)  >   8'sd10", ExprInt(false, 1, 1)),
-          ("-(8'd7)  >  -8'sd10", ExprInt(false, 1, 1)),
-          ("  8'd5   >   8'sd5 ", ExprInt(false, 1, 0)),
-          // - signed unsigned
-          ("  8'sd10 >   8'd7  ", ExprInt(false, 1, 1)),
-          ("  8'sd10 > -(8'd7) ", ExprInt(false, 1, 0)),
-          (" -8'sd10 >   8'd7  ", ExprInt(false, 1, 1)),
-          (" -8'sd10 > -(8'd7) ", ExprInt(false, 1, 0)),
-          ("  8'sd7  >   8'd10 ", ExprInt(false, 1, 0)),
-          ("  8'sd7  > -(8'd10)", ExprInt(false, 1, 0)),
-          (" -8'sd7  >   8'd10 ", ExprInt(false, 1, 1)),
-          (" -8'sd7  > -(8'd10)", ExprInt(false, 1, 1)),
-          ("  8'sd5  >   8'd5  ", ExprInt(false, 1, 0)),
-          // - signed signed
-          ("  8'sd10 >   8'sd7 ", ExprInt(false, 1, 1)),
-          ("  8'sd10 >  -8'sd7 ", ExprInt(false, 1, 1)),
-          (" -8'sd10 >   8'sd7 ", ExprInt(false, 1, 0)),
-          (" -8'sd10 >  -8'sd7 ", ExprInt(false, 1, 0)),
-          ("  8'sd7  >   8'sd10", ExprInt(false, 1, 0)),
-          ("  8'sd7  >  -8'sd10", ExprInt(false, 1, 1)),
-          (" -8'sd7  >   8'sd10", ExprInt(false, 1, 0)),
-          (" -8'sd7  >  -8'sd10", ExprInt(false, 1, 1)),
-          ("  8'sd5  >   8'sd5 ", ExprInt(false, 1, 0)),
-          (" -8'sd5  >  -8'sd5 ", ExprInt(false, 1, 0))
-        ) foreach {
-          case (text, result) => text in { simplify(text) shouldBe result }
-        }
-      }
-
-      ">=" - {
-        List(
-          //// Unsized
-          // - unsigned unsigned
-          (" 10  >=   7 ", ExprInt(false, 1, 1)),
-          ("  7  >=  10 ", ExprInt(false, 1, 0)),
-          ("  5  >=   5 ", ExprInt(false, 1, 1)),
-          // - unsigned signed
-          (" 10  >=  7s ", ExprInt(false, 1, 1)),
-          (" 10  >= -7s ", ExprInt(false, 1, 1)),
-          ("  7  >=  10s", ExprInt(false, 1, 0)),
-          ("  7  >= -10s", ExprInt(false, 1, 1)),
-          ("  5  >=  5s ", ExprInt(false, 1, 1)),
-          // - signed unsigned
-          (" 10s >=   7 ", ExprInt(false, 1, 1)),
-          ("-10s >=   7 ", ExprInt(false, 1, 0)),
-          ("  7s >=  10 ", ExprInt(false, 1, 0)),
-          (" -7s >=  10 ", ExprInt(false, 1, 0)),
-          ("  5s >=   5 ", ExprInt(false, 1, 1)),
-          // - signed signed
-          (" 10s >=  7s ", ExprInt(false, 1, 1)),
-          (" 10s >= -7s ", ExprInt(false, 1, 1)),
-          ("-10s >=  7s ", ExprInt(false, 1, 0)),
-          ("-10s >= -7s ", ExprInt(false, 1, 0)),
-          ("  7s >=  10s", ExprInt(false, 1, 0)),
-          ("  7s >= -10s", ExprInt(false, 1, 1)),
-          (" -7s >=  10s", ExprInt(false, 1, 0)),
-          (" -7s >= -10s", ExprInt(false, 1, 1)),
-          ("  5s >=  5s ", ExprInt(false, 1, 1)),
-          (" -5s >= -5s ", ExprInt(false, 1, 1)),
-          //// Sized
-          // - unsigned unsigned
-          ("  8'd10  >=   8'd7  ", ExprInt(false, 1, 1)),
-          ("  8'd10  >= -(8'd7) ", ExprInt(false, 1, 0)),
-          ("-(8'd10) >=   8'd7  ", ExprInt(false, 1, 1)),
-          ("-(8'd10) >= -(8'd7) ", ExprInt(false, 1, 0)),
-          ("  8'd7   >=   8'd10 ", ExprInt(false, 1, 0)),
-          ("  8'd7   >= -(8'd10)", ExprInt(false, 1, 0)),
-          ("-(8'd7)  >=   8'd10 ", ExprInt(false, 1, 1)),
-          ("-(8'd7)  >= -(8'd10)", ExprInt(false, 1, 1)),
-          ("  8'd5   >=   8'd5  ", ExprInt(false, 1, 1)),
-          // - unsigned signed
-          ("  8'd10  >=   8'sd7 ", ExprInt(false, 1, 1)),
-          ("  8'd10  >=  -8'sd7 ", ExprInt(false, 1, 0)),
-          ("-(8'd10) >=   8'sd7 ", ExprInt(false, 1, 1)),
-          ("-(8'd10) >=  -8'sd7 ", ExprInt(false, 1, 0)),
-          ("  8'd7   >=   8'sd10", ExprInt(false, 1, 0)),
-          ("  8'd7   >=  -8'sd10", ExprInt(false, 1, 0)),
-          ("-(8'd7)  >=   8'sd10", ExprInt(false, 1, 1)),
-          ("-(8'd7)  >=  -8'sd10", ExprInt(false, 1, 1)),
-          ("  8'd5   >=   8'sd5 ", ExprInt(false, 1, 1)),
-          // - signed unsigned
-          ("  8'sd10 >=   8'd7  ", ExprInt(false, 1, 1)),
-          ("  8'sd10 >= -(8'd7) ", ExprInt(false, 1, 0)),
-          (" -8'sd10 >=   8'd7  ", ExprInt(false, 1, 1)),
-          (" -8'sd10 >= -(8'd7) ", ExprInt(false, 1, 0)),
-          ("  8'sd7  >=   8'd10 ", ExprInt(false, 1, 0)),
-          ("  8'sd7  >= -(8'd10)", ExprInt(false, 1, 0)),
-          (" -8'sd7  >=   8'd10 ", ExprInt(false, 1, 1)),
-          (" -8'sd7  >= -(8'd10)", ExprInt(false, 1, 1)),
-          ("  8'sd5  >=   8'd5  ", ExprInt(false, 1, 1)),
-          // - signed signed
-          ("  8'sd10 >=   8'sd7 ", ExprInt(false, 1, 1)),
-          ("  8'sd10 >=  -8'sd7 ", ExprInt(false, 1, 1)),
-          (" -8'sd10 >=   8'sd7 ", ExprInt(false, 1, 0)),
-          (" -8'sd10 >=  -8'sd7 ", ExprInt(false, 1, 0)),
-          ("  8'sd7  >=   8'sd10", ExprInt(false, 1, 0)),
-          ("  8'sd7  >=  -8'sd10", ExprInt(false, 1, 1)),
-          (" -8'sd7  >=   8'sd10", ExprInt(false, 1, 0)),
-          (" -8'sd7  >=  -8'sd10", ExprInt(false, 1, 1)),
-          ("  8'sd5  >=   8'sd5 ", ExprInt(false, 1, 1)),
-          (" -8'sd5  >=  -8'sd5 ", ExprInt(false, 1, 1))
-        ) foreach {
-          case (text, result) => text in { simplify(text) shouldBe result }
-        }
-      }
-
-      "<" - {
-        List(
-          //// Unsized
-          // - unsigned unsigned
-          (" 10  <   7 ", ExprInt(false, 1, 0)),
-          ("  7  <  10 ", ExprInt(false, 1, 1)),
-          ("  5  <   5 ", ExprInt(false, 1, 0)),
-          // - unsigned signed
-          (" 10  <  7s ", ExprInt(false, 1, 0)),
-          (" 10  < -7s ", ExprInt(false, 1, 0)),
-          ("  7  <  10s", ExprInt(false, 1, 1)),
-          ("  7  < -10s", ExprInt(false, 1, 0)),
-          ("  5  <  5s ", ExprInt(false, 1, 0)),
-          // - signed unsigned
-          (" 10s <   7 ", ExprInt(false, 1, 0)),
-          ("-10s <   7 ", ExprInt(false, 1, 1)),
-          ("  7s <  10 ", ExprInt(false, 1, 1)),
-          (" -7s <  10 ", ExprInt(false, 1, 1)),
-          ("  5s <   5 ", ExprInt(false, 1, 0)),
-          // - signed signed
-          (" 10s <  7s ", ExprInt(false, 1, 0)),
-          (" 10s < -7s ", ExprInt(false, 1, 0)),
-          ("-10s <  7s ", ExprInt(false, 1, 1)),
-          ("-10s < -7s ", ExprInt(false, 1, 1)),
-          ("  7s <  10s", ExprInt(false, 1, 1)),
-          ("  7s < -10s", ExprInt(false, 1, 0)),
-          (" -7s <  10s", ExprInt(false, 1, 1)),
-          (" -7s < -10s", ExprInt(false, 1, 0)),
-          ("  5s <  5s ", ExprInt(false, 1, 0)),
-          (" -5s < -5s ", ExprInt(false, 1, 0)),
-          //// Sized
-          // - unsigned unsigned
-          ("  8'd10  <   8'd7  ", ExprInt(false, 1, 0)),
-          ("  8'd10  < -(8'd7) ", ExprInt(false, 1, 1)),
-          ("-(8'd10) <   8'd7  ", ExprInt(false, 1, 0)),
-          ("-(8'd10) < -(8'd7) ", ExprInt(false, 1, 1)),
-          ("  8'd7   <   8'd10 ", ExprInt(false, 1, 1)),
-          ("  8'd7   < -(8'd10)", ExprInt(false, 1, 1)),
-          ("-(8'd7)  <   8'd10 ", ExprInt(false, 1, 0)),
-          ("-(8'd7)  < -(8'd10)", ExprInt(false, 1, 0)),
-          ("  8'd5   <   8'd5  ", ExprInt(false, 1, 0)),
-          // - unsigned signed
-          ("  8'd10  <   8'sd7 ", ExprInt(false, 1, 0)),
-          ("  8'd10  <  -8'sd7 ", ExprInt(false, 1, 1)),
-          ("-(8'd10) <   8'sd7 ", ExprInt(false, 1, 0)),
-          ("-(8'd10) <  -8'sd7 ", ExprInt(false, 1, 1)),
-          ("  8'd7   <   8'sd10", ExprInt(false, 1, 1)),
-          ("  8'd7   <  -8'sd10", ExprInt(false, 1, 1)),
-          ("-(8'd7)  <   8'sd10", ExprInt(false, 1, 0)),
-          ("-(8'd7)  <  -8'sd10", ExprInt(false, 1, 0)),
-          ("  8'd5   <   8'sd5 ", ExprInt(false, 1, 0)),
-          // - signed unsigned
-          ("  8'sd10 <   8'd7  ", ExprInt(false, 1, 0)),
-          ("  8'sd10 < -(8'd7) ", ExprInt(false, 1, 1)),
-          (" -8'sd10 <   8'd7  ", ExprInt(false, 1, 0)),
-          (" -8'sd10 < -(8'd7) ", ExprInt(false, 1, 1)),
-          ("  8'sd7  <   8'd10 ", ExprInt(false, 1, 1)),
-          ("  8'sd7  < -(8'd10)", ExprInt(false, 1, 1)),
-          (" -8'sd7  <   8'd10 ", ExprInt(false, 1, 0)),
-          (" -8'sd7  < -(8'd10)", ExprInt(false, 1, 0)),
-          ("  8'sd5  <   8'd5  ", ExprInt(false, 1, 0)),
-          // - signed signed
-          ("  8'sd10 <   8'sd7 ", ExprInt(false, 1, 0)),
-          ("  8'sd10 <  -8'sd7 ", ExprInt(false, 1, 0)),
-          (" -8'sd10 <   8'sd7 ", ExprInt(false, 1, 1)),
-          (" -8'sd10 <  -8'sd7 ", ExprInt(false, 1, 1)),
-          ("  8'sd7  <   8'sd10", ExprInt(false, 1, 1)),
-          ("  8'sd7  <  -8'sd10", ExprInt(false, 1, 0)),
-          (" -8'sd7  <   8'sd10", ExprInt(false, 1, 1)),
-          (" -8'sd7  <  -8'sd10", ExprInt(false, 1, 0)),
-          ("  8'sd5  <   8'sd5 ", ExprInt(false, 1, 0)),
-          (" -8'sd5  <  -8'sd5 ", ExprInt(false, 1, 0))
-        ) foreach {
-          case (text, result) => text in { simplify(text) shouldBe result }
-        }
-      }
-
-      "<=" - {
-        List(
-          //// Unsized
-          // - unsigned unsigned
-          (" 10  <=   7 ", ExprInt(false, 1, 0)),
-          ("  7  <=  10 ", ExprInt(false, 1, 1)),
-          ("  5  <=   5 ", ExprInt(false, 1, 1)),
-          // - unsigned signed
-          (" 10  <=  7s ", ExprInt(false, 1, 0)),
-          (" 10  <= -7s ", ExprInt(false, 1, 0)),
-          ("  7  <=  10s", ExprInt(false, 1, 1)),
-          ("  7  <= -10s", ExprInt(false, 1, 0)),
-          ("  5  <=  5s ", ExprInt(false, 1, 1)),
-          // - signed unsigned
-          (" 10s <=   7 ", ExprInt(false, 1, 0)),
-          ("-10s <=   7 ", ExprInt(false, 1, 1)),
-          ("  7s <=  10 ", ExprInt(false, 1, 1)),
-          (" -7s <=  10 ", ExprInt(false, 1, 1)),
-          ("  5s <=   5 ", ExprInt(false, 1, 1)),
-          // - signed signed
-          (" 10s <=  7s ", ExprInt(false, 1, 0)),
-          (" 10s <= -7s ", ExprInt(false, 1, 0)),
-          ("-10s <=  7s ", ExprInt(false, 1, 1)),
-          ("-10s <= -7s ", ExprInt(false, 1, 1)),
-          ("  7s <=  10s", ExprInt(false, 1, 1)),
-          ("  7s <= -10s", ExprInt(false, 1, 0)),
-          (" -7s <=  10s", ExprInt(false, 1, 1)),
-          (" -7s <= -10s", ExprInt(false, 1, 0)),
-          ("  5s <=  5s ", ExprInt(false, 1, 1)),
-          (" -5s <= -5s ", ExprInt(false, 1, 1)),
-          //// Sized
-          // - unsigned unsigned
-          ("  8'd10  <=   8'd7  ", ExprInt(false, 1, 0)),
-          ("  8'd10  <= -(8'd7) ", ExprInt(false, 1, 1)),
-          ("-(8'd10) <=   8'd7  ", ExprInt(false, 1, 0)),
-          ("-(8'd10) <= -(8'd7) ", ExprInt(false, 1, 1)),
-          ("  8'd7   <=   8'd10 ", ExprInt(false, 1, 1)),
-          ("  8'd7   <= -(8'd10)", ExprInt(false, 1, 1)),
-          ("-(8'd7)  <=   8'd10 ", ExprInt(false, 1, 0)),
-          ("-(8'd7)  <= -(8'd10)", ExprInt(false, 1, 0)),
-          ("  8'd5   <=   8'd5  ", ExprInt(false, 1, 1)),
-          // - unsigned signed
-          ("  8'd10  <=   8'sd7 ", ExprInt(false, 1, 0)),
-          ("  8'd10  <=  -8'sd7 ", ExprInt(false, 1, 1)),
-          ("-(8'd10) <=   8'sd7 ", ExprInt(false, 1, 0)),
-          ("-(8'd10) <=  -8'sd7 ", ExprInt(false, 1, 1)),
-          ("  8'd7   <=   8'sd10", ExprInt(false, 1, 1)),
-          ("  8'd7   <=  -8'sd10", ExprInt(false, 1, 1)),
-          ("-(8'd7)  <=   8'sd10", ExprInt(false, 1, 0)),
-          ("-(8'd7)  <=  -8'sd10", ExprInt(false, 1, 0)),
-          ("  8'd5   <=   8'sd5 ", ExprInt(false, 1, 1)),
-          // - signed unsigned
-          ("  8'sd10 <=   8'd7  ", ExprInt(false, 1, 0)),
-          ("  8'sd10 <= -(8'd7) ", ExprInt(false, 1, 1)),
-          (" -8'sd10 <=   8'd7  ", ExprInt(false, 1, 0)),
-          (" -8'sd10 <= -(8'd7) ", ExprInt(false, 1, 1)),
-          ("  8'sd7  <=   8'd10 ", ExprInt(false, 1, 1)),
-          ("  8'sd7  <= -(8'd10)", ExprInt(false, 1, 1)),
-          (" -8'sd7  <=   8'd10 ", ExprInt(false, 1, 0)),
-          (" -8'sd7  <= -(8'd10)", ExprInt(false, 1, 0)),
-          ("  8'sd5  <=   8'd5  ", ExprInt(false, 1, 1)),
-          // - signed signed
-          ("  8'sd10 <=   8'sd7 ", ExprInt(false, 1, 0)),
-          ("  8'sd10 <=  -8'sd7 ", ExprInt(false, 1, 0)),
-          (" -8'sd10 <=   8'sd7 ", ExprInt(false, 1, 1)),
-          (" -8'sd10 <=  -8'sd7 ", ExprInt(false, 1, 1)),
-          ("  8'sd7  <=   8'sd10", ExprInt(false, 1, 1)),
-          ("  8'sd7  <=  -8'sd10", ExprInt(false, 1, 0)),
-          (" -8'sd7  <=   8'sd10", ExprInt(false, 1, 1)),
-          (" -8'sd7  <=  -8'sd10", ExprInt(false, 1, 0)),
-          ("  8'sd5  <=   8'sd5 ", ExprInt(false, 1, 1)),
-          (" -8'sd5  <=  -8'sd5 ", ExprInt(false, 1, 1))
-        ) foreach {
-          case (text, result) => text in { simplify(text) shouldBe result }
-        }
-      }
-
-      "==" - {
-        List(
-          //// Unsized
-          // - unsigned unsigned
-          (" 10  ==   7 ", ExprInt(false, 1, 0)),
-          ("  7  ==  10 ", ExprInt(false, 1, 0)),
-          ("  5  ==   5 ", ExprInt(false, 1, 1)),
-          // - unsigned signed
-          (" 10  ==  7s ", ExprInt(false, 1, 0)),
-          (" 10  == -7s ", ExprInt(false, 1, 0)),
-          ("  7  ==  10s", ExprInt(false, 1, 0)),
-          ("  7  == -10s", ExprInt(false, 1, 0)),
-          ("  5  ==  5s ", ExprInt(false, 1, 1)),
-          // - signed unsigned
-          (" 10s ==   7 ", ExprInt(false, 1, 0)),
-          ("-10s ==   7 ", ExprInt(false, 1, 0)),
-          ("  7s ==  10 ", ExprInt(false, 1, 0)),
-          (" -7s ==  10 ", ExprInt(false, 1, 0)),
-          ("  5s ==   5 ", ExprInt(false, 1, 1)),
-          // - signed signed
-          (" 10s ==  7s ", ExprInt(false, 1, 0)),
-          (" 10s == -7s ", ExprInt(false, 1, 0)),
-          ("-10s ==  7s ", ExprInt(false, 1, 0)),
-          ("-10s == -7s ", ExprInt(false, 1, 0)),
-          ("  7s ==  10s", ExprInt(false, 1, 0)),
-          ("  7s == -10s", ExprInt(false, 1, 0)),
-          (" -7s ==  10s", ExprInt(false, 1, 0)),
-          (" -7s == -10s", ExprInt(false, 1, 0)),
-          ("  5s ==  5s ", ExprInt(false, 1, 1)),
-          (" -5s == -5s ", ExprInt(false, 1, 1)),
-          //// Sized
-          // - unsigned unsigned
-          ("  8'd10  ==   8'd7  ", ExprInt(false, 1, 0)),
-          ("  8'd10  == -(8'd7) ", ExprInt(false, 1, 0)),
-          ("-(8'd10) ==   8'd7  ", ExprInt(false, 1, 0)),
-          ("-(8'd10) == -(8'd7) ", ExprInt(false, 1, 0)),
-          ("  8'd7   ==   8'd10 ", ExprInt(false, 1, 0)),
-          ("  8'd7   == -(8'd10)", ExprInt(false, 1, 0)),
-          ("-(8'd7)  ==   8'd10 ", ExprInt(false, 1, 0)),
-          ("-(8'd7)  == -(8'd10)", ExprInt(false, 1, 0)),
-          ("  8'd5   ==   8'd5  ", ExprInt(false, 1, 1)),
-          // - unsigned signed
-          ("  8'd10  ==   8'sd7 ", ExprInt(false, 1, 0)),
-          ("  8'd10  ==  -8'sd7 ", ExprInt(false, 1, 0)),
-          ("-(8'd10) ==   8'sd7 ", ExprInt(false, 1, 0)),
-          ("-(8'd10) ==  -8'sd7 ", ExprInt(false, 1, 0)),
-          ("  8'd7   ==   8'sd10", ExprInt(false, 1, 0)),
-          ("  8'd7   ==  -8'sd10", ExprInt(false, 1, 0)),
-          ("-(8'd7)  ==   8'sd10", ExprInt(false, 1, 0)),
-          ("-(8'd7)  ==  -8'sd10", ExprInt(false, 1, 0)),
-          ("  8'd5   ==   8'sd5 ", ExprInt(false, 1, 1)),
-          // - signed unsigned
-          ("  8'sd10 ==   8'd7  ", ExprInt(false, 1, 0)),
-          ("  8'sd10 == -(8'd7) ", ExprInt(false, 1, 0)),
-          (" -8'sd10 ==   8'd7  ", ExprInt(false, 1, 0)),
-          (" -8'sd10 == -(8'd7) ", ExprInt(false, 1, 0)),
-          ("  8'sd7  ==   8'd10 ", ExprInt(false, 1, 0)),
-          ("  8'sd7  == -(8'd10)", ExprInt(false, 1, 0)),
-          (" -8'sd7  ==   8'd10 ", ExprInt(false, 1, 0)),
-          (" -8'sd7  == -(8'd10)", ExprInt(false, 1, 0)),
-          ("  8'sd5  ==   8'd5  ", ExprInt(false, 1, 1)),
-          // - signed signed
-          ("  8'sd10 ==   8'sd7 ", ExprInt(false, 1, 0)),
-          ("  8'sd10 ==  -8'sd7 ", ExprInt(false, 1, 0)),
-          (" -8'sd10 ==   8'sd7 ", ExprInt(false, 1, 0)),
-          (" -8'sd10 ==  -8'sd7 ", ExprInt(false, 1, 0)),
-          ("  8'sd7  ==   8'sd10", ExprInt(false, 1, 0)),
-          ("  8'sd7  ==  -8'sd10", ExprInt(false, 1, 0)),
-          (" -8'sd7  ==   8'sd10", ExprInt(false, 1, 0)),
-          (" -8'sd7  ==  -8'sd10", ExprInt(false, 1, 0)),
-          ("  8'sd5  ==   8'sd5 ", ExprInt(false, 1, 1)),
-          (" -8'sd5  ==  -8'sd5 ", ExprInt(false, 1, 1))
-        ) foreach {
-          case (text, result) => text in { simplify(text) shouldBe result }
-        }
-      }
-
-      "!=" - {
-        List(
-          //// Unsized
-          // - unsigned unsigned
-          (" 10  !=   7 ", ExprInt(false, 1, 1)),
-          ("  7  !=  10 ", ExprInt(false, 1, 1)),
-          ("  5  !=   5 ", ExprInt(false, 1, 0)),
-          // - unsigned signed
-          (" 10  !=  7s ", ExprInt(false, 1, 1)),
-          (" 10  != -7s ", ExprInt(false, 1, 1)),
-          ("  7  !=  10s", ExprInt(false, 1, 1)),
-          ("  7  != -10s", ExprInt(false, 1, 1)),
-          ("  5  !=  5s ", ExprInt(false, 1, 0)),
-          // - signed unsigned
-          (" 10s !=   7 ", ExprInt(false, 1, 1)),
-          ("-10s !=   7 ", ExprInt(false, 1, 1)),
-          ("  7s !=  10 ", ExprInt(false, 1, 1)),
-          (" -7s !=  10 ", ExprInt(false, 1, 1)),
-          ("  5s !=   5 ", ExprInt(false, 1, 0)),
-          // - signed signed
-          (" 10s !=  7s ", ExprInt(false, 1, 1)),
-          (" 10s != -7s ", ExprInt(false, 1, 1)),
-          ("-10s !=  7s ", ExprInt(false, 1, 1)),
-          ("-10s != -7s ", ExprInt(false, 1, 1)),
-          ("  7s !=  10s", ExprInt(false, 1, 1)),
-          ("  7s != -10s", ExprInt(false, 1, 1)),
-          (" -7s !=  10s", ExprInt(false, 1, 1)),
-          (" -7s != -10s", ExprInt(false, 1, 1)),
-          ("  5s !=  5s ", ExprInt(false, 1, 0)),
-          (" -5s != -5s ", ExprInt(false, 1, 0)),
-          //// Sized
-          // - unsigned unsigned
-          ("  8'd10  !=   8'd7  ", ExprInt(false, 1, 1)),
-          ("  8'd10  != -(8'd7) ", ExprInt(false, 1, 1)),
-          ("-(8'd10) !=   8'd7  ", ExprInt(false, 1, 1)),
-          ("-(8'd10) != -(8'd7) ", ExprInt(false, 1, 1)),
-          ("  8'd7   !=   8'd10 ", ExprInt(false, 1, 1)),
-          ("  8'd7   != -(8'd10)", ExprInt(false, 1, 1)),
-          ("-(8'd7)  !=   8'd10 ", ExprInt(false, 1, 1)),
-          ("-(8'd7)  != -(8'd10)", ExprInt(false, 1, 1)),
-          ("  8'd5   !=   8'd5  ", ExprInt(false, 1, 0)),
-          // - unsigned signed
-          ("  8'd10  !=   8'sd7 ", ExprInt(false, 1, 1)),
-          ("  8'd10  !=  -8'sd7 ", ExprInt(false, 1, 1)),
-          ("-(8'd10) !=   8'sd7 ", ExprInt(false, 1, 1)),
-          ("-(8'd10) !=  -8'sd7 ", ExprInt(false, 1, 1)),
-          ("  8'd7   !=   8'sd10", ExprInt(false, 1, 1)),
-          ("  8'd7   !=  -8'sd10", ExprInt(false, 1, 1)),
-          ("-(8'd7)  !=   8'sd10", ExprInt(false, 1, 1)),
-          ("-(8'd7)  !=  -8'sd10", ExprInt(false, 1, 1)),
-          ("  8'd5   !=   8'sd5 ", ExprInt(false, 1, 0)),
-          // - signed unsigned
-          ("  8'sd10 !=   8'd7  ", ExprInt(false, 1, 1)),
-          ("  8'sd10 != -(8'd7) ", ExprInt(false, 1, 1)),
-          (" -8'sd10 !=   8'd7  ", ExprInt(false, 1, 1)),
-          (" -8'sd10 != -(8'd7) ", ExprInt(false, 1, 1)),
-          ("  8'sd7  !=   8'd10 ", ExprInt(false, 1, 1)),
-          ("  8'sd7  != -(8'd10)", ExprInt(false, 1, 1)),
-          (" -8'sd7  !=   8'd10 ", ExprInt(false, 1, 1)),
-          (" -8'sd7  != -(8'd10)", ExprInt(false, 1, 1)),
-          ("  8'sd5  !=   8'd5  ", ExprInt(false, 1, 0)),
-          // - signed signed
-          ("  8'sd10 !=   8'sd7 ", ExprInt(false, 1, 1)),
-          ("  8'sd10 !=  -8'sd7 ", ExprInt(false, 1, 1)),
-          (" -8'sd10 !=   8'sd7 ", ExprInt(false, 1, 1)),
-          (" -8'sd10 !=  -8'sd7 ", ExprInt(false, 1, 1)),
-          ("  8'sd7  !=   8'sd10", ExprInt(false, 1, 1)),
-          ("  8'sd7  !=  -8'sd10", ExprInt(false, 1, 1)),
-          (" -8'sd7  !=   8'sd10", ExprInt(false, 1, 1)),
-          (" -8'sd7  !=  -8'sd10", ExprInt(false, 1, 1)),
-          ("  8'sd5  !=   8'sd5 ", ExprInt(false, 1, 0)),
-          (" -8'sd5  !=  -8'sd5 ", ExprInt(false, 1, 0))
-        ) foreach {
-          case (text, result) => text in { simplify(text) shouldBe result }
-        }
-      }
-
-      "&&" - {
-        List(
-          // - unsigned unsigned
-          (" 1'd0  &&  1'd0 ", ExprInt(false, 1, 0)),
-          (" 1'd0  &&  1'd1 ", ExprInt(false, 1, 0)),
-          (" 1'd1  &&  1'd0 ", ExprInt(false, 1, 0)),
-          (" 1'd1  &&  1'd1 ", ExprInt(false, 1, 1)),
-          // - unsigned signed
-          (" 1'd0  &&  1'sd0", ExprInt(false, 1, 0)),
-          (" 1'd0  && -1'sd1", ExprInt(false, 1, 0)),
-          (" 1'd1  &&  1'sd0", ExprInt(false, 1, 0)),
-          (" 1'd1  && -1'sd1", ExprInt(false, 1, 1)),
-          // - signed unsigned
-          (" 1'sd0 &&  1'd0 ", ExprInt(false, 1, 0)),
-          (" 1'sd0 &&  1'd1 ", ExprInt(false, 1, 0)),
-          ("-1'sd1 &&  1'd0 ", ExprInt(false, 1, 0)),
-          ("-1'sd1 &&  1'd1 ", ExprInt(false, 1, 1)),
-          // - signed signed
-          (" 1'sd0 &&  1'sd0  ", ExprInt(false, 1, 0)),
-          (" 1'sd0 && -1'sd1  ", ExprInt(false, 1, 0)),
-          ("-1'sd1 &&  1'sd0  ", ExprInt(false, 1, 0)),
-          ("-1'sd1 && -1'sd1  ", ExprInt(false, 1, 1))
-        ) foreach {
-          case (text, result) => text in { simplify(text) shouldBe result }
-        }
-      }
-
-      "||" - {
-        List(
-          // - unsigned unsigned
-          (" 1'd0  ||  1'd0 ", ExprInt(false, 1, 0)),
-          (" 1'd0  ||  1'd1 ", ExprInt(false, 1, 1)),
-          (" 1'd1  ||  1'd0 ", ExprInt(false, 1, 1)),
-          (" 1'd1  ||  1'd1 ", ExprInt(false, 1, 1)),
-          // - unsigned signed
-          (" 1'd0  ||  1'sd0", ExprInt(false, 1, 0)),
-          (" 1'd0  || -1'sd1", ExprInt(false, 1, 1)),
-          (" 1'd1  ||  1'sd0", ExprInt(false, 1, 1)),
-          (" 1'd1  || -1'sd1", ExprInt(false, 1, 1)),
-          // - signed unsigned
-          (" 1'sd0 ||  1'd0 ", ExprInt(false, 1, 0)),
-          (" 1'sd0 ||  1'd1 ", ExprInt(false, 1, 1)),
-          ("-1'sd1 ||  1'd0 ", ExprInt(false, 1, 1)),
-          ("-1'sd1 ||  1'd1 ", ExprInt(false, 1, 1)),
-          // - signed signed
-          (" 1'sd0 ||  1'sd0  ", ExprInt(false, 1, 0)),
-          (" 1'sd0 || -1'sd1  ", ExprInt(false, 1, 1)),
-          ("-1'sd1 ||  1'sd0  ", ExprInt(false, 1, 1)),
-          ("-1'sd1 || -1'sd1  ", ExprInt(false, 1, 1))
-        ) foreach {
-          case (text, result) => text in { simplify(text) shouldBe result }
-        }
-      }
-
-      "<<" - {
-        List(
-          //// Unsized unsized
-          // - unsigned unsigned
-          (" 10  << 2 ", ExprNum(false, 40)),
-          // - unsigned signed
-          (" 10  << 2s", ExprNum(false, 40)),
-          // - signed unsigned
-          (" 10s << 2 ", ExprNum(true, 40)),
-          ("-10s << 2 ", ExprNum(true, -40)),
-          // - signed signed
-          (" 10s << 2s", ExprNum(true, 40)),
-          ("-10s << 2s", ExprNum(true, -40)),
-          //// Unsized sized
-          // - unsigned unsigned
-          (" 10  << 8'd2 ", ExprNum(false, 40)),
-          // - unsigned signed
-          (" 10  << 8'sd2", ExprNum(false, 40)),
-          // - signed unsigned
-          (" 10s << 8'd2 ", ExprNum(true, 40)),
-          ("-10s << 8'd2 ", ExprNum(true, -40)),
-          // - signed signed
-          (" 10s << 8'sd2", ExprNum(true, 40)),
-          ("-10s << 8'sd2", ExprNum(true, -40)),
-          //// Sized unsized
-          // - unsigned unsigned
-          ("  8'd10  << 2 ", ExprInt(false, 8, 40)),
-          ("-(8'd10) << 2 ", ExprInt(false, 8, 216)),
-          // - unsigned signed
-          ("  8'd10  << 2s", ExprInt(false, 8, 40)),
-          ("-(8'd10) << 2s", ExprInt(false, 8, 216)),
-          // - signed unsigned
-          ("  8'sd10 << 2 ", ExprInt(true, 8, 40)),
-          (" -8'sd10 << 2 ", ExprInt(true, 8, -40)),
-          // - signed signed
-          ("  8'sd10 << 2s", ExprInt(true, 8, 40)),
-          (" -8'sd10 << 2s", ExprInt(true, 8, -40)),
-          //// Sized sized
-          // - unsigned unsigned
-          ("  8'd10  << 8'd2 ", ExprInt(false, 8, 40)),
-          ("-(8'd10) << 8'd2 ", ExprInt(false, 8, 216)),
-          // - unsigned signed
-          ("  8'd10  << 8'sd2", ExprInt(false, 8, 40)),
-          ("-(8'd10) << 8'sd2", ExprInt(false, 8, 216)),
-          // - signed unsigned
-          ("  8'sd10 << 8'd2 ", ExprInt(true, 8, 40)),
-          (" -8'sd10 << 8'd2 ", ExprInt(true, 8, -40)),
-          // - signed signed
-          ("  8'sd10 << 8'sd2", ExprInt(true, 8, 40)),
-          (" -8'sd10 << 8'sd2", ExprInt(true, 8, -40))
-        ) foreach {
-          case (text, result) => text in { simplify(text) shouldBe result }
-        }
-      }
-
-      "<<<" - {
-        List(
-          //// Unsized unsized
-          // - unsigned unsigned
-          (" 10  <<< 2 ", ExprNum(false, 40)),
-          // - unsigned signed
-          (" 10  <<< 2s", ExprNum(false, 40)),
-          // - signed unsigned
-          (" 10s <<< 2 ", ExprNum(true, 40)),
-          ("-10s <<< 2 ", ExprNum(true, -40)),
-          // - signed signed
-          (" 10s <<< 2s", ExprNum(true, 40)),
-          ("-10s <<< 2s", ExprNum(true, -40)),
-          //// Unsized sized
-          // - unsigned unsigned
-          (" 10  <<< 8'd2 ", ExprNum(false, 40)),
-          // - unsigned signed
-          (" 10  <<< 8'sd2", ExprNum(false, 40)),
-          // - signed unsigned
-          (" 10s <<< 8'd2 ", ExprNum(true, 40)),
-          ("-10s <<< 8'd2 ", ExprNum(true, -40)),
-          // - signed signed
-          (" 10s <<< 8'sd2", ExprNum(true, 40)),
-          ("-10s <<< 8'sd2", ExprNum(true, -40)),
-          //// Sized unsized
-          // - unsigned unsigned
-          ("  8'd10  <<< 2 ", ExprInt(false, 8, 40)),
-          ("-(8'd10) <<< 2 ", ExprInt(false, 8, 216)),
-          // - unsigned signed
-          ("  8'd10  <<< 2s", ExprInt(false, 8, 40)),
-          ("-(8'd10) <<< 2s", ExprInt(false, 8, 216)),
-          // - signed unsigned
-          ("  8'sd10 <<< 2 ", ExprInt(true, 8, 40)),
-          (" -8'sd10 <<< 2 ", ExprInt(true, 8, -40)),
-          // - signed signed
-          ("  8'sd10 <<< 2s", ExprInt(true, 8, 40)),
-          (" -8'sd10 <<< 2s", ExprInt(true, 8, -40)),
-          //// Sized sized
-          // - unsigned unsigned
-          ("  8'd10  <<< 8'd2 ", ExprInt(false, 8, 40)),
-          ("-(8'd10) <<< 8'd2 ", ExprInt(false, 8, 216)),
-          // - unsigned signed
-          ("  8'd10  <<< 8'sd2", ExprInt(false, 8, 40)),
-          ("-(8'd10) <<< 8'sd2", ExprInt(false, 8, 216)),
-          // - signed unsigned
-          ("  8'sd10 <<< 8'd2 ", ExprInt(true, 8, 40)),
-          (" -8'sd10 <<< 8'd2 ", ExprInt(true, 8, -40)),
-          // - signed signed
-          ("  8'sd10 <<< 8'sd2", ExprInt(true, 8, 40)),
-          (" -8'sd10 <<< 8'sd2", ExprInt(true, 8, -40))
-        ) foreach {
-          case (text, result) => text in { simplify(text) shouldBe result }
-        }
-      }
-
-      ">>" - {
-        List(
-          //// Unsized unsized
-          // - unsigned unsigned
-          (" 10  >> 2 ", ExprNum(false, 2)),
-          // - unsigned signed
-          (" 10  >> 2s", ExprNum(false, 2)),
-          // - signed unsigned
-          (" 10s >> 2 ", ExprNum(true, 2)),
-          // - signed signed
-          (" 10s >> 2s", ExprNum(true, 2)),
-          //// Unsized sized
-          // - unsigned unsigned
-          (" 10  >> 8'd2 ", ExprNum(false, 2)),
-          // - unsigned signed
-          (" 10  >> 8'sd2", ExprNum(false, 2)),
-          // - signed unsigned
-          (" 10s >> 8'd2 ", ExprNum(true, 2)),
-          // - signed signed
-          (" 10s >> 8'sd2", ExprNum(true, 2)),
-          //// Sized unsized
-          // - unsigned unsigned
-          ("  8'd10  >> 2 ", ExprInt(false, 8, 2)),
-          ("-(8'd10) >> 2 ", ExprInt(false, 8, 61)),
-          // - unsigned signed
-          ("  8'd10  >> 2s", ExprInt(false, 8, 2)),
-          ("-(8'd10) >> 2s", ExprInt(false, 8, 61)),
-          // - signed unsigned
-          ("  8'sd10 >> 2 ", ExprInt(true, 8, 2)),
-          (" -8'sd10 >> 2 ", ExprInt(true, 8, 61)),
-          // - signed signed
-          ("  8'sd10 >> 2s", ExprInt(true, 8, 2)),
-          (" -8'sd10 >> 2s", ExprInt(true, 8, 61)),
-          //// Sized sized
-          // - unsigned unsigned
-          ("  8'd10  >> 8'd2 ", ExprInt(false, 8, 2)),
-          ("-(8'd10) >> 8'd2 ", ExprInt(false, 8, 61)),
-          // - unsigned signed
-          ("  8'd10  >> 8'sd2", ExprInt(false, 8, 2)),
-          ("-(8'd10) >> 8'sd2", ExprInt(false, 8, 61)),
-          // - signed unsigned
-          ("  8'sd10 >> 8'd2 ", ExprInt(true, 8, 2)),
-          (" -8'sd10 >> 8'd2 ", ExprInt(true, 8, 61)),
-          // - signed signed
-          ("  8'sd10 >> 8'sd2", ExprInt(true, 8, 2)),
-          (" -8'sd10 >> 8'sd2", ExprInt(true, 8, 61))
-        ) foreach {
-          case (text, result) => text in { simplify(text) shouldBe result }
-        }
-      }
-
-      ">>>" - {
-        List(
-          //// Unsized unsized
-          // - unsigned unsigned
-          (" 10  >>> 2 ", ExprNum(false, 2)),
-          // - unsigned signed
-          (" 10  >>> 2s", ExprNum(false, 2)),
-          // - signed unsigned
-          (" 10s >>> 2 ", ExprNum(true, 2)),
-          ("-10s >>> 2 ", ExprNum(true, -3)),
-          // - signed signed
-          (" 10s >>> 2s", ExprNum(true, 2)),
-          ("-10s >>> 2s", ExprNum(true, -3)),
-          //// Unsized sized
-          // - unsigned unsigned
-          (" 10  >>> 8'd2 ", ExprNum(false, 2)),
-          // - unsigned signed
-          (" 10  >>> 8'sd2", ExprNum(false, 2)),
-          // - signed unsigned
-          (" 10s >>> 8'd2 ", ExprNum(true, 2)),
-          ("-10s >>> 8'd2 ", ExprNum(true, -3)),
-          // - signed signed
-          (" 10s >>> 8'sd2", ExprNum(true, 2)),
-          ("-10s >>> 8'sd2", ExprNum(true, -3)),
-          //// Sized unsized
-          // - unsigned unsigned
-          ("  8'd10  >>> 2 ", ExprInt(false, 8, 2)),
-          ("-(8'd10) >>> 2 ", ExprInt(false, 8, 61)),
-          // - unsigned signed
-          ("  8'd10  >>> 2s", ExprInt(false, 8, 2)),
-          ("-(8'd10) >>> 2s", ExprInt(false, 8, 61)),
-          // - signed unsigned
-          ("  8'sd10 >>> 2 ", ExprInt(true, 8, 2)),
-          (" -8'sd10 >>> 2 ", ExprInt(true, 8, -3)),
-          // - signed signed
-          ("  8'sd10 >>> 2s", ExprInt(true, 8, 2)),
-          (" -8'sd10 >>> 2s", ExprInt(true, 8, -3)),
-          //// Sized sized
-          // - unsigned unsigned
-          ("  8'd10  >>> 8'd2 ", ExprInt(false, 8, 2)),
-          ("-(8'd10) >>> 8'd2 ", ExprInt(false, 8, 61)),
-          // - unsigned signed
-          ("  8'd10  >>> 8'sd2", ExprInt(false, 8, 2)),
-          ("-(8'd10) >>> 8'sd2", ExprInt(false, 8, 61)),
-          // - signed unsigned
-          ("  8'sd10 >>> 8'd2 ", ExprInt(true, 8, 2)),
-          (" -8'sd10 >>> 8'd2 ", ExprInt(true, 8, -3)),
-          // - signed signed
-          ("  8'sd10 >>> 8'sd2", ExprInt(true, 8, 2)),
-          (" -8'sd10 >>> 8'sd2", ExprInt(true, 8, -3))
-        ) foreach {
-          case (text, result) => text in { simplify(text) shouldBe result }
-        }
-      }
-    }
-
-    "shift special cases" - {
-      "zero left hand side" - {
-        List(
-          /// Unsized
-          // unsigned
-          ("0 >>  @unknownu(4)", ExprNum(false, 0)),
-          ("0 >>> @unknownu(4)", ExprNum(false, 0)),
-          ("0 <<  @unknownu(4)", ExprNum(false, 0)),
-          ("0 <<< @unknownu(4)", ExprNum(false, 0)),
-          // signed
-          ("0s >>  @unknownu(4)", ExprNum(true, 0)),
-          ("0s >>> @unknownu(4)", ExprNum(true, 0)),
-          ("0s <<  @unknownu(4)", ExprNum(true, 0)),
-          ("0s <<< @unknownu(4)", ExprNum(true, 0)),
-          // Sized
-          // unsigned
-          ("8'd0 >>  @unknownu(4)", ExprInt(false, 8, 0)),
-          ("8'd0 >>> @unknownu(4)", ExprInt(false, 8, 0)),
-          ("8'd0 <<  @unknownu(4)", ExprInt(false, 8, 0)),
-          ("8'd0 <<< @unknownu(4)", ExprInt(false, 8, 0)),
-          // signed
-          ("8'sd0 >>  @unknownu(4)", ExprInt(true, 8, 0)),
-          ("8'sd0 >>> @unknownu(4)", ExprInt(true, 8, 0)),
-          ("8'sd0 <<  @unknownu(4)", ExprInt(true, 8, 0)),
-          ("8'sd0 <<< @unknownu(4)", ExprInt(true, 8, 0))
-        ) foreach {
-          case (text, result) => text in { simplify(text) shouldBe result }
-        }
-      }
-
-      "zero right hand side" - {
-        List(
-          /// Unsized
-          // unsigned
-          "@unknownu(4) >>  0",
-          "@unknownu(4) >>> 0",
-          "@unknownu(4) <<  0",
-          "@unknownu(4) <<< 0",
-          // signed
-          "@unknownu(4) >>  0s",
-          "@unknownu(4) >>> 0s",
-          "@unknownu(4) <<  0s",
-          "@unknownu(4) <<< 0s",
-          // Sized
-          // unsigned
-          "@unknownu(4) >>  8'd0",
-          "@unknownu(4) >>> 8'd0",
-          "@unknownu(4) <<  8'd0",
-          "@unknownu(4) <<< 8'd0",
-          // signed
-          "@unknownu(4) >>  8'sd0",
-          "@unknownu(4) >>> 8'sd0",
-          "@unknownu(4) <<  8'sd0",
-          "@unknownu(4) <<< 8'sd0"
-        ) foreach { text =>
-          text in {
-            simplify(text) should matchPattern {
-              case ExprCall(ExprSym(Symbol("@unknownu")), ArgP(Expr(4)) :: Nil) =>
-            }
+          "shift amount >= width of left hand side" - {
+            checkExact(
+              // unsigned unsigned
+              ("@unknownu(4) >>  8'd4 ", ExprInt(false, 4, 0)),
+              ("@unknownu(4) >>> 8'd4 ", ExprInt(false, 4, 0)),
+              ("@unknownu(4) <<  8'd4 ", ExprInt(false, 4, 0)),
+              ("@unknownu(4) <<< 8'd4 ", ExprInt(false, 4, 0)),
+              // unsigned signed
+              ("@unknownu(4) >>  8'sd4", ExprInt(false, 4, 0)),
+              ("@unknownu(4) >>> 8'sd4", ExprInt(false, 4, 0)),
+              ("@unknownu(4) <<  8'sd4", ExprInt(false, 4, 0)),
+              ("@unknownu(4) <<< 8'sd4", ExprInt(false, 4, 0)),
+              // signed unsigned
+              ("@unknowni(4) >>  8'd4 ", ExprInt(true, 4, 0)),
+              ("@unknowni(4) >>> 8'd4 ", ExprInt(true, 4, -1)),
+              ("@unknowni(4) <<  8'd4 ", ExprInt(true, 4, 0)),
+              ("@unknowni(4) <<< 8'd4 ", ExprInt(true, 4, 0)),
+              // signed signed
+              ("@unknowni(4) >>  8'sd4", ExprInt(true, 4, 0)),
+              ("@unknowni(4) >>> 8'sd4", ExprInt(true, 4, -1)),
+              ("@unknowni(4) <<  8'sd4", ExprInt(true, 4, 0)),
+              ("@unknowni(4) <<< 8'sd4", ExprInt(true, 4, 0))
+            )
           }
         }
-      }
 
-      "shift by width" - {
-        List(
-          // unsigned unsigned
-          ("@unknownu(4) >>  8'd4", ExprInt(false, 4, 0)),
-          ("@unknownu(4) >>> 8'd4", ExprInt(false, 4, 0)),
-          ("@unknownu(4) <<  8'd4", ExprInt(false, 4, 0)),
-          ("@unknownu(4) <<< 8'd4", ExprInt(false, 4, 0)),
-          // unsigned signed
-          ("@unknownu(4) >>  8'sd4", ExprInt(false, 4, 0)),
-          ("@unknownu(4) >>> 8'sd4", ExprInt(false, 4, 0)),
-          ("@unknownu(4) <<  8'sd4", ExprInt(false, 4, 0)),
-          ("@unknownu(4) <<< 8'sd4", ExprInt(false, 4, 0)),
-          // signed unsigned
-          ("@unknowni(4) >>  8'd4", ExprInt(true, 4, 0)),
-          ("@unknowni(4) >>> 8'd4", ExprInt(true, 4, -1)),
-          ("@unknowni(4) <<  8'd4", ExprInt(true, 4, 0)),
-          ("@unknowni(4) <<< 8'd4", ExprInt(true, 4, 0)),
-          // signed signed
-          ("@unknowni(4) >>  8'sd4", ExprInt(true, 4, 0)),
-          ("@unknowni(4) >>> 8'sd4", ExprInt(true, 4, -1)),
-          ("@unknowni(4) <<  8'sd4", ExprInt(true, 4, 0)),
-          ("@unknowni(4) <<< 8'sd4", ExprInt(true, 4, 0))
-        ) foreach {
-          case (text, result) => text in { simplify(text) shouldBe result }
+        "comparison operators with one side known" - {
+          val tests = List[(String, String, String, PartialFunction[Any, Unit])](
+            // _ < min value
+            ("@unknownu(4)", "<", " 4'd0 ", { case ExprInt(false, 1, v) if v == 0 => }),
+            ("@unknownu(4)", "<", " 4'sd0", { case ExprInt(false, 1, v) if v == 0 => }),
+            ("@unknowni(4)", "<", " 4'd0 ", { case ExprInt(false, 1, v) if v == 0 => }),
+            ("@unknowni(4)", "<", "-4'sd8", { case ExprInt(false, 1, v) if v == 0 => }),
+            // _ > max value
+            ("@unknownu(4)", ">", " 4'd15", { case ExprInt(false, 1, v) if v == 0 => }),
+            ("@unknownu(4)", ">", "-4'sd1", { case ExprInt(false, 1, v) if v == 0 => }),
+            ("@unknowni(4)", ">", " 4'd15", { case ExprInt(false, 1, v) if v == 0 => }),
+            ("@unknowni(4)", ">", " 4'sd7", { case ExprInt(false, 1, v) if v == 0 => }),
+            // _ <= max value
+            ("@unknownu(4)", "<=", " 4'd15", { case ExprInt(false, 1, v) if v == 1 => }),
+            ("@unknownu(4)", "<=", "-4'sd1", { case ExprInt(false, 1, v) if v == 1 => }),
+            ("@unknowni(4)", "<=", " 4'd15", { case ExprInt(false, 1, v) if v == 1 => }),
+            ("@unknowni(4)", "<=", " 4'sd7", { case ExprInt(false, 1, v) if v == 1 => }),
+            // _ >= min value
+            ("@unknownu(4)", ">=", " 4'd0 ", { case ExprInt(false, 1, v) if v == 1 => }),
+            ("@unknownu(4)", ">=", " 4'sd0", { case ExprInt(false, 1, v) if v == 1 => }),
+            ("@unknowni(4)", ">=", " 4'd0 ", { case ExprInt(false, 1, v) if v == 1 => }),
+            ("@unknowni(4)", ">=", "-4'sd8", { case ExprInt(false, 1, v) if v == 1 => })
+          )
+
+          "unknown on left" - {
+            checkPattern(tests map { case (a, op, b, p) => (s"$a $op $b", p) }: _*)
+          }
+
+          "unknown on right" - {
+            val swap = Map("<" -> ">", "<=" -> ">=", ">" -> "<", ">=" -> "<=")
+            checkPattern(tests map { case (a, op, b, p) => (s"$b ${swap(op)} $a", p) }: _*)
+          }
+        }
+
+        "commutative operators with one side known" - {
+          val tests = List[(String, String, String, PartialFunction[Any, Unit])](
+            // _ + 0
+            ("@unknownu(4)", "+", "4'd0 ", { case UnknownU(4) => }),
+            ("@unknownu(4)", "+", "4'sd0", { case UnknownU(4) => }),
+            ("@unknowni(4)", "+", "4'd0 ", { case Unsigned(UnknownI(4)) => }),
+            ("@unknowni(4)", "+", "4'sd0", { case UnknownI(4) => }),
+            // _ * 0
+            ("@unknownu(4)", "*", "4'd0 ", { case ExprInt(false, 4, v) if v == 0 => }),
+            ("@unknownu(4)", "*", "4'sd0", { case ExprInt(false, 4, v) if v == 0 => }),
+            ("@unknowni(4)", "*", "4'd0 ", { case ExprInt(false, 4, v) if v == 0 => }),
+            ("@unknowni(4)", "*", "4'sd0", { case ExprInt(true, 4, v) if v == 0 => }),
+            // _ * 1
+            ("@unknownu(4)", "*", "4'd1 ", { case UnknownU(4) => }),
+            ("@unknownu(4)", "*", "4'sd1", { case UnknownU(4) => }),
+            ("@unknowni(4)", "*", "4'd1 ", { case Unsigned(UnknownI(4)) => }),
+            ("@unknowni(4)", "*", "4'sd1", { case UnknownI(4) => }),
+            // _ & 0
+            ("@unknownu(4)", "&", "4'd0 ", { case ExprInt(false, 4, v) if v == 0 => }),
+            ("@unknownu(4)", "&", "4'sd0", { case ExprInt(false, 4, v) if v == 0 => }),
+            ("@unknowni(4)", "&", "4'd0 ", { case ExprInt(false, 4, v) if v == 0 => }),
+            ("@unknowni(4)", "&", "4'sd0", { case ExprInt(true, 4, v) if v == 0 => }),
+            // _ & ones
+            ("@unknownu(4)", "&", "4'd15 ", { case UnknownU(4) => }),
+            ("@unknownu(4)", "&", "-4'sd1", { case UnknownU(4) => }),
+            ("@unknowni(4)", "&", "4'd15 ", { case Unsigned(UnknownI(4)) => }),
+            ("@unknowni(4)", "&", "-4'sd1", { case UnknownI(4) => }),
+            // _ | 0
+            ("@unknownu(4)", "|", "4'd0 ", { case UnknownU(4) => }),
+            ("@unknownu(4)", "|", "4'sd0", { case UnknownU(4) => }),
+            ("@unknowni(4)", "|", "4'd0 ", { case Unsigned(UnknownI(4)) => }),
+            ("@unknowni(4)", "|", "4'sd0", { case UnknownI(4) => }),
+            // _ | ones
+            ("@unknownu(4)", "|", "4'd15 ", { case ExprInt(false, 4, v) if v == 15 => }),
+            ("@unknownu(4)", "|", "-4'sd1", { case ExprInt(false, 4, v) if v == 15 => }),
+            ("@unknowni(4)", "|", "4'd15 ", { case ExprInt(false, 4, v) if v == 15 => }),
+            ("@unknowni(4)", "|", "-4'sd1", { case ExprInt(true, 4, v) if v == -1 => }),
+            // _ ^ 0
+            ("@unknownu(4)", "^", "4'd0 ", { case UnknownU(4) => }),
+            ("@unknownu(4)", "^", "4'sd0", { case UnknownU(4) => }),
+            ("@unknowni(4)", "^", "4'd0 ", { case Unsigned(UnknownI(4)) => }),
+            ("@unknowni(4)", "^", "4'sd0", { case UnknownI(4) => }),
+            // _ ^ ones
+            ("@unknownu(4)", "^", "4'd15 ", { case ExprUnary("~", UnknownU(4)) => }),
+            ("@unknownu(4)", "^", "-4'sd1", { case ExprUnary("~", UnknownU(4)) => }),
+            ("@unknowni(4)", "^", "4'd15 ", { case Unsigned(ExprUnary("~", UnknownI(4))) => }),
+            ("@unknowni(4)", "^", "-4'sd1", { case ExprUnary("~", UnknownI(4)) => }),
+            // _ && 0
+            ("@unknownu(1)", "&&", "1'd0 ", { case ExprInt(false, 1, v) if v == 0 => }),
+            ("@unknownu(1)", "&&", "1'sd0", { case ExprInt(false, 1, v) if v == 0 => }),
+            ("@unknowni(1)", "&&", "1'd0 ", { case ExprInt(false, 1, v) if v == 0 => }),
+            ("@unknowni(1)", "&&", "1'sd0", { case ExprInt(false, 1, v) if v == 0 => }),
+            // _ && 1
+            ("@unknownu(1)", "&&", "1'd1  ", { case UnknownU(1) => }),
+            ("@unknownu(1)", "&&", "-1'sd1", { case UnknownU(1) => }),
+            ("@unknowni(1)", "&&", "1'd1  ", { case Unsigned(UnknownI(1)) => }),
+            ("@unknowni(1)", "&&", "-1'sd1", { case Unsigned(UnknownI(1)) => }),
+            // _ || 0
+            ("@unknownu(1)", "||", "1'd0 ", { case UnknownU(1) => }),
+            ("@unknownu(1)", "||", "1'sd0", { case UnknownU(1) => }),
+            ("@unknowni(1)", "||", "1'd0 ", { case Unsigned(UnknownI(1)) => }),
+            ("@unknowni(1)", "||", "1'sd0", { case Unsigned(UnknownI(1)) => }),
+            // _ || 1
+            ("@unknownu(1)", "||", "1'd1  ", { case ExprInt(false, 1, v) if v == 1 => }),
+            ("@unknownu(1)", "||", "-1'sd1", { case ExprInt(false, 1, v) if v == 1 => }),
+            ("@unknowni(1)", "||", "1'd1  ", { case ExprInt(false, 1, v) if v == 1 => }),
+            ("@unknowni(1)", "||", "-1'sd1", { case ExprInt(false, 1, v) if v == 1 => })
+          )
+
+          "unknown on left" - {
+            checkPattern(tests map { case (a, op, b, p) => (s"$a $op $b", p) }: _*)
+          }
+
+          "unknown on right" - {
+            checkPattern(tests map { case (a, op, b, p) => (s"$b $op $a", p) }: _*)
+          }
+        }
+
+        "non commutative operators with one side known" - {
+          checkPattern(
+            // 0 / _
+            ("4'd0  / @unknownu(4)", { case ExprInt(false, 4, v) if v == 0 => }),
+            ("4'sd0 / @unknownu(4)", { case ExprInt(false, 4, v) if v == 0 => }),
+            ("4'd0  / @unknowni(4)", { case ExprInt(false, 4, v) if v == 0 => }),
+            ("4'sd0 / @unknowni(4)", { case ExprInt(true, 4, v) if v == 0 => }),
+            // _ / 1
+            ("@unknownu(4) / 4'd1 ", { case UnknownU(4) => }),
+            ("@unknownu(4) / 4'sd1", { case UnknownU(4) => }),
+            ("@unknowni(4) / 4'd1 ", { case Unsigned(UnknownI(4)) => }),
+            ("@unknowni(4) / 4'sd1", { case UnknownI(4) => }),
+            // 0 % _
+            ("4'd0  % @unknownu(4)", { case ExprInt(false, 4, v) if v == 0 => }),
+            ("4'sd0 % @unknownu(4)", { case ExprInt(false, 4, v) if v == 0 => }),
+            ("4'd0  % @unknowni(4)", { case ExprInt(false, 4, v) if v == 0 => }),
+            ("4'sd0 % @unknowni(4)", { case ExprInt(true, 4, v) if v == 0 => }),
+            // _ % 1
+            ("@unknownu(4) % 4'd1 ", { case ExprInt(false, 4, v) if v == 0 => }),
+            ("@unknownu(4) % 4'sd1", { case ExprInt(false, 4, v) if v == 0 => }),
+            ("@unknowni(4) % 4'd1 ", { case ExprInt(false, 4, v) if v == 0 => }),
+            ("@unknowni(4) % 4'sd1", { case ExprInt(true, 4, v) if v == 0 => }),
+            // 0 - _
+            ("4'd0  - @unknownu(4)", { case ExprUnary("-", UnknownU(4)) => }),
+            ("4'sd0 - @unknownu(4)", { case ExprUnary("-", UnknownU(4)) => }),
+            ("4'd0  - @unknowni(4)", { case Unsigned(ExprUnary("-", UnknownI(4))) => }),
+            ("4'sd0 - @unknowni(4)", { case ExprUnary("-", UnknownI(4)) => }),
+            // _ - 0
+            ("@unknownu(4) - 4'd0 ", { case UnknownU(4) => }),
+            ("@unknownu(4) - 4'sd0", { case UnknownU(4) => }),
+            ("@unknowni(4) - 4'd0 ", { case Unsigned(UnknownI(4)) => }),
+            ("@unknowni(4) - 4'sd0", { case UnknownI(4) => })
+          )
         }
       }
     }
@@ -1472,158 +1564,6 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
         text in {
           simplify(text) should matchPattern(pattern)
           checkSingleError(err)
-        }
-      }
-    }
-
-    "binary operators with one side known" - {
-      for {
-        (text, pattern) <- List[(String, PartialFunction[Any, Unit])](
-          // format: off
-          // Arithmetic *
-          ("8'd0   * x_u8",    { case ExprInt(false, 8, v) if v == 0 => }),
-          ("8'sd0  * x_u8",    { case ExprInt(false, 8, v) if v == 0 => }),
-          ("8'd0   * x_i8",    { case ExprInt(false, 8, v) if v == 0 => }),
-          ("8'sd0  * x_i8",    { case ExprInt(true,  8, v) if v == 0 => }),
-          ("x_u8   * 8'd0",    { case ExprInt(false, 8, v) if v == 0 => }),
-          ("x_u8   * 8'sd0",   { case ExprInt(false, 8, v) if v == 0 => }),
-          ("x_i8   * 8'd0",    { case ExprInt(false, 8, v) if v == 0 => }),
-          ("x_i8   * 8'sd0",   { case ExprInt(true,  8, v) if v == 0 => }),
-          ("8'd1   * x_u8",    { case ExprSym(Symbol("x_u8")) => }),
-          ("8'sd1  * x_u8",    { case ExprSym(Symbol("x_u8")) => }),
-          ("8'd1   * x_i8",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i8"))) :: Nil) => }),
-          ("8'sd1  * x_i8",    { case ExprSym(Symbol("x_i8")) => }),
-          ("x_u8   * 8'd1",    { case ExprSym(Symbol("x_u8")) => }),
-          ("x_u8   * 8'sd1",   { case ExprSym(Symbol("x_u8")) => }),
-          ("x_i8   * 8'd1",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i8"))) :: Nil) => }),
-          ("x_i8   * 8'sd1",   { case ExprSym(Symbol("x_i8")) => }),
-          // Arithmetic /
-          ("8'd0   / x_u8",    { case ExprInt(false, 8, v) if v == 0 => }),
-          ("8'sd0  / x_u8",    { case ExprInt(false, 8, v) if v == 0 => }),
-          ("8'd0   / x_i8",    { case ExprInt(false, 8, v) if v == 0 => }),
-          ("8'sd0  / x_i8",    { case ExprInt(true,  8, v) if v == 0 => }),
-          ("x_u8   / 8'd1",    { case ExprSym(Symbol("x_u8")) => }),
-          ("x_u8   / 8'sd1",   { case ExprSym(Symbol("x_u8")) => }),
-          ("x_i8   / 8'd1",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i8"))) :: Nil) => }),
-          ("x_i8   / 8'sd1",   { case ExprSym(Symbol("x_i8")) => }),
-          // Arithmetic /
-          ("8'd0   % x_u8",    { case ExprInt(false, 8, v) if v == 0 => }),
-          ("8'sd0  % x_u8",    { case ExprInt(false, 8, v) if v == 0 => }),
-          ("8'd0   % x_i8",    { case ExprInt(false, 8, v) if v == 0 => }),
-          ("8'sd0  % x_i8",    { case ExprInt(true,  8, v) if v == 0 => }),
-          ("x_u8   % 8'd1",    { case ExprInt(false, 8, v) if v == 0 => }),
-          ("x_u8   % 8'sd1",   { case ExprInt(false, 8, v) if v == 0 => }),
-          ("x_i8   % 8'd1",    { case ExprInt(false, 8, v) if v == 0 => }),
-          ("x_i8   % 8'sd1",   { case ExprInt(true,  8, v) if v == 0 => }),
-          // Arithmetic +
-          ("8'd0   + x_u8",    { case ExprSym(Symbol("x_u8")) => }),
-          ("8'sd0  + x_u8",    { case ExprSym(Symbol("x_u8")) => }),
-          ("8'd0   + x_i8",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i8"))) :: Nil) => }),
-          ("8'sd0  + x_i8",    { case ExprSym(Symbol("x_i8")) => }),
-          ("x_u8   + 8'd0",    { case ExprSym(Symbol("x_u8")) => }),
-          ("x_u8   + 8'sd0",   { case ExprSym(Symbol("x_u8")) => }),
-          ("x_i8   + 8'd0",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i8"))) :: Nil) => }),
-          ("x_i8   + 8'sd0",   { case ExprSym(Symbol("x_i8")) => }),
-          // Arithmetic -
-          ("8'd0   - x_u8",    { case ExprUnary("-", ExprSym(Symbol("x_u8"))) => }),
-          ("8'sd0  - x_u8",    { case ExprUnary("-", ExprSym(Symbol("x_u8"))) => }),
-          ("8'd0   - x_i8",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprUnary("-", ExprSym(Symbol("x_i8")))) :: Nil) => }),
-          ("8'sd0  - x_i8",    { case ExprUnary("-", ExprSym(Symbol("x_i8"))) => }),
-          ("x_u8   - 8'd0",    { case ExprSym(Symbol("x_u8")) => }),
-          ("x_u8   - 8'sd0",   { case ExprSym(Symbol("x_u8")) => }),
-          ("x_i8   - 8'd0",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i8"))) :: Nil) => }),
-          ("x_i8   - 8'sd0",   { case ExprSym(Symbol("x_i8")) => }),
-          // Logical &&
-          ("1'd1 && x_u1",    { case ExprSym(Symbol("x_u1")) => }),
-          ("x_u1 && 1'd1",    { case ExprSym(Symbol("x_u1")) => }),
-          ("1'd1 && x_i1",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i1"))) :: Nil) => }),
-          ("x_i1 && 1'd1",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i1"))) :: Nil) => }),
-          ("1'd0 && x_u1",    { case ExprInt(false, 1, v) if v == 0 => }),
-          ("x_u1 && 1'd0",    { case ExprInt(false, 1, v) if v == 0 => }),
-          ("1'd0 && x_i1",    { case ExprInt(false, 1, v) if v == 0 => }),
-          ("x_i1 && 1'd0",    { case ExprInt(false, 1, v) if v == 0 => }),
-          // Logical ||
-          ("1'd1 || x_u1",    { case ExprInt(false, 1, v) if v == 1 => }),
-          ("x_u1 || 1'd1",    { case ExprInt(false, 1, v) if v == 1 => }),
-          ("1'd1 || x_i1",    { case ExprInt(false, 1, v) if v == 1 => }),
-          ("x_i1 || 1'd1",    { case ExprInt(false, 1, v) if v == 1 => }),
-          ("1'd0 || x_u1",    { case ExprSym(Symbol("x_u1")) => }),
-          ("x_u1 || 1'd0",    { case ExprSym(Symbol("x_u1")) => }),
-          ("1'd0 || x_i1",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i1"))) :: Nil) => }),
-          ("x_i1 || 1'd0",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i1"))) :: Nil) => }),
-          // Binary &
-          ("8'd0   & x_u8",    { case ExprInt(false, 8, v) if v == 0 => }),
-          ("8'sd0  & x_u8",    { case ExprInt(false,  8, v) if v == 0 => }),
-          ("8'd0   & x_i8",    { case ExprInt(false, 8, v) if v == 0 => }),
-          ("8'sd0  & x_i8",    { case ExprInt(true,  8, v) if v == 0 => }),
-          ("x_u8   & 8'd0",    { case ExprInt(false, 8, v) if v == 0 => }),
-          ("x_u8   & 8'sd0",   { case ExprInt(false,  8, v) if v == 0 => }),
-          ("x_i8   & 8'd0",    { case ExprInt(false, 8, v) if v == 0 => }),
-          ("x_i8   & 8'sd0",   { case ExprInt(true,  8, v) if v == 0 => }),
-          ("8'hff  & x_u8",    { case ExprSym(Symbol("x_u8")) => }),
-          ("-8'sd1 & x_u8",    { case ExprSym(Symbol("x_u8")) => }),
-          ("8'hff  & x_i8",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i8"))) :: Nil) => }),
-          ("-8'sd1 & x_i8",    { case ExprSym(Symbol("x_i8")) => }),
-          ("x_u8   & 8'hff",   { case ExprSym(Symbol("x_u8")) => }),
-          ("x_u8   & -8'sd1",  { case ExprSym(Symbol("x_u8")) => }),
-          ("x_i8   & 8'hff",   { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i8"))) :: Nil) => }),
-          ("x_i8   & -8'sd1",  { case ExprSym(Symbol("x_i8")) => }),
-          // Binary |
-          ("8'd0   | x_u8",    { case ExprSym(Symbol("x_u8")) => }),
-          ("8'sd0  | x_u8",    { case ExprSym(Symbol("x_u8")) => }),
-          ("8'd0   | x_i8",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i8"))) :: Nil) => }),
-          ("8'sd0  | x_i8",    { case ExprSym(Symbol("x_i8")) => }),
-          ("x_u8   | 8'd0",    { case ExprSym(Symbol("x_u8")) => }),
-          ("x_u8   | 8'sd0",   { case ExprSym(Symbol("x_u8")) => }),
-          ("x_i8   | 8'd0",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i8"))) :: Nil) => }),
-          ("x_i8   | 8'sd0",   { case ExprSym(Symbol("x_i8")) => }),
-          ("8'hff  | x_u8",    { case ExprInt(false, 8, v) if v == 0 => }),
-          ("-8'sd1 | x_u8",    { case ExprInt(false,  8, v) if v == 0 => }),
-          ("8'hff  | x_i8",    { case ExprInt(false, 8, v) if v == 0 => }),
-          ("-8'sd1 | x_i8",    { case ExprInt(true,  8, v) if v == 0 => }),
-          ("x_u8   | 8'hff",   { case ExprInt(false, 8, v) if v == 0 => }),
-          ("x_u8   | -8'sd1",  { case ExprInt(false,  8, v) if v == 0 => }),
-          ("x_i8   | 8'hff",   { case ExprInt(false, 8, v) if v == 0 => }),
-          ("x_i8   | -8'sd1",  { case ExprInt(true,  8, v) if v == 0 => }),
-          // Binary ^
-          ("8'd0   ^ x_u8",    { case ExprSym(Symbol("x_u8")) => }),
-          ("8'sd0  ^ x_u8",    { case ExprSym(Symbol("x_u8")) => }),
-          ("8'd0   ^ x_i8",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i8"))) :: Nil) => }),
-          ("8'sd0  ^ x_i8",    { case ExprSym(Symbol("x_i8")) => }),
-          ("x_u8   ^ 8'd0",    { case ExprSym(Symbol("x_u8")) => }),
-          ("x_u8   ^ 8'sd0",   { case ExprSym(Symbol("x_u8")) => }),
-          ("x_i8   ^ 8'd0",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("x_i8"))) :: Nil) => }),
-          ("x_i8   ^ 8'sd0",   { case ExprSym(Symbol("x_i8")) => }),
-          ("8'hff  ^ x_u8",    { case ExprUnary("~", ExprSym(Symbol("x_u8"))) => }),
-          ("-8'sd1 ^ x_u8",    { case ExprUnary("~", ExprSym(Symbol("x_u8"))) => }),
-          ("8'hff  ^ x_i8",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprUnary("~", ExprSym(Symbol("x_i8")))) :: Nil) => }),
-          ("-8'sd1 ^ x_i8",    { case ExprUnary("~", ExprSym(Symbol("x_i8"))) => }),
-          ("x_u8   ^ 8'hff",   { case ExprUnary("~", ExprSym(Symbol("x_u8"))) => }),
-          ("x_u8   ^ -8'sd1",  { case ExprUnary("~", ExprSym(Symbol("x_u8"))) => }),
-          ("x_i8   ^ 8'hff",   { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprUnary("~", ExprSym(Symbol("x_i8")))) :: Nil) => }),
-          ("x_i8   ^ -8'sd1",  { case ExprUnary("~", ExprSym(Symbol("x_i8"))) => }),
-          // format: on
-        )
-      } {
-        text in {
-          fold {
-            s"""
-               |fsm f {
-               |  u1 x_u1;
-               |  i1 x_i1;
-               |  u8 x_u8;
-               |  i8 x_i8;
-               |  void main() {
-               |    $$display("", $text);
-               |    fence;
-               |  }
-               |}""".stripMargin
-          } getFirst {
-            case ExprCall(_, _ :: ArgP(expr) :: Nil) => expr
-          } tap {
-            _ should matchPattern(pattern)
-          }
-          cc.messages filterNot { _.isInstanceOf[Warning] } shouldBe empty
         }
       }
     }

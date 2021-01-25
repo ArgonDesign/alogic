@@ -109,6 +109,8 @@ final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer 
                 // At least one condition has an unknown value, and therefore
                 // might match, so we cannot fold further, but drop leading
                 // eliminated cases
+                // TODO: Actually, drop all constant cases as they would have
+                //       matched above
                 Option.when(remaining ne cases) {
                   val retained = walk(remaining) map { _.asInstanceOf[Case] }
                   TypeAssigner(StmtCase(expr, retained) withLoc tree.loc)

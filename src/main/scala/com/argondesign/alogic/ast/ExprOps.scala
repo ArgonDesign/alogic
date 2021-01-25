@@ -140,6 +140,11 @@ trait ExprOps { this: Expr =>
 
   final def castUnsigned(implicit cc: CompilerContext): ExprCall = cc.makeBuiltinCall("$unsigned", loc, this :: Nil)
   final def castSigned(implicit cc: CompilerContext): ExprCall = cc.makeBuiltinCall("$signed", loc, this :: Nil)
+
+  final def asUnsigned(implicit cc: CompilerContext): Expr = if (tpe.isSigned) castUnsigned else this
+  final def asSigned(implicit cc: CompilerContext): Expr = if (tpe.isSigned) this else  castSigned
+  final def withSignedness(signed: Boolean)(implicit cc: CompilerContext): Expr =
+    if (tpe.isSigned && !signed) castUnsigned else if (!tpe.isSigned && signed) castSigned else this
   // format: on
 
   final def inc(implicit cc: CompilerContext): Expr = if (tpe.isPacked && tpe.width == 1) {
