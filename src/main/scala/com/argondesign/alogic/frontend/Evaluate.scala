@@ -17,7 +17,7 @@ import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.util.unreachable
-import com.argondesign.alogic.util.BigIntOps.ClassOps
+import com.argondesign.alogic.util.BigIntOps.BigIntClassOps
 
 import scala.util.chaining.scalaUtilChainingOps
 

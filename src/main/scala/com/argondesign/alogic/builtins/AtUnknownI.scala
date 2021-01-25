@@ -16,12 +16,13 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.frontend.Frontend
+import com.argondesign.alogic.util.BigIntOps.BigIntClassOps
 
 private[builtins] class AtUnknownI(implicit cc: CompilerContext) extends BuiltinPolyFunc {
   val name = "@unknowni"
 
   def returnType(args: List[Expr], fe: Option[Frontend]): Option[TypeFund] = args partialMatch {
-    case List(ExprNum(_, width)) => TypeSInt(width)
+    case List(ExprNum(_, width)) => TypeSInt(width.asLong)
   }
 
   def isKnown(args: List[Expr]) = false

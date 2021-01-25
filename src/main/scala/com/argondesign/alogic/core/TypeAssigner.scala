@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////                                                                                          >
-// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.                                                                                                              >
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.                                                                                                              >
 //                                                                                                                                                                        >
 // This file is covered by the BSD (with attribution) license.                                                                                                            >
 // See the LICENSE file for the precise wording of the license.                                                                                                           >
@@ -17,6 +17,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.unreachable
+import com.argondesign.alogic.util.BigIntOps.BigIntClassOps
 
 object TypeAssigner {
   //////////////////////////////////////////////////////////////////////////////
@@ -260,7 +261,7 @@ object TypeAssigner {
     case ">" | ">=" | "<" | "<=" | "==" | "!=" | "&&" | "||" => TypeUInt(1)
     case "<<" | ">>" | "<<<" | ">>>"                         => tree.lhs.tpe
     case "'" =>
-      TypeInt(tree.rhs.tpe.isSigned, tree.lhs.value.get)
+      TypeInt(tree.rhs.tpe.isSigned, tree.lhs.value.get.asLong)
     case _ =>
       val lTpe = tree.lhs.tpe
       val rTpe = tree.rhs.tpe
@@ -286,11 +287,11 @@ object TypeAssigner {
   }
 
   private def kind(tree: ExprRep)(implicit cc: CompilerContext) = {
-    TypeUInt(tree.count.value.get * tree.expr.tpe.width)
+    TypeUInt(tree.count.value.get.asLong * tree.expr.tpe.width)
   }
 
   private def kind(tree: ExprCat) = {
-    TypeUInt(tree.parts.foldLeft(BigInt(0))(_ + _.tpe.width))
+    TypeUInt(tree.parts.iterator.map(_.tpe.width).sum)
   }
 
   private def kind(tree: ExprIndex)(implicit cc: CompilerContext) = {
@@ -298,7 +299,7 @@ object TypeAssigner {
       case _: TypeNum                              => TypeUInt(1)
       case TypeArray(kind, _)                      => kind
       case TypeVector(kind, _)                     => kind
-      case TypeType(kind)                          => TypeType(kind addVectorDimension tree.index.value.get)
+      case TypeType(kind)                          => TypeType(kind addVectorDimension tree.index.value.get.asLong)
       case kind if kind.isPacked && kind.width > 0 => TypeUInt(1)
       case _                                       => unreachable
     }
@@ -311,9 +312,9 @@ object TypeAssigner {
       tree.rIdx.value.get
     }
     tree.expr.tpe.underlying match {
-      case _: TypeNum                              => TypeUInt(size)
-      case TypeVector(kind, _)                     => TypeVector(kind, size)
-      case kind if kind.isPacked && kind.width > 0 => TypeUInt(size)
+      case _: TypeNum                              => TypeUInt(size.asLong)
+      case TypeVector(kind, _)                     => TypeVector(kind, size.asLong)
+      case kind if kind.isPacked && kind.width > 0 => TypeUInt(size.asLong)
       case _                                       => unreachable
     }
   }

@@ -17,7 +17,7 @@ import com.argondesign.alogic.core.Types.Type
 
 object BigIntOps {
 
-  implicit final class ClassOps(private val value: BigInt) extends AnyVal {
+  implicit final class BigIntClassOps(private val value: BigInt) extends AnyVal {
 
     // Extract bit field of width 'width' starting from 'lsb' if 'signed'
     // ensure result is negative if the bit 'lsb + width - 1' is set
@@ -54,9 +54,10 @@ object BigIntOps {
       if (width == 0) 0 else extract(0, width, signed = true)
     }
 
+    def asLong: Long = value.bigInteger.longValueExact
   }
 
-  implicit final class ObjectOps(private val subject: BigInt.type) extends AnyVal {
+  implicit final class BigIntObjectOps(private val subject: BigInt.type) extends AnyVal {
     def mask(width: Int): BigInt = (BigInt(1) << width) - 1
     def mask(width: BigInt): BigInt = (BigInt(1) << width.toInt) - 1
 

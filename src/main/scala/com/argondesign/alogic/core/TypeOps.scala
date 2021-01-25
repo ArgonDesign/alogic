@@ -135,16 +135,16 @@ trait TypeOps extends TypePrintOps { this: Type =>
   }
 
   // Width of this type
-  final lazy val width: BigInt = underlying match {
+  final lazy val width: Long = underlying match {
     case TypeSInt(size)          => size
     case TypeUInt(size)          => size
-    case self: TypeRecord        => self.dataMembers.foldLeft(BigInt(0))(_ + _.kind.width)
+    case self: TypeRecord        => self.dataMembers.foldLeft(0L)(_ + _.kind.width)
     case TypeVoid                => 0 // TODO: should void be packed?
     case TypeVector(eType, size) => size * eType.width
     case _                       => unreachable
   }
 
-  final def shapeIter: Iterator[BigInt] = underlying match {
+  final def shapeIter: Iterator[Long] = underlying match {
     case TypeArray(elemKind, size)               => Iterator.single(size) ++ elemKind.shapeIter
     case TypeVector(elemKind, size)              => Iterator.single(size) ++ elemKind.shapeIter
     case kind if kind.isPacked && kind.width > 0 => Iterator.single(kind.width)
@@ -162,7 +162,7 @@ trait TypeOps extends TypePrintOps { this: Type =>
     case other               => other
   }
 
-  def addVectorDimension(size: BigInt): TypeVector = this match {
+  def addVectorDimension(size: Long): TypeVector = this match {
     case TypeVector(kind, sz) => TypeVector(kind addVectorDimension size, sz)
     case kind: TypeFund       => TypeVector(kind, size)
     case _                    => unreachable

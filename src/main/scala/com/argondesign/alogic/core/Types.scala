@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
@@ -34,10 +34,10 @@ object Types {
 
   // format: off
   sealed trait TypeInt extends TypeFund with TypeIntImpl
-  case class TypeSInt(size: BigInt) extends TypeInt
-  case class TypeUInt(size: BigInt) extends TypeInt
+  case class TypeSInt(size: Long) extends TypeInt
+  case class TypeUInt(size: Long) extends TypeInt
   case class TypeNum(signed: Boolean) extends TypeFund
-  case class TypeVector(kind: TypeFund, size: BigInt) extends TypeFund with TypeVectorImpl
+  case class TypeVector(kind: TypeFund, size: Long) extends TypeFund with TypeVectorImpl
   case object TypeVoid extends TypeFund
   case object TypeStr extends TypeFund
   case class TypeRecord(symbol: Symbol, members: List[Symbol]) extends TypeFund with TypeCompound with TypeRecordImpl
@@ -55,9 +55,9 @@ object Types {
   case class TypeParam(kind: TypeFund) extends Type
   case class TypeConst(kind: TypeFund) extends Type
   case class TypeGen(kind: TypeFund) extends Type
-  case class TypeArray(kind: TypeFund, size: BigInt) extends Type with TypeArrayImpl
-  case class TypeSram(kind: TypeFund, size: BigInt, st: StorageType) extends Type with TypeSramImpl
-  case class TypeStack(kind: TypeFund, size: BigInt) extends Type with TypeStackImpl
+  case class TypeArray(kind: TypeFund, size: Long) extends Type with TypeArrayImpl
+  case class TypeSram(kind: TypeFund, size: Long, st: StorageType) extends Type with TypeSramImpl
+  case class TypeStack(kind: TypeFund, size: Long) extends Type with TypeStackImpl
   // format: on
 
   //////////////////////////////////////////////////////////////////////////////
@@ -149,11 +149,11 @@ object Types {
 
   object TypeInt {
 
-    def apply(signed: Boolean, size: BigInt): TypeInt = {
+    def apply(signed: Boolean, size: Long): TypeInt = {
       if (signed) TypeSInt(size) else TypeUInt(size)
     }
 
-    def unapply(kind: Type): Option[(Boolean, BigInt)] = kind match {
+    def unapply(kind: Type): Option[(Boolean, Long)] = kind match {
       case TypeSInt(size) => Some((true, size))
       case TypeUInt(size) => Some((false, size))
       case _              => None
@@ -185,7 +185,7 @@ trait TypeCompound {
 }
 
 trait TypeIntImpl { this: TypeInt =>
-  val size: BigInt
+  val size: Long
   require(size > 0)
 }
 

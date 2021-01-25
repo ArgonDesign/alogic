@@ -1,3 +1,13 @@
+////////////////////////////////////////////////////////////////////////////////                                                                                          >
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.                                                                                                              >
+//                                                                                                                                                                        >
+// This file is covered by the BSD (with attribution) license.                                                                                                            >
+// See the LICENSE file for the precise wording of the license.                                                                                                           >
+//                                                                                                                                                                        >
+// DESCRIPTION:                                                                                                                                                           >
+// The type checker
+////////////////////////////////////////////////////////////////////////////////                                                                                          >
+
 package com.argondesign.alogic.frontend
 
 import com.argondesign.alogic.analysis.WrittenSyms
@@ -16,12 +26,13 @@ import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Math.clog2
 import com.argondesign.alogic.util.unreachable
 import com.argondesign.alogic.util.BooleanOps._
+import com.argondesign.alogic.util.BigIntOps._
 
 import scala.collection.immutable.Set
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-final private class Checker(val root: Tree)(implicit cc: CompilerContext, fe: Frontend)
+final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe: Frontend)
     extends StatefulTreeTransformer {
   override val typed: Boolean = false
 
@@ -920,7 +931,7 @@ final private class Checker(val root: Tree)(implicit cc: CompilerContext, fe: Fr
             case List(ArgP(width)) =>
               evaluate(width, hint) foreach {
                 // Width is positive, assign the sized integer type
-                case v if v > 0 => tree withTpe TypeType(TypeInt(signed, v))
+                case v if v > 0 => tree withTpe TypeType(TypeInt(signed, v.asLong))
                 // Width is non-positive
                 case v => error(width, s"$hint must be positive (not $v)")
               }
@@ -964,7 +975,7 @@ final private class Checker(val root: Tree)(implicit cc: CompilerContext, fe: Fr
         evaluate(count, cHint) filter { value =>
           { checkPositive(value, cHint, expr); okSoFar }
         } foreach { v =>
-          tree withTpe TypeUInt(v * expr.tpe.width)
+          tree withTpe TypeUInt(v.asLong * expr.tpe.width)
         }
       }
 
@@ -988,7 +999,7 @@ final private class Checker(val root: Tree)(implicit cc: CompilerContext, fe: Fr
           { checkPositive(value, hint, idx); okSoFar }
         } foreach { v =>
           kindOpt foreach { kind =>
-            tree withTpe TypeType(kind addVectorDimension v)
+            tree withTpe TypeType(kind addVectorDimension v.asLong)
           }
         }
       } else if (tgt.tpe.underlying.isNum) {
@@ -1008,7 +1019,7 @@ final private class Checker(val root: Tree)(implicit cc: CompilerContext, fe: Fr
       if (!tgtIsNum && { checkPacked(tgt, s"Target of '$op' slice"); !okSoFar }) {
         //
       } else {
-        def mkType(width: BigInt): Type =
+        def mkType(width: Long): Type =
           tgt.tpe.underlying match {
             case _: TypeNum                              => TypeUInt(width)
             case TypeVector(kind, _)                     => TypeVector(kind, width)
@@ -1017,7 +1028,7 @@ final private class Checker(val root: Tree)(implicit cc: CompilerContext, fe: Fr
           }
         val lHint = s"Left index of '$op' slice"
         val rHint = s"Right index of '$op' slice"
-        val dimSize = tgt.tpe.shapeIter.nextOption() getOrElse BigInt(0) // Num has no shape
+        val dimSize = tgt.tpe.shapeIter.nextOption() getOrElse 0L // Num has no shape
         if (op == ":") {
           val iWidth = clog2(dimSize) max 1
           checkIndex(Option.unless(tgtIsNum)(iWidth), lIdx, lHint)
@@ -1034,7 +1045,7 @@ final private class Checker(val root: Tree)(implicit cc: CompilerContext, fe: Fr
                 if (lIdxVal < rIdxVal) {
                   error("Left index of ':' slice must be >= than the right index")
                 } else {
-                  tree withTpe mkType(width = lIdxVal - rIdxVal + 1)
+                  tree withTpe mkType(width = (lIdxVal - rIdxVal + 1).asLong)
                 }
               }
             }
@@ -1048,7 +1059,7 @@ final private class Checker(val root: Tree)(implicit cc: CompilerContext, fe: Fr
             evaluate(rIdx, rHint) filter { value =>
               tgtIsNum || { checkInRange(value, 0, false, dimSize, true, rHint, rIdx); okSoFar }
             } foreach { value =>
-              tree withTpe mkType(width = value)
+              tree withTpe mkType(width = value.asLong)
             }
           }
         }
@@ -1120,7 +1131,7 @@ final private class Checker(val root: Tree)(implicit cc: CompilerContext, fe: Fr
           case v if v < rhs.tpe.width =>
             error("Binary ' operator causes narrowing")
           case v =>
-            tree withTpe TypeInt(rhs.tpe.isSigned, v)
+            tree withTpe TypeInt(rhs.tpe.isSigned, v.asLong)
         }
 
     case ExprBinary(lhs, op @ ("<<" | ">>" | "<<<" | ">>>"), rhs) =>
@@ -1239,7 +1250,7 @@ private[frontend] object TypeChecker {
       }
     } else {
       // Run the checker
-      val checker = new Checker(tree)
+      val checker = new TypeChecker(tree)
       // If there are errors, the tree should have TypeError and vice versa
       assert(checker.mAcc.nonEmpty == (tree.hasTpe && tree.tpe.isError))
       if (checker.mAcc.nonEmpty) {

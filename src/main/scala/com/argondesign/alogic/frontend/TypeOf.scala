@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
@@ -19,6 +19,7 @@ import com.argondesign.alogic.core.Messages.Note
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.unreachable
+import com.argondesign.alogic.util.BigIntOps._
 
 import scala.util.chaining._
 
@@ -181,11 +182,11 @@ private[frontend] object TypeOf {
           simpleTypeFrom(spec) flatMap ensureNotVoid(spec, "Constant") map TypeConst.apply
         case DescArray(_, _, elem, size) =>
           simpleTypeFrom(elem) flatMap ensureNotNumNorVoid(elem, "Array element") flatMap { e =>
-            fe.evaluate(size, "Size of array") map { s => TypeArray(e, s) }
+            fe.evaluate(size, "Size of array") map { s => TypeArray(e, s.asLong) }
           }
         case DescSram(_, _, elem, size, st) =>
           simpleTypeFrom(elem) flatMap ensureNotNumNorVoid(elem, "SRAM element") flatMap { e =>
-            fe.evaluate(size, "Size of SRAM") map { s => TypeSram(e, s, st) }
+            fe.evaluate(size, "Size of SRAM") map { s => TypeSram(e, s.asLong, st) }
           }
         case DescType(_, _, spec) => simpleTypeFrom(spec) map TypeType.apply
         case DescEntity(_, _, _, body) =>
