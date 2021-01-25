@@ -12,10 +12,10 @@ package com.argondesign.alogic.transform
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.Messages.Warning
-import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
+import com.argondesign.alogic.core.Messages.Warning
+import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.frontend.Clarify
@@ -26,11 +26,14 @@ import com.argondesign.alogic.frontend.ResolveNames
 import com.argondesign.alogic.passes._
 import org.scalatest.freespec.AnyFreeSpec
 
+import scala.annotation.nowarn
+
+@nowarn("msg=A repeated case parameter or extracted sequence is not matched by a sequence wildcard")
 final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
 
-  implicit val cc: CompilerContext = new CompilerContext
+  implicit private val cc: CompilerContext = new CompilerContext
 
-  protected def fold(text: String): Thicket = Thicket {
+  private def fold(text: String): Thicket = Thicket {
     transformWithPass(
       FrontendPass andThen
         DropPackageAndParametrizedDescs andThen
@@ -42,10 +45,10 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
     }
   }
 
-  protected def simplify(text: String): Expr = {
+  private def simplify(text: String): Expr = {
     implicit val fe: Frontend = new Frontend
     val tree = text.asTree[Expr]()
-    assert(cc.messages.filterNot(_.isInstanceOf[Warning]).isEmpty)
+    assert(cc.messages.forall(_.isInstanceOf[Warning]))
     val expr = ResolveNames(tree, cc.builtins)
       .proceed(e => fe.typeCheck(e) map { _ => e })
       .map(Clarify(_))
@@ -57,111 +60,245 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
     expr.simplify
   }
 
-  "FoldExpr should fold" - {
-    "unary operators applied to unsized integer literals" - {
-      for {
-        (text, result, err) <- List(
-          // format: off
-          // signed positive operand
-          ("+(2s)", ExprNum(true, 2), Nil),
-          ("-(2s)", ExprNum(true, -2), Nil),
-          ("~(2s)", ExprNum(true, -3), Nil),
-          // signed negative operand
-          ("+(-2s)", ExprNum(true, -2), Nil),
-          ("-(-2s)", ExprNum(true, 2), Nil),
-          ("~(-2s)", ExprNum(true, 1), Nil),
-          // signed 0 operand
-          ("+(0s)", ExprNum(true, 0), Nil),
-          ("-(0s)", ExprNum(true, 0), Nil),
-          ("~(0s)", ExprNum(true, -1), Nil),
-          // signed -1 operand
-          ("+(-1s)", ExprNum(true, -1), Nil),
-          ("-(-1s)", ExprNum(true, 1), Nil),
-          ("~(-1s)", ExprNum(true, 0), Nil),
-          // unsigned non-0 operand
-          ("+(2)", ExprNum(false, 2), Nil),
-          ("-(2)", ExprError(), "Unary '-' is not well defined for unsized unsigned values" :: Nil),
-          ("~(2)", ExprError(), "Unary '~' is not well defined for unsized unsigned values" :: Nil),
-          // unsigned 0 operand
-          ("+(0)", ExprNum(false, 0), Nil),
-          ("-(0)", ExprNum(false, 0), Nil),
-          ("~(0)", ExprError(), "Unary '~' is not well defined for unsized unsigned values" :: Nil)
-          // format: on
-        )
-      } {
-        text in {
-          simplify(text) shouldBe result
-          checkSingleError(err)
+  // Extractor for ExprCall to symbol with name with positional Int arguments
+  private object Call {
+
+    def unapplySeq(expr: Expr): Option[(String, Seq[Int])] = expr match {
+      case ExprCall(ExprSym(symbol), args) =>
+        val argValues = args map {
+          case ArgP(Expr(v)) => Some(v)
+          case _             => None
         }
-      }
+        Option.when(argValues.forall(_.nonEmpty)) {
+          (symbol.name, argValues.flatten)
+        }
+      case _ => None
     }
 
-    "unary operators applied to sized integer literals" - {
-      for {
-        (text, result, err) <- List(
-          // format: off
-          // signed positive operand
-          ("+(8'sd2)", ExprInt(true, 8, 2), Nil),
-          ("-(8'sd2)", ExprInt(true, 8, -2), Nil),
-          ("~(8'sd2)", ExprInt(true, 8, -3), Nil),
-          // No !
-          ("&(8'sd2)", ExprInt(false, 1, 0), Nil),
-          ("|(8'sd2)", ExprInt(false, 1, 1), Nil),
-          ("^(8'sd2)", ExprInt(false, 1, 1), Nil),
-          // signed negative operand
-          ("+(-8'sd2)", ExprInt(true, 8, -2), Nil),
-          ("-(-8'sd2)", ExprInt(true, 8, 2), Nil),
-          ("~(-8'sd2)", ExprInt(true, 8, 1), Nil),
-          ("!(-1'sd1)", ExprInt(false, 1, 0), Nil),
-          ("&(-8'sd2)", ExprInt(false, 1, 0), Nil),
-          ("|(-8'sd2)", ExprInt(false, 1, 1), Nil),
-          ("^(-8'sd2)", ExprInt(false, 1, 1), Nil),
-          // signed 0 operand
-          ("+(8'sd0)", ExprInt(true, 8, 0), Nil),
-          ("-(8'sd0)", ExprInt(true, 8, 0), Nil),
-          ("~(8'sd0)", ExprInt(true, 8, -1), Nil),
-          ("!(1'sd0)", ExprInt(false, 1, 1), Nil),
-          ("&(8'sd0)", ExprInt(false, 1, 0), Nil),
-          ("|(8'sd0)", ExprInt(false, 1, 0), Nil),
-          ("^(8'sd0)", ExprInt(false, 1, 0), Nil),
-          // signed -1 operand
-          ("+(-8'sd1)", ExprInt(true, 8, -1), Nil),
-          ("-(-8'sd1)", ExprInt(true, 8, 1), Nil),
-          ("~(-8'sd1)", ExprInt(true, 8, 0), Nil),
-          // ! already covered
-          ("&(-8'sd1)", ExprInt(false, 1, 1), Nil),
-          ("|(-8'sd1)", ExprInt(false, 1, 1), Nil),
-          ("^(-8'sd1)", ExprInt(false, 1, 0), Nil),
-          // unsigned non-0 operand
-          ("+(8'd2)", ExprInt(false, 8, 2), Nil),
-          ("-(8'd2)", ExprInt(false, 8, 254), Nil),
-          ("~(8'd2)", ExprInt(false, 8, 253), Nil),
-          ("!(1'd1)", ExprInt(false, 1, 0), Nil),
-          ("&(8'd2)", ExprInt(false, 1, 0), Nil),
-          ("|(8'd2)", ExprInt(false, 1, 1), Nil),
-          ("^(8'd2)", ExprInt(false, 1, 1), Nil),
-          // unsigned 0 operand
-          ("+(8'd0)", ExprInt(false, 8, 0), Nil),
-          ("-(8'd0)", ExprInt(false, 8, 0), Nil),
-          ("~(8'd0)", ExprInt(false, 8, 255), Nil),
-          ("!(1'd0)", ExprInt(false, 1, 1), Nil),
-          ("&(8'd0)", ExprInt(false, 1, 0), Nil),
-          ("|(8'd0)", ExprInt(false, 1, 0), Nil),
-          ("^(8'd0)", ExprInt(false, 1, 0), Nil),
-          // reductions ff
-          ("&(8'hff)", ExprInt(false, 1, 1), Nil),
-          ("|(8'hff)", ExprInt(false, 1, 1), Nil),
-          ("^(8'hff)", ExprInt(false, 1, 0), Nil),
-          // reductions 0
-          ("&(8'h0)", ExprInt(false, 1, 0), Nil),
-          ("|(8'h0)", ExprInt(false, 1, 0), Nil),
-          ("^(8'h0)", ExprInt(false, 1, 0), Nil)
-          // format: on
-        )
-      } {
-        text in {
-          simplify(text) shouldBe result
-          checkSingleError(err)
+  }
+
+  // Extractor for call to $unsigned
+  private object Unsigned {
+
+    def unapply(expr: Expr): Option[Expr] = expr match {
+      case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(expr) :: Nil) => Some(expr)
+      case _                                                         => None
+    }
+
+  }
+
+  private def checkExact(tests: (String, Expr)*): Unit = tests foreach {
+    case (text, result) => text in { simplify(text) shouldBe result }
+  }
+
+  private def checkPattern(tests: (String, PartialFunction[Any, Unit])*): Unit = tests foreach {
+    case (text, pattern) => text in { simplify(text) should matchPattern(pattern) }
+  }
+
+  "FoldExpr should fold" - {
+    "unary operators" - {
+      "with a known operand" - {
+        "+" - {
+          checkExact(
+            //// Unsized
+            // - unsigned
+            ("+(9)  ", ExprNum(false, 9)),
+            ("+(0)  ", ExprNum(false, 0)),
+            // - signed
+            ("+( 9s)", ExprNum(true, 9)),
+            ("+(-9s)", ExprNum(true, -9)),
+            ("+( 0s)", ExprNum(true, 0)),
+            ("+(-1s)", ExprNum(true, -1)),
+            //// Sized
+            // - unsigned
+            ("+(8'd9)  ", ExprInt(false, 8, 9)),
+            ("+(8'd0)  ", ExprInt(false, 8, 0)),
+            ("+(8'd255)", ExprInt(false, 8, 255)),
+            // -  signed
+            ("+( 8'sd9)", ExprInt(true, 8, 9)),
+            ("+(-8'sd9)", ExprInt(true, 8, -9)),
+            ("+( 8'sd0)", ExprInt(true, 8, 0)),
+            ("+(-8'sd1)", ExprInt(true, 8, -1))
+          )
+        }
+
+        "-" - {
+          checkExact(
+            //// Unsized
+            // - unsigned
+            ("-(0)  ", ExprNum(false, 0)),
+            // - signed
+            ("-( 9s)", ExprNum(true, -9)),
+            ("-(-9s)", ExprNum(true, 9)),
+            ("-( 0s)", ExprNum(true, 0)),
+            ("-(-1s)", ExprNum(true, 1)),
+            //// Sized
+            // - unsigned
+            ("-(8'd9)  ", ExprInt(false, 8, 247)),
+            ("-(8'd0)  ", ExprInt(false, 8, 0)),
+            ("-(8'd255)", ExprInt(false, 8, 1)),
+            // -  signed
+            ("-( 8'sd9)", ExprInt(true, 8, -9)),
+            ("-(-8'sd9)", ExprInt(true, 8, 9)),
+            ("-( 8'sd0)", ExprInt(true, 8, 0)),
+            ("-(-8'sd1)", ExprInt(true, 8, 1))
+          )
+        }
+
+        "~" - {
+          checkExact(
+            //// Unsized
+            // - unsigned
+            // None are valid as they all yield negative values
+            // - signed
+            ("~( 9s)", ExprNum(true, -10)),
+            ("~(-9s)", ExprNum(true, 8)),
+            ("~( 0s)", ExprNum(true, -1)),
+            ("~(-1s)", ExprNum(true, 0)),
+            //// Sized
+            // - unsigned
+            ("~(8'd9)  ", ExprInt(false, 8, 246)),
+            ("~(8'd0)  ", ExprInt(false, 8, 255)),
+            ("~(8'd255)", ExprInt(false, 8, 0)),
+            // -  signed
+            ("~( 8'sd9)", ExprInt(true, 8, -10)),
+            ("~(-8'sd9)", ExprInt(true, 8, 8)),
+            ("~( 8'sd0)", ExprInt(true, 8, -1)),
+            ("~(-8'sd1)", ExprInt(true, 8, 0))
+          )
+        }
+
+        "&" - {
+          checkExact(
+            //// Unsized
+            // - unsigned
+            ("&(9)  ", ExprInt(false, 1, 0)),
+            ("&(0)  ", ExprInt(false, 1, 0)),
+            // - signed
+            ("&( 9s)", ExprInt(false, 1, 0)),
+            ("&(-9s)", ExprInt(false, 1, 0)),
+            ("&( 0s)", ExprInt(false, 1, 0)),
+            ("&(-1s)", ExprInt(false, 1, 1)),
+            //// Sized
+            // - unsigned
+            ("&(8'd9)  ", ExprInt(false, 1, 0)),
+            ("&(8'd0)  ", ExprInt(false, 1, 0)),
+            ("&(8'd255)", ExprInt(false, 1, 1)),
+            // -  signed
+            ("&( 8'sd9)", ExprInt(false, 1, 0)),
+            ("&(-8'sd9)", ExprInt(false, 1, 0)),
+            ("&( 8'sd0)", ExprInt(false, 1, 0)),
+            ("&(-8'sd1)", ExprInt(false, 1, 1))
+          )
+        }
+
+        "|" - {
+          checkExact(
+            //// Unsized
+            // - unsigned
+            ("|(9)  ", ExprInt(false, 1, 1)),
+            ("|(0)  ", ExprInt(false, 1, 0)),
+            // - signed
+            ("|( 9s)", ExprInt(false, 1, 1)),
+            ("|(-9s)", ExprInt(false, 1, 1)),
+            ("|( 0s)", ExprInt(false, 1, 0)),
+            ("|(-1s)", ExprInt(false, 1, 1)),
+            //// Sized
+            // - unsigned
+            ("|(8'd9)  ", ExprInt(false, 1, 1)),
+            ("|(8'd0)  ", ExprInt(false, 1, 0)),
+            ("|(8'd255)", ExprInt(false, 1, 1)),
+            // -  signed
+            ("|( 8'sd9)", ExprInt(false, 1, 1)),
+            ("|(-8'sd9)", ExprInt(false, 1, 1)),
+            ("|( 8'sd0)", ExprInt(false, 1, 0)),
+            ("|(-8'sd1)", ExprInt(false, 1, 1))
+          )
+        }
+
+        "^" - {
+          checkExact(
+            //// Unsized
+            // - unsigned
+            ("^(9) ", ExprInt(false, 1, 0)),
+            ("^(8) ", ExprInt(false, 1, 1)),
+            ("^(0) ", ExprInt(false, 1, 0)),
+            // - signed
+            ("^(9s)", ExprInt(false, 1, 0)),
+            ("^(8s)", ExprInt(false, 1, 1)),
+            ("^(0s)", ExprInt(false, 1, 0)),
+            //// Sized
+            // - unsigned
+            ("^(8'd9)  ", ExprInt(false, 1, 0)),
+            ("^(8'd8)  ", ExprInt(false, 1, 1)),
+            ("^(8'd0)  ", ExprInt(false, 1, 0)),
+            ("^(8'd255)", ExprInt(false, 1, 0)),
+            // -  signed
+            ("^( 8'sd9)", ExprInt(false, 1, 0)),
+            ("^(-8'sd9)", ExprInt(false, 1, 1)),
+            ("^( 8'sd0)", ExprInt(false, 1, 0)),
+            ("^(-8'sd1)", ExprInt(false, 1, 0))
+          )
+        }
+
+        "!" - {
+          checkExact(
+            // - unsigned
+            ("!( 1'd0 )", ExprInt(false, 1, 1)),
+            ("!( 1'd1 )", ExprInt(false, 1, 0)),
+            // -  signed
+            ("!( 1'sd0)", ExprInt(false, 1, 1)),
+            ("!(-1'sd1)", ExprInt(false, 1, 0))
+          )
+        }
+      }
+
+      "special cases" - {
+        "+ is identity" - {
+          checkPattern(
+            // unsigned
+            ("+@unknownu(1)", { case Call("@unknownu", 1) => }),
+            ("+@unknownu(2)", { case Call("@unknownu", 2) => }),
+            // signed
+            ("+@unknowni(1)", { case Call("@unknowni", 1) => }),
+            ("+@unknowni(2)", { case Call("@unknowni", 2) => })
+          )
+        }
+
+        "unary over 1 bit values" - {
+          checkPattern(
+            // unsigned
+            ("-@unknownu(1)", { case Call("@unknownu", 1) => }),
+            ("&@unknownu(1)", { case Call("@unknownu", 1) => }),
+            ("|@unknownu(1)", { case Call("@unknownu", 1) => }),
+            ("^@unknownu(1)", { case Call("@unknownu", 1) => }),
+            // signed
+            ("-@unknowni(1)", { case Call("@unknowni", 1) => }),
+            ("&@unknowni(1)", { case Unsigned(Call("@unknowni", 1)) => }),
+            ("|@unknowni(1)", { case Unsigned(Call("@unknowni", 1)) => }),
+            ("^@unknowni(1)", { case Unsigned(Call("@unknowni", 1)) => })
+          )
+        }
+
+        "unary over unary" - {
+          checkPattern(
+            // ~~
+            ("~~@unknownu(4)", { case Call("@unknownu", 4) => }),
+            ("~~@unknownu(1)", { case Call("@unknownu", 1) => }),
+            ("~~@unknowni(4)", { case Call("@unknowni", 4) => }),
+            ("~~@unknowni(1)", { case Call("@unknowni", 1) => }),
+            // !!
+            ("!!@unknownu(1)", { case Call("@unknownu", 1) => }),
+            ("!!@unknowni(1)", { case Unsigned(Call("@unknowni", 1)) => }),
+            // ! and ~ combinations
+            ("~!@unknownu(1)", { case Call("@unknownu", 1) => }),
+            ("!~@unknownu(1)", { case Call("@unknownu", 1) => }),
+            ("~!@unknowni(1)", { case Unsigned(Call("@unknowni", 1)) => }),
+            ("!~@unknowni(1)", { case Unsigned(Call("@unknowni", 1)) => }),
+            // --
+            ("-(-@unknownu(4))", { case Call("@unknownu", 4) => }),
+            ("-(-@unknowni(4))", { case Call("@unknowni", 4) => })
+          )
         }
       }
     }

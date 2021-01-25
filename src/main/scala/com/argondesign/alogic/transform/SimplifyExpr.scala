@@ -398,61 +398,70 @@ final class SimplifyExpr(implicit cc: CompilerContext)
   }
 
   private def transformUnary(tree: ExprUnary): Expr = tree match {
+    ////////////////////////////////////////////////////////////////////////////
+    // Unary + over anything is identity
+    ////////////////////////////////////////////////////////////////////////////
+
+    case ExprUnary("+", expr) => expr
 
     ////////////////////////////////////////////////////////////////////////////
-    // Fold unary expressions with an unsized operand
+    // Unary expressions with an unsized operand
     ////////////////////////////////////////////////////////////////////////////
 
-    case ExprUnary(op, expr @ ExprNum(signed, value)) =>
-      val num = op match {
-        // Invalid cases
-        case "-" if !signed && value > 0 =>
-          cc.error(tree, "Unary '-' is not well defined for unsized unsigned values")
-          ExprError()
-        case "~" if !signed =>
-          cc.error(tree, "Unary '~' is not well defined for unsized unsigned values")
-          ExprError()
-        // Valid cases
-        case "+" => expr
-        case "-" => ExprNum(signed, -value)
-        case "~" => ExprNum(true, -value - 1)
-        case "!" => ExprInt(false, 1, value == 0)
+    case ExprUnary(op, ExprNum(s, v)) =>
+      op match {
+        case "-" => assert(s || v == 0); ExprNum(s, -v) withLocOf tree
+        case "~" => assert(s); ExprNum(true, ~v) withLocOf tree
+        case "&" => ExprInt(false, 1, v == -1) withLocOf tree
+        case "|" => ExprInt(false, 1, v != 0) withLocOf tree
+        case "^" => assert(v >= 0); ExprInt(false, 1, v.bitCount & 1) withLocOf tree
+        case _   => unreachable // Includes "!" which must have a 1 bit operand
       }
-      if (num.hasLoc) num else num withLoc tree.loc
 
     ////////////////////////////////////////////////////////////////////////////
-    // Fold some special unary over unary combinations
+    // Unary expressions with a known sized operand
+    ////////////////////////////////////////////////////////////////////////////
+
+    case ExprUnary(op, ExprInt(s, w, v)) =>
+      op match {
+        case "-" => ExprInt(s, w, (-v).extract(0, w, s)) withLocOf tree
+        case "~" => ExprInt(s, w, (~v).extract(0, w, s)) withLocOf tree
+        case "&" => ExprInt(false, 1, v.asU(w) == BigInt.mask(w)) withLocOf tree
+        case "|" => ExprInt(false, 1, v != 0) withLocOf tree
+        case "^" => ExprInt(false, 1, v.asU(w).bitCount & 1) withLocOf tree
+        case "!" => ExprInt(false, 1, v == 0) withLocOf tree
+        case _   => unreachable
+      }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Unary over unary combinations
     ////////////////////////////////////////////////////////////////////////////
 
     case ExprUnary(aOp, ExprUnary(bOp, expr)) =>
-      val isBoolType = expr.tpe.isPacked && !expr.tpe.isSigned && expr.tpe.width == 1
-      val res = (aOp, bOp) match {
-        case ("~", "~")               => expr
-        case ("~", "!") if isBoolType => expr
-        case ("!", "~") if isBoolType => expr
-        case ("!", "!") if isBoolType => expr
-        case _                        => tree
+      (aOp, bOp) match {
+        case ("~", "~") => expr
+        case ("~", "!") => if (expr.tpe.isSigned) expr.castUnsigned else expr
+        case ("!", "~") => if (expr.tpe.isSigned) expr.castUnsigned else expr
+        case ("!", "!") => if (expr.tpe.isSigned) expr.castUnsigned else expr
+        case ("-", "-") => expr
+        case _          => tree
+        // TODO: Is bubble pushing (De Morgan) any useful? &~ => ~| and |~ => ~&
       }
-      if (res.hasLoc) res else res withLoc tree.loc
 
     ////////////////////////////////////////////////////////////////////////////
-    // Fold unary expressions with a sized operand
+    // Fold unary expressions over an unknown one bit value
     ////////////////////////////////////////////////////////////////////////////
 
-    case ExprUnary(op, expr @ ExprInt(signed, width, value)) =>
-      lazy val mask = (BigInt(1) << width) - 1
-      val num = op match {
-        case "+"           => expr
-        case "-"           => ExprInt(signed, width, (-value).extract(0, width, signed))
-        case "~" if signed => ExprInt(true, width, ~value)
-        case "~"           => ExprInt(false, width, ~value & mask)
-        case "!"           => ExprInt(false, 1, value == 0)
-        case "&"           => ExprInt(false, 1, (value & mask) == mask)
-        case "|"           => ExprInt(false, 1, value != 0)
-        case "^"           => ExprInt(false, 1, (value & mask).bitCount & 1)
+    case ExprUnary(op, expr) if expr.tpe.width == 1 =>
+      op match {
+        case "-" => expr
+        case "&" => if (expr.tpe.isSigned) expr.castUnsigned else expr
+        case "|" => if (expr.tpe.isSigned) expr.castUnsigned else expr
+        case "^" => if (expr.tpe.isSigned) expr.castUnsigned else expr
+        case _   => tree
       }
-      if (num.hasLoc) num else num withLoc tree.loc
 
+    //
     case _ => tree
   }
 

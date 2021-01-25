@@ -1087,9 +1087,18 @@ final private class Checker(val root: Tree)(implicit cc: CompilerContext, fe: Fr
 
     case ExprUnary(op, expr) =>
       if (expr.tpe.underlying.isNum) {
-        // TODO: Allow & an | as these could generalized (| ~~ != 0, & ~~ == -1) ?
-        if ("&|^" contains op) {
-          error(s"Unary operator '$op' cannot be applied to unsized integer value")
+        // Operand must be constant, as it's unsized, so evaluate it here
+        evaluate(expr, "Expression of unsized integer type") foreach { v =>
+          def err(rest: String): Unit = error(s"Unary operator '$op' $rest")
+          op match {
+            case "-" if !expr.tpe.isSigned && v > 0 =>
+              err(s"has 'uint' result type, but evaluates to a negative value")
+            case "~" if !expr.tpe.isSigned =>
+              err(s"has 'uint' result type, but evaluates to a negative value")
+            case "^" if v < 0 =>
+              err(s"is not well defined on a negative unsized value (${v}s)")
+            case _ => // Rest are OK
+          }
         }
       } else {
         checkPacked(expr, s"Operand of unary '$op' operator")
