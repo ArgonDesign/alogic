@@ -147,8 +147,11 @@ if [[ "$*" == "--compiler-deps" ]]; then
 fi
 
 # Prepend '--' to the command line arguments. This in fact causes the wrapper
-# to not consume any arguments, in particular -D options
+# to not consume any arguments like -h or -v.
 set -- -- ${stderrisatty} "$@"
+
+# Add JVM options
+set -- -XX:+UseParallelGC "$@"
 """
 
 ////////////////////////////////////////////////////////////////////////////////
