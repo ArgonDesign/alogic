@@ -11,12 +11,11 @@
 package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.StatefulTreeTransformer
-import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Types.Type
 import com.argondesign.alogic.core.Types.TypeRecord
 import com.argondesign.alogic.core.Types.TypeStack
@@ -29,11 +28,19 @@ import scala.util.Random
 
 final class ConvertCtrlFuncLocals(implicit cc: CompilerContext) extends StatefulTreeTransformer {
 
+  private val extraTypeSymbols = ListBuffer[Symbol]()
+
   private val extraDecls = ListBuffer[Decl]()
 
   private val extraDefns = ListBuffer[Defn]()
 
   private var rng: Random = _
+
+  def newTypes: List[(Decl, Defn)] = List from {
+    extraTypeSymbols.iterator map { symbol =>
+      (symbol.mkDecl regularize symbol.loc, symbol.mkDefn regularize symbol.loc)
+    }
+  }
 
   override def start(tree: Tree): Unit = tree match {
     case Defn(symbol) => rng = new Random(symbol.name.foldLeft(0)(_ ^ _))
@@ -97,8 +104,7 @@ final class ConvertCtrlFuncLocals(implicit cc: CompilerContext) extends Stateful
         val sSymbol = cc.newSymbol(s"${symbol.name}${cc.sep}locals_t", symbol.loc)
         val sKind = TypeRecord(sSymbol, mSymbols)
         sSymbol.kind = TypeType(sKind)
-        extraDecls append (sSymbol.mkDecl regularize tree.loc)
-        extraDefns append (sSymbol.mkDefn regularize tree.loc)
+        extraTypeSymbols append sSymbol
         // Create the locals variable/stack
         cc.newSymbol(s"${symbol.name}${cc.sep}locals", symbol.loc) tap { lSymbol =>
           lSymbol.kind = {
@@ -236,9 +242,16 @@ final class ConvertCtrlFuncLocals(implicit cc: CompilerContext) extends Stateful
 
 }
 
-object ConvertCtrlFuncLocals extends EntityTransformerPass(declFirst = false) {
+object ConvertCtrlFuncLocals extends PairTransformerPass {
   val name = "convert-ctrl-func-locals"
 
-  override protected def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
-    new ConvertCtrlFuncLocals
+  protected def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
+    val transform = new ConvertCtrlFuncLocals
+    val newDefn = transform(defn)
+    val newDecl = transform(decl)
+    val head = (newDecl, newDefn)
+    val (decls, defns) = (head :: transform.newTypes).unzip
+    (Thicket(decls), Thicket(defns))
+  }
+
 }

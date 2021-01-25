@@ -11,12 +11,11 @@
 package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.StatefulTreeTransformer
-import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols
-import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Types.TypeRecord
 import com.argondesign.alogic.core.Types.TypeStack
 import com.argondesign.alogic.core.Types.TypeType
@@ -28,8 +27,10 @@ import scala.collection.mutable.ListBuffer
 
 final class ConvertCtrlFuncArgret(implicit cc: CompilerContext) extends StatefulTreeTransformer {
 
+  // Extra type symbols to add to the global list
+  private val extraTypeSymbols = mutable.ListBuffer[Symbol]()
   // Extra symbols to add to the entity
-  private val extraSymbols = mutable.ListBuffer[Symbol]()
+  private val extraEntitySymbols = mutable.ListBuffer[Symbol]()
   // Map from control function symbol to the argument storage symbol
   private val argsMap = mutable.LinkedHashMap[Symbol, Symbol]()
   // Map from control function symbol to their return value symbol
@@ -38,6 +39,12 @@ final class ConvertCtrlFuncArgret(implicit cc: CompilerContext) extends Stateful
   private val extraStmts = mutable.Stack[mutable.ListBuffer[Stmt]]()
   // Set of arguments of the current control function
   private var arguments: Set[Symbol] = Set.empty
+
+  def newTypes: List[(Decl, Defn)] = List from {
+    extraTypeSymbols.iterator map { symbol =>
+      (symbol.mkDecl regularize symbol.loc, symbol.mkDefn regularize symbol.loc)
+    }
+  }
 
   override def start(tree: Tree): Unit = tree match {
     case defn: DefnEntity =>
@@ -51,14 +58,14 @@ final class ConvertCtrlFuncArgret(implicit cc: CompilerContext) extends Stateful
             val sSymbol = cc.newSymbol(s"${symbol.name}${cc.sep}args_t", symbol.loc)
             val sKind = TypeRecord(sSymbol, mSymbols)
             sSymbol.kind = TypeType(sKind)
-            extraSymbols append sSymbol
+            extraTypeSymbols append sSymbol
             // Create the args variable/stack
             val aSymbol = cc.newSymbol(s"${symbol.name}${cc.sep}args", symbol.loc)
             aSymbol.kind = {
               val recLimit = symbol.attr.recLimit.value
               if (recLimit > 1) TypeStack(sKind, recLimit) else sKind
             }
-            extraSymbols append aSymbol
+            extraEntitySymbols append aSymbol
             // Add to map
             argsMap(symbol) = aSymbol
           }
@@ -68,7 +75,7 @@ final class ConvertCtrlFuncArgret(implicit cc: CompilerContext) extends Stateful
             // Create the return variable
             val rSymbol = cc.newSymbol(s"${symbol.name}${cc.sep}return", symbol.loc)
             rSymbol.kind = rKind
-            extraSymbols append rSymbol
+            extraEntitySymbols append rSymbol
             // Add to map
             retMap(symbol) = rSymbol
           }
@@ -110,14 +117,14 @@ final class ConvertCtrlFuncArgret(implicit cc: CompilerContext) extends Stateful
         }
       }
       // Add extra decls
-      val extraDecls = extraSymbols.iterator map { symbol =>
+      val extraDecls = extraEntitySymbols.iterator map { symbol =>
         symbol.mkDecl regularize symbol.loc
       }
       TypeAssigner(decl.copy(decls = decl.decls appendedAll extraDecls) withLoc tree.loc)
 
     case defn: DefnEntity =>
       // Add extra defns
-      val extraBody = extraSymbols.iterator map { symbol =>
+      val extraBody = extraEntitySymbols.iterator map { symbol =>
         EntSplice(symbol.mkDefn) regularize symbol.loc
       }
       TypeAssigner(defn.copy(body = defn.body appendedAll extraBody) withLoc defn.loc)
@@ -232,9 +239,16 @@ final class ConvertCtrlFuncArgret(implicit cc: CompilerContext) extends Stateful
 
 }
 
-object ConvertCtrlFuncArgret extends EntityTransformerPass(declFirst = false) {
+object ConvertCtrlFuncArgret extends PairTransformerPass {
   val name = "convert-ctrl-func-argret"
 
-  def create(symbol: Symbols.Symbol)(implicit cc: CompilerContext): TreeTransformer =
-    new ConvertCtrlFuncArgret
+  protected def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
+    val transform = new ConvertCtrlFuncArgret
+    val newDefn = transform(defn)
+    val newDecl = transform(decl)
+    val head = (newDecl, newDefn)
+    val (decls, defns) = (head :: transform.newTypes).unzip
+    (Thicket(decls), Thicket(defns))
+  }
+
 }
