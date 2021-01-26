@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
@@ -12,6 +12,7 @@
 package com.argondesign.alogic.frontend
 
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.builtins.Builtins
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.MessageBuffer
@@ -269,7 +270,7 @@ class Frontend(implicit cc: CompilerContext) {
       case desc: DescPackage =>
         // Elaborate the package definition
         @tailrec
-        def loop(desc: Desc): FinalResult[Desc] = Elaborate(desc, cc.builtins) match {
+        def loop(desc: Desc): FinalResult[Desc] = Elaborate(desc, Builtins.symbolTable) match {
           case Finished(_)            => unreachable
           case Partial(d, _)          => loop(d)
           case complete @ Complete(_) => complete
@@ -279,7 +280,7 @@ class Frontend(implicit cc: CompilerContext) {
         loop(desc).toEither
       case desc @ DescParametrized(_, _, _: DescPackage, _) =>
         // Parametrized package, will definitely not need to iterate just yet
-        Elaborate(desc, cc.builtins) match {
+        Elaborate(desc, Builtins.symbolTable) match {
           case Complete(value) => Right(value)
           case _               => unreachable
         }
@@ -322,7 +323,7 @@ class Frontend(implicit cc: CompilerContext) {
       case Right(desc) => Some(desc)
     } flatMap {
       case desc @ DescParametrized(_, _, _: DescPackage, _) =>
-        elaborate(params, cc.builtins, None)
+        elaborate(params, Builtins.symbolTable, None)
           .pipe {
             case result: FinalResult[List[Arg]] => result
             case Finished(result)               => Complete(result)

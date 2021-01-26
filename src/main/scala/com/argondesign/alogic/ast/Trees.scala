@@ -1,15 +1,10 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2017-2019 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler
-// Author: Peter de Rivaz/Geza Lore
-//
 // DESCRIPTION:
-//
 // AST representation used throughout the compiler
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -28,7 +23,7 @@ import com.argondesign.alogic.util.SequenceNumbers
 
 object Trees {
 
-  private[this] val sequenceNumbers = new SequenceNumbers
+  private val sequenceNumbers = new SequenceNumbers
 
   //////////////////////////////////////////////////////////////////////////////
   // AST base type
@@ -321,7 +316,7 @@ object Trees {
   case class ExprCast(kind: TypeFund, expr: Expr) extends Expr
   case class ExprInt(signed: Boolean, width: Int, value: BigInt) extends Expr with ExprIntImpl
   case class ExprNum(signed: Boolean, value: BigInt) extends Expr with ExprNumImpl
-  case class ExprStr(value: String) extends Expr
+  case class ExprStr(v: String) extends Expr
   case class ExprError() extends Expr
   // format: on
 

@@ -29,7 +29,7 @@ object TypeAssigner {
   // Tree
   //////////////////////////////////////////////////////////////////////////////
 
-  private def kind(tree: Tree)(implicit cc: CompilerContext): Type = tree match {
+  private def kind(tree: Tree): Type = tree match {
     case node: Ref       => kind(node)
     case node: Desc      => kind(node)
     case node: Attr      => kind(node)
@@ -56,7 +56,7 @@ object TypeAssigner {
   //////////////////////////////////////////////////////////////////////////////
 
   private def kind(tree: Ref) = tree match {
-    case _: Ident => ???; throw Ice(tree, "TypeAssigner called on Ident node")
+    case _: Ident => throw Ice(tree, "TypeAssigner called on Ident node")
     case _: Sym   => TypeMisc
   }
 
@@ -218,7 +218,7 @@ object TypeAssigner {
   // Expr
   //////////////////////////////////////////////////////////////////////////////
 
-  private def kind(tree: Expr)(implicit cc: CompilerContext): Type = tree match {
+  private def kind(tree: Expr): Type = tree match {
     case node: ExprCall   => kind(node)
     case node: ExprUnary  => kind(node)
     case node: ExprBinary => kind(node)
@@ -257,11 +257,11 @@ object TypeAssigner {
     case _               => TypeUInt(1)
   }
 
-  private def kind(tree: ExprBinary)(implicit cc: CompilerContext) = tree.op match {
+  private def kind(tree: ExprBinary) = tree.op match {
     case ">" | ">=" | "<" | "<=" | "==" | "!=" | "&&" | "||" => TypeUInt(1)
     case "<<" | ">>" | "<<<" | ">>>"                         => tree.lhs.tpe
     case "'" =>
-      TypeInt(tree.rhs.tpe.isSigned, tree.lhs.value.get.asLong)
+      TypeInt(tree.rhs.tpe.isSigned, tree.lhs.valueOption.get.asLong)
     case _ =>
       val lTpe = tree.lhs.tpe
       val rTpe = tree.rhs.tpe
@@ -286,30 +286,30 @@ object TypeAssigner {
     }
   }
 
-  private def kind(tree: ExprRep)(implicit cc: CompilerContext) = {
-    TypeUInt(tree.count.value.get.asLong * tree.expr.tpe.width)
+  private def kind(tree: ExprRep) = {
+    TypeUInt(tree.count.valueOption.get.asLong * tree.expr.tpe.width)
   }
 
   private def kind(tree: ExprCat) = {
     TypeUInt(tree.parts.iterator.map(_.tpe.width).sum)
   }
 
-  private def kind(tree: ExprIndex)(implicit cc: CompilerContext) = {
+  private def kind(tree: ExprIndex) = {
     tree.expr.tpe.underlying match {
       case _: TypeNum                              => TypeUInt(1)
       case TypeArray(kind, _)                      => kind
       case TypeVector(kind, _)                     => kind
-      case TypeType(kind)                          => TypeType(kind addVectorDimension tree.index.value.get.asLong)
+      case TypeType(kind)                          => TypeType(kind addVectorDimension tree.index.valueOption.get.asLong)
       case kind if kind.isPacked && kind.width > 0 => TypeUInt(1)
       case _                                       => unreachable
     }
   }
 
-  private def kind(tree: ExprSlice)(implicit cc: CompilerContext) = {
+  private def kind(tree: ExprSlice) = {
     val size = if (tree.op == ":") {
-      tree.lIdx.value.get - tree.rIdx.value.get + 1
+      tree.lIdx.valueOption.get - tree.rIdx.valueOption.get + 1
     } else {
-      tree.rIdx.value.get
+      tree.rIdx.valueOption.get
     }
     tree.expr.tpe.underlying match {
       case _: TypeNum                              => TypeUInt(size.asLong)
@@ -388,7 +388,7 @@ object TypeAssigner {
 
   // $COVERAGE-OFF$ As mentioned above, these are just for static dispatch
   // format: off
-  def apply(tree: Tree)(implicit cc: CompilerContext): tree.type = assign(tree)(kind(tree))
+  def apply(tree: Tree): tree.type = assign(tree)(kind(tree))
   def apply(tree: Desc): tree.type = assign(tree)(kind(tree))
   def apply(tree: Attr): tree.type = assign(tree)(kind(tree))
   def apply(tree: Decl): tree.type = assign(tree)(kind(tree))
@@ -422,15 +422,15 @@ object TypeAssigner {
   def apply(tree: StmtWait): tree.type = assign(tree)(kind(tree))
   def apply(tree: StmtError): tree.type = assign(tree)(kind(tree))
   def apply(tree: Case): tree.type = assign(tree)(kind(tree))
-  def apply(tree: Expr)(implicit cc: CompilerContext): tree.type = assign(tree)(kind(tree))
+  def apply(tree: Expr): tree.type = assign(tree)(kind(tree))
   def apply(tree: ExprCall): tree.type = assign(tree)(kind(tree))
   def apply(tree: ExprUnary): tree.type = assign(tree)(kind(tree))
-  def apply(tree: ExprBinary)(implicit cc: CompilerContext): tree.type = assign(tree)(kind(tree))
+  def apply(tree: ExprBinary): tree.type = assign(tree)(kind(tree))
   def apply(tree: ExprCond): tree.type = assign(tree)(kind(tree))
-  def apply(tree: ExprRep)(implicit cc: CompilerContext): tree.type = assign(tree)(kind(tree))
+  def apply(tree: ExprRep): tree.type = assign(tree)(kind(tree))
   def apply(tree: ExprCat): tree.type = assign(tree)(kind(tree))
-  def apply(tree: ExprIndex)(implicit cc: CompilerContext): tree.type = assign(tree)(kind(tree))
-  def apply(tree: ExprSlice)(implicit cc: CompilerContext): tree.type = assign(tree)(kind(tree))
+  def apply(tree: ExprIndex): tree.type = assign(tree)(kind(tree))
+  def apply(tree: ExprSlice): tree.type = assign(tree)(kind(tree))
   def apply(tree: ExprDot): tree.type = assign(tree)(kind(tree))
   def apply(tree: ExprSel): tree.type = assign(tree)(kind(tree))
   def apply(tree: ExprSymSel): tree.type = assign(tree)(kind(tree))

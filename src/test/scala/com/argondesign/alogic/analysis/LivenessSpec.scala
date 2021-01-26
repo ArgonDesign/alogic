@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
@@ -12,6 +12,7 @@ package com.argondesign.alogic.analysis
 
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.builtins.Builtins
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
@@ -41,7 +42,7 @@ class LivenessSpec extends AnyFreeSpec with AlogicTest {
   private def zext(n: Int, expr: Expr) =
     ExprCat(List(ExprInt(false, n, 0), expr)) regularize Loc.synthetic
 
-  private val randBitCall = cc.builtins.get("@unknownu") pipe {
+  private val randBitCall = Builtins.symbolTable.get("@unknownu") pipe {
     case SymbolTable.Local(symbol) => symbol
     case _                         => fail()
   } pipe { poly =>

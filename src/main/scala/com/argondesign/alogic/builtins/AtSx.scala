@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
@@ -11,16 +11,13 @@
 package com.argondesign.alogic.builtins
 
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.frontend.Complete
 import com.argondesign.alogic.frontend.Frontend
 import com.argondesign.alogic.util.unreachable
 
-private[builtins] class AtSx(implicit cc: CompilerContext) extends BuiltinPolyFunc {
-
-  val name = "@sx"
+object AtSx extends BuiltinPolyFunc("@sx") {
 
   def returnType(args: List[Expr], feOpt: Option[Frontend]): Option[TypeFund] = args match {
     case List(width, expr) if expr.tpe.isPacked =>
@@ -30,7 +27,7 @@ private[builtins] class AtSx(implicit cc: CompilerContext) extends BuiltinPolyFu
             case Complete(value) => Some(TypeInt(expr.tpe.isSigned, value.toInt))
             case _               => None
           }
-        case None => Some(TypeInt(expr.tpe.isSigned, width.value.get.toInt))
+        case None => Some(TypeInt(expr.tpe.isSigned, width.valueOption.get.toInt))
       }
     case _ => None
   }

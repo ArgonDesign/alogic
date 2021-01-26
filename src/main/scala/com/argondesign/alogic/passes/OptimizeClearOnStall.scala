@@ -1,15 +1,10 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2018 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler
-// Author: Geza Lore
-//
 // DESCRIPTION:
-//
 // Remove clearOnStall attributes from signals that for all code path,
 // are only assigned the same values as the stall conditions in that code path,
 // or if the signal is a don't care when that stall condition occurs
@@ -27,7 +22,7 @@ import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
 
-final class OptimizeClearOnStall(implicit cc: CompilerContext) extends StatelessTreeTransformer {
+private object OptimizeClearOnSallTransform extends StatelessTreeTransformer {
 
   // TODO: This assumes clearOnStall signals are alone on the lhs of assignments
   // If this is a problem, start by teaching SimplifyCat more cases. It also
@@ -166,5 +161,5 @@ final class OptimizeClearOnStall(implicit cc: CompilerContext) extends Stateless
 object OptimizeClearOnStall extends EntityTransformerPass(declFirst = true) {
   val name = "optimize-clear-on-stall"
   def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
-    cc.optimizeClearOnStall
+    OptimizeClearOnSallTransform
 }

@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
@@ -11,14 +11,13 @@
 package com.argondesign.alogic.builtins
 
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
+import com.argondesign.alogic.core.Messages.Fatal
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.frontend.Frontend
+import com.argondesign.alogic.util.PartialMatch.PartialMatchImpl
 
-private[builtins] class DollarUnsigned(implicit cc: CompilerContext) extends BuiltinPolyFunc {
-
-  val name = "$unsigned"
+object DollarUnsigned extends BuiltinPolyFunc("$unsigned") {
 
   def returnType(args: List[Expr], feOpt: Option[Frontend]): Option[TypeFund] = args partialMatch {
     case List(arg) if arg.tpe.isPacked         => TypeUInt(arg.tpe.width)
@@ -32,8 +31,7 @@ private[builtins] class DollarUnsigned(implicit cc: CompilerContext) extends Bui
       if (!s) {
         e
       } else if (v < 0) {
-        cc.error("Cannot cast negative unsized integer to unsigned")
-        ExprError()
+        throw Fatal(loc, "Cannot cast negative unsized integer to unsigned")
       } else {
         ExprNum(false, v)
       }

@@ -23,7 +23,7 @@ import com.argondesign.alogic.core.Types.TypeType
 
 import scala.collection.mutable
 
-abstract class StatefulTreeTransformer(implicit cc: CompilerContext) extends TreeTransformer(cc) {
+abstract class StatefulTreeTransformer(implicit cc: CompilerContext) extends TreeTransformer {
 
   //////////////////////////////////////////////////////////////////////////////
   // Transform specific interface overridable by sub-classes

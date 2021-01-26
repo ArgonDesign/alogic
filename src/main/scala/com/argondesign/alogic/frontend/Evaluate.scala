@@ -12,6 +12,7 @@ package com.argondesign.alogic.frontend
 
 import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.builtins.Builtins
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Messages.Ice
@@ -64,7 +65,7 @@ private[frontend] object Evaluate {
             call.args.foreach(_ visitAll {
               case ExprSym(symbol) => symbol.attr.wasUsed set true
             })
-            Some(walkSame(cc.foldBuiltinCall(call)))
+            Some(walkSame(Builtins.foldCall(call)))
           case ExprSymSel(_, tSymbol) =>
             tSymbol.desc match {
               case _: DescVal | _: DescParam | _: DescConst | _: DescGenVar =>
@@ -86,7 +87,7 @@ private[frontend] object Evaluate {
       Clarify(expr) pipe { clarified =>
         val transformed = clarified rewrite Transform
         bad getOrElse {
-          transformed.value match {
+          transformed.valueOption match {
             case Some(v) => Complete(v)
             case None    => Failure(expr, s"${hint.capitalize} must be a compile time constant")
           }

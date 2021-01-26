@@ -25,7 +25,7 @@ import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
 
-final class InferImplications(implicit cc: CompilerContext) extends StatelessTreeTransformer {
+final class InferImplications extends StatelessTreeTransformer {
 
   override def skip(tree: Tree): Boolean = tree match {
     case _: DefnEntity              => false

@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
@@ -10,9 +10,8 @@
 
 package com.argondesign.alogic.builtins
 
-import com.argondesign.alogic.ast.Trees.Expr
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.ast.Trees.Expr
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Source
 import com.argondesign.alogic.core.Symbols.Symbol
@@ -21,66 +20,66 @@ import com.argondesign.alogic.core.Types.TypeCombFunc
 import com.argondesign.alogic.core.Types.TypeFund
 import com.argondesign.alogic.core.Types.TypePolyFunc
 import com.argondesign.alogic.frontend.Frontend
-import com.argondesign.alogic.util.PartialMatch
 import com.argondesign.alogic.util.unreachable
+import com.argondesign.alogic.util.SequenceNumbers
 
 import scala.collection.concurrent.TrieMap
-import scala.util.ChainingSyntax
 
-abstract class BuiltinPolyFunc(implicit cc: CompilerContext)
-    extends PartialMatch
-    with ChainingSyntax {
-
-  //////////////////////////////////////////////////////////////////////////////
-  // Public interface
-  //////////////////////////////////////////////////////////////////////////////
-
-  lazy val symbol: Symbol = cc.newSymbol(name, loc) tap { s =>
-    s.kind = TypePolyFunc(s, resolver)
-    s.attr.builtin set this
-  }
+abstract class BuiltinPolyFunc(val name: String) {
 
   //////////////////////////////////////////////////////////////////////////////
   // Function specific methods
   //////////////////////////////////////////////////////////////////////////////
 
-  // Name of builtin function
-  protected[this] val name: String
-
   // Type of return value for given arguments, or None if these arguments are invalid
   // TODO: Should return frontend.Result[TypeFund] and messages properly
-  protected[this] def returnType(args: List[Expr], feOpt: Option[Frontend]): Option[TypeFund]
+  protected def returnType(args: List[Expr], feOpt: Option[Frontend]): Option[TypeFund]
 
   // Is this a pure function?
-  protected[builtins] val isPure: Boolean
+  val isPure: Boolean
 
   // Fold calls to this function
-  protected[this] def simplify(loc: Loc, args: List[Expr]): Option[Expr]
+  protected def simplify(loc: Loc, args: List[Expr]): Option[Expr]
+
+  //////////////////////////////////////////////////////////////////////////////
+  //
+  //////////////////////////////////////////////////////////////////////////////
+
+  private val sequenceNumbers = new SequenceNumbers
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Public interface
+  //////////////////////////////////////////////////////////////////////////////
+
+  val symbol: Symbol = new Symbol(name, id = sequenceNumbers.next)
+  symbol.kind = TypePolyFunc(symbol, resolver)
+  symbol.attr.builtin set this
 
   //////////////////////////////////////////////////////////////////////////////
   // Implementation
   //////////////////////////////////////////////////////////////////////////////
 
   // Fold calls to this function
-  private[builtins] def fold(loc: Loc, args: List[Arg]): Option[Expr] = simplify(loc, pargs(args))
+  def fold(loc: Loc, args: List[Arg]): Option[Expr] = simplify(loc, pargs(args))
 
   // Synthetic location of this builtin
-  final protected[this] lazy val loc = Loc(s"builtin $name", 0, Source("", ""), 0, 0, 0)
+  final protected lazy val loc = Loc(s"builtin $name", 0, Source("", ""), 0, 0, 0)
 
   // Collection of overloaded symbols (if any) for given arguments
   // TODO: This map should be in cc to avoid a space leak
-  final private[this] val overloads = TrieMap[(Type, List[Type]), Symbol]()
+  final private val overloads = TrieMap[(Type, List[Type]), Symbol]()
 
   // The resolver for TypePolyFunc
-  final private[this] def resolver(args: List[Arg], feOpt: Option[Frontend]): Option[Symbol] = {
+  final private def resolver(args: List[Arg], feOpt: Option[Frontend]): Option[Symbol] = {
     val pas = pargs(args)
     returnType(pas, feOpt) map { retType =>
       val argTypes = pas map { _.tpe }
       overloads.getOrElseUpdate(
-        (retType, argTypes),
-        cc.newSymbol(name, loc) tap { s =>
+        (retType, argTypes), {
+          val s = new Symbol(name, id = sequenceNumbers.next)
           s.kind = TypeCombFunc(symbol, retType, argTypes)
           s.attr.builtin set this
+          s
         }
       )
     }
@@ -90,10 +89,9 @@ abstract class BuiltinPolyFunc(implicit cc: CompilerContext)
   // Helpers
   //////////////////////////////////////////////////////////////////////////////
 
-  private[builtins] def pargs(args: List[Arg]): List[Expr] = args flatMap {
+  final private[builtins] def pargs(args: List[Arg]): List[Expr] = args flatMap {
     case ArgP(expr) => Some(expr)
-    case arg: ArgN  => cc.error(arg, s"Cannot pass named arguments to builtin '$name'"); None
-    case _: ArgD    => unreachable
+    case _          => unreachable
   }
 
 }

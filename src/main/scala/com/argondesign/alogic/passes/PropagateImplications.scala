@@ -25,7 +25,7 @@ import com.argondesign.alogic.core.Symbols._
 
 import scala.collection.mutable
 
-final class PropagateImplications(implicit cc: CompilerContext) extends StatelessTreeTransformer {
+final class PropagateImplications extends StatelessTreeTransformer {
 
   override def skip(tree: Tree): Boolean = tree match {
     case _: DefnEntity => false

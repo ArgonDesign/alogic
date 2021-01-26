@@ -136,16 +136,17 @@ final class LowerVectorsA(
                   }
                 case "-:" =>
                   lIdx match {
-                    case ExprInt(_, _, v) => ExprInt(false, w, ew * (v - rIdx.value.get.toInt + 1))
-                    case _                => ExprInt(false, w, ew) * ((lIdx zx w) - rIdx.value.get.toInt + 1)
+                    case ExprInt(_, _, v) =>
+                      ExprInt(false, w, ew * (v - rIdx.valueOption.get.toInt + 1))
+                    case _ => ExprInt(false, w, ew) * ((lIdx zx w) - rIdx.valueOption.get.toInt + 1)
                   }
               }
             }
 
             val newRIdx = {
               val sliceWidth = op match {
-                case ":" => lIdx.value.get - rIdx.value.get + 1
-                case _   => rIdx.value.get
+                case ":" => lIdx.valueOption.get - rIdx.valueOption.get + 1
+                case _   => rIdx.valueOption.get
               }
 
               ExprInt(false, clog2(shape + 1), ew * sliceWidth) regularize lIdx.loc

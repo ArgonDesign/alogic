@@ -76,7 +76,7 @@ final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer 
       }
     // Fold 'if' with known conditions
     case StmtIf(cond, thenStmts, elseStmts) =>
-      cond.value match {
+      cond.valueOption match {
         case Some(v) if v != 0    => Some(Thicket(walk(thenStmts)))
         case Some(v) /* v == 0 */ => Some(Thicket(walk(elseStmts)))
         case None =>
@@ -86,7 +86,7 @@ final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer 
 
     // Fold 'wait' with known conditions
     case StmtWait(cond) =>
-      cond.value match {
+      cond.valueOption match {
         case Some(v) if v != 0 => Some(Stump)
         case Some(v) if v == 0 && condLvl == 0 =>
           cc.error(tree, "Wait condition is always false")
@@ -96,16 +96,16 @@ final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer 
 
     // Fold 'case' with known conditions
     case StmtCase(expr, cases) =>
-      expr.value match {
+      expr.valueOption match {
         case None => None
         case Some(v) =>
           @tailrec
           def loop(remaining: List[Case]): Option[Tree] = remaining match {
             case CaseRegular(cond, stmts) :: tail =>
-              if (cond exists { _.value contains v }) {
+              if (cond exists { _.valueOption contains v }) {
                 // A condition matches
                 Some(Thicket(walk(stmts)))
-              } else if (cond exists { _.value.isEmpty }) {
+              } else if (cond exists { _.valueOption.isEmpty }) {
                 // At least one condition has an unknown value, and therefore
                 // might match, so we cannot fold further, but drop leading
                 // eliminated cases
@@ -181,9 +181,9 @@ final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer 
     case EntClockedProcess(_, _, stmts) if empty(stmts) => Stump
 
     // Fail on known false assertions
-    case AssertionAssert(cond, msgOpt) if cond.value contains zero =>
+    case AssertionAssert(cond, msgOpt) if cond.valueOption contains zero =>
       alwaysFalseError(tree, msgOpt)
-    case AssertionAssume(cond, msgOpt) if cond.value contains zero =>
+    case AssertionAssume(cond, msgOpt) if cond.valueOption contains zero =>
       alwaysFalseError(tree, msgOpt)
 
     //

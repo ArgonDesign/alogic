@@ -49,9 +49,6 @@ object SyncSliceFactory extends ChainingSyntax {
       ipvRef: ExprSym,
       oprRef: ExprSym,
       vRef: ExprSym
-    )(
-      implicit
-      cc: CompilerContext
     ): List[Stmt] = ss match {
     case StorageSliceBub =>
       // valid = ~valid & ip_valid | valid & ~op_ready;
@@ -73,9 +70,6 @@ object SyncSliceFactory extends ChainingSyntax {
       oprRef: ExprSym,
       sRef: ExprSym,
       vRef: ExprSym
-    )(
-      implicit
-      cc: CompilerContext
     ): List[EntAssign] = ss match {
     case StorageSliceBub =>
       // op_valid <- valid;
@@ -114,9 +108,6 @@ object SyncSliceFactory extends ChainingSyntax {
       oprRef: ExprSym,
       pRef: ExprSym,
       vRef: ExprSym
-    )(
-      implicit
-      cc: CompilerContext
     ): List[Stmt] = ss match {
     case StorageSliceBub =>
       // if (ip_valid & ~valid) {
@@ -171,9 +162,6 @@ object SyncSliceFactory extends ChainingSyntax {
       sRef: ExprSym,
       pRef: ExprSym,
       vRef: ExprSym
-    )(
-      implicit
-      cc: CompilerContext
     ): List[EntAssign] = ss match {
     case StorageSliceBub =>
       // op <- payload;

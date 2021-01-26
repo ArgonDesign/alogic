@@ -12,25 +12,22 @@
 package com.argondesign.alogic.transform
 
 import com.argondesign.alogic.ast.StatelessTreeTransformer
-import com.argondesign.alogic.ast.Trees.Expr.Integral
 import com.argondesign.alogic.ast.Trees._
-
-import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.TypeAssigner
+import com.argondesign.alogic.ast.Trees.Expr.Integral
+import com.argondesign.alogic.builtins.Builtins
+import com.argondesign.alogic.core.Messages.Fatal
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Math.clog2
 import com.argondesign.alogic.util.BigIntOps._
-import com.argondesign.alogic.util.PartialMatch
 import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
 import scala.language.implicitConversions
 
-final class SimplifyExpr(implicit cc: CompilerContext)
-    extends StatelessTreeTransformer
-    with PartialMatch {
+object SimplifyExpr extends StatelessTreeTransformer {
 
   implicit private def boolean2BigInt(bool: Boolean): BigInt = if (bool) BigInt(1) else BigInt(0)
 
@@ -517,7 +514,7 @@ final class SimplifyExpr(implicit cc: CompilerContext)
     ////////////////////////////////////////////////////////////////////////////
 
     case ExprBinary(lhs, "'", rhs) =>
-      val width = lhs.value match {
+      val width = lhs.valueOption match {
         case Some(v) if v > 0 => v.toInt
         case Some(_)          => throw Ice(tree, "LHS of binary ' is non positive")
         case None             => throw Ice(tree, "Cannot compute value of LHS of binary '")
@@ -597,8 +594,7 @@ final class SimplifyExpr(implicit cc: CompilerContext)
       def makeNum(signed: Boolean, value: BigInt): Expr = if (signed || value >= 0) {
         ExprNum(signed, value)
       } else {
-        cc.error(tree, s"Result of operator '$op' is unsigned, but value is negative: $value")
-        ExprError()
+        throw Fatal(tree, s"Result of operator '$op' is unsigned, but value is negative: $value")
       }
 
       val s = ls && rs
@@ -821,18 +817,18 @@ final class SimplifyExpr(implicit cc: CompilerContext)
       val aLsb = aOp match {
         case ":"  => aRIdx
         case "+:" => aLIdx
-        case "-:" => aLIdx - (aRIdx.value.get.toInt - 1)
+        case "-:" => aLIdx - (aRIdx.valueOption.get.toInt - 1)
         case _    => unreachable
       }
       val bLsb = bOp match {
         case ":"  => bRidx
         case "+:" => bLidx
-        case "-:" => bLidx - (bRidx.value.get.toInt - 1)
+        case "-:" => bLidx - (bRidx.valueOption.get.toInt - 1)
         case _    => unreachable
       }
       val bMsb = bOp match {
         case ":"  => bLidx
-        case "+:" => bLidx + (bRidx.value.get.toInt - 1)
+        case "+:" => bLidx + (bRidx.valueOption.get.toInt - 1)
         case "-:" => bLidx
         case _    => unreachable
       }
@@ -1048,7 +1044,7 @@ final class SimplifyExpr(implicit cc: CompilerContext)
     ////////////////////////////////////////////////////////////////////////////
 
     case ExprRep(count, ExprInt(_, width, value)) =>
-      count.value map { cnt =>
+      count.valueOption map { cnt =>
         val c = cnt.toInt
         val w = width.toInt
         val b = value.asU(w)
@@ -1075,8 +1071,7 @@ final class SimplifyExpr(implicit cc: CompilerContext)
           val hi = if (signed) BigInt.mask(width.toInt - 1) else BigInt.mask(width)
           if (value > hi || value < lo) {
             val signedness = if (signed) "signed" else "unsigned"
-            cc.error(tree, s"Value $value cannot be represented with $width $signedness bits")
-            ExprError() withLoc tree.loc
+            throw Fatal(tree, s"Value $value cannot be represented with $width $signedness bits")
           } else {
             ExprInt(signed, width.toInt, value) withLoc tree.loc
           }
@@ -1124,7 +1119,7 @@ final class SimplifyExpr(implicit cc: CompilerContext)
     ////////////////////////////////////////////////////////////////////////////
 
     case call @ ExprCall(ExprSym(symbol), _) if symbol.isBuiltin =>
-      val result = cc.foldBuiltinCall(call)
+      val result = Builtins.foldCall(call)
       if (result eq call) call else result regularize tree.loc
 
     case _ => tree

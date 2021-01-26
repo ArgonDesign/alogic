@@ -21,7 +21,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.Symbol
 
-final class RemoveAssume(implicit cc: CompilerContext) extends StatelessTreeTransformer {
+final class RemoveAssume extends StatelessTreeTransformer {
 
   override protected def skip(tree: Tree): Boolean = tree match {
     case _: Expr      => true

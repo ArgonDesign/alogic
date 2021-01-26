@@ -1,15 +1,10 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2018 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler
-// Author: Geza Lore
-//
 // DESCRIPTION:
-//
 // Given a statement, compute a map from the identity of each sub-statement
 // to known bindings of term symbols before executing that statement, and the
 // final bindings after executing all statements
@@ -20,7 +15,6 @@ package com.argondesign.alogic.analysis
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.ast.Trees.Expr.Integral
 import com.argondesign.alogic.core.Bindings
-import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.util.PartialMatch._
 import com.argondesign.alogic.util.unreachable
@@ -112,7 +106,7 @@ object StaticEvaluation {
 
   // Given an expression that is known to be true, return a set
   // of bindings that can be inferred
-  private def inferTrue(expr: Expr)(implicit cc: CompilerContext): Bindings = {
+  private def inferTrue(expr: Expr): Bindings = {
     if (expr.tpe.isPacked && expr.tpe.width == 1) {
       expr match {
         case ExprSym(symbol) =>
@@ -140,7 +134,7 @@ object StaticEvaluation {
 
   // Given an expression that is known to be false, return a set
   // of bindings that can be inferred
-  private def inferFalse(expr: Expr)(implicit cc: CompilerContext): Bindings = {
+  private def inferFalse(expr: Expr): Bindings = {
     if (!expr.tpe.isPacked) {
       Bindings.empty
     } else {
@@ -183,13 +177,7 @@ object StaticEvaluation {
   // Given the current bindings and some bindings inferred from a condition,
   // infer bindings for symbols defining the just inferred symbols
   @tailrec
-  private def inferTransitive(
-      curr: Ctx,
-      inferred: Bindings
-    )(
-      implicit
-      cc: CompilerContext
-    ): Ctx = {
+  private def inferTransitive(curr: Ctx, inferred: Bindings): Ctx = {
     if (inferred.isEmpty) {
       curr
     } else {
@@ -209,34 +197,13 @@ object StaticEvaluation {
     }
   }
 
-  private def inferTrueTransitive(
-      curr: Ctx,
-      expr: Expr
-    )(
-      implicit
-      cc: CompilerContext
-    ): Ctx = {
+  private def inferTrueTransitive(curr: Ctx, expr: Expr): Ctx =
     inferTransitive(curr, inferTrue(expr))
-  }
 
-  private def inferFalseTransitive(
-      curr: Ctx,
-      expr: Expr
-    )(
-      implicit
-      cc: CompilerContext
-    ): Ctx = {
+  private def inferFalseTransitive(curr: Ctx, expr: Expr): Ctx =
     inferTransitive(curr, inferFalse(expr))
-  }
 
-  private def overwrite(
-      curr: Ctx,
-      symbol: Symbol,
-      expr: Expr
-    )(
-      implicit
-      cc: CompilerContext
-    ): Option[Ctx] = {
+  private def overwrite(curr: Ctx, symbol: Symbol, expr: Expr): Option[Ctx] = {
     // Add the new binding for the symbol, but first substitute the new
     // expression using the current binding of symbol to remove self references
     val newValue = {
@@ -300,9 +267,6 @@ object StaticEvaluation {
   def apply(
       stmt: Stmt,
       initialBindings: Bindings = Bindings.empty
-    )(
-      implicit
-      cc: CompilerContext
     ): Option[(Map[Int, Bindings], Bindings)] = {
     val res = mutable.Map[Int, Bindings]()
 

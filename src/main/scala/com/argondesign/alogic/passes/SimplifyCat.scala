@@ -30,7 +30,7 @@ import com.argondesign.alogic.util.unreachable
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
 
-final class SimplifyCat(implicit cc: CompilerContext) extends StatelessTreeTransformer {
+final class SimplifyCat extends StatelessTreeTransformer {
 
   // Return a list of pairwise equal-length sub-lists that can be assigned to each other
   private[this] def pairUp(

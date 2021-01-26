@@ -252,13 +252,13 @@ trait TypeInImpl extends ExtensionType { this: TypeIn =>
   // TODO: fix symbol Ids, here and below
   final lazy val extensionSymbols: List[Symbol] = fc match {
     case FlowControlTypeNone =>
-      val read = new Symbol(-1, Loc.synthetic, "read")
+      val read = new Symbol("read")
       read.kind = TypeCombFunc(read, kind, Nil)
       List(read)
     case FlowControlTypeValid | FlowControlTypeReady =>
-      val read = new Symbol(-1, Loc.synthetic, "read")
+      val read = new Symbol("read")
       read.kind = TypeCombFunc(read, kind, Nil)
-      val valid = new Symbol(-1, Loc.synthetic, "valid")
+      val valid = new Symbol("valid")
       valid.kind = TypeUInt(1)
       List(read, valid)
   }
@@ -275,25 +275,25 @@ trait TypeOutImpl extends ExtensionType { this: TypeOut =>
 
     fc match {
       case FlowControlTypeNone =>
-        val write = new Symbol(-1, Loc.synthetic, "write")
+        val write = new Symbol("write")
         write.kind = writeFuncType(write)
         List(write)
       case FlowControlTypeValid =>
-        val write = new Symbol(-1, Loc.synthetic, "write")
+        val write = new Symbol("write")
         write.kind = writeFuncType(write)
-        val valid = new Symbol(-1, Loc.synthetic, "valid")
+        val valid = new Symbol("valid")
         valid.kind = TypeUInt(1)
         List(write, valid)
       case FlowControlTypeReady =>
-        val write = new Symbol(-1, Loc.synthetic, "write")
+        val write = new Symbol("write")
         write.kind = writeFuncType(write)
-        val valid = new Symbol(-1, Loc.synthetic, "valid")
+        val valid = new Symbol("valid")
         valid.kind = TypeUInt(1)
-        val full = new Symbol(-1, Loc.synthetic, "full")
+        val full = new Symbol("full")
         full.kind = TypeUInt(1)
-        val empty = new Symbol(-1, Loc.synthetic, "empty")
+        val empty = new Symbol("empty")
         empty.kind = TypeUInt(1)
-        val space = new Symbol(-1, Loc.synthetic, "space")
+        val space = new Symbol("space")
         val nSlices = st match {
           case StorageTypeSlices(slices) => slices.length
           case _                         => 1
@@ -309,13 +309,13 @@ trait TypePipeInImpl extends TypeCompound { this: TypePipeIn =>
 
   final lazy val publicSymbols: List[Symbol] = fc match {
     case FlowControlTypeNone =>
-      val read = new Symbol(-1, Loc.synthetic, "read")
+      val read = new Symbol("read")
       read.kind = TypeCombFunc(read, TypeVoid, Nil)
       List(read)
     case FlowControlTypeValid | FlowControlTypeReady =>
-      val read = new Symbol(-1, Loc.synthetic, "read")
+      val read = new Symbol("read")
       read.kind = TypeCombFunc(read, TypeVoid, Nil)
-      val valid = new Symbol(-1, Loc.synthetic, "valid")
+      val valid = new Symbol("valid")
       valid.kind = TypeUInt(1)
       List(read, valid)
   }
@@ -326,25 +326,25 @@ trait TypePipeOutImpl extends TypeCompound { this: TypePipeOut =>
 
   final lazy val publicSymbols: List[Symbol] = fc match {
     case FlowControlTypeNone =>
-      val write = new Symbol(-1, Loc.synthetic, "write")
+      val write = new Symbol("write")
       write.kind = TypeCombFunc(write, TypeVoid, Nil)
       List(write)
     case FlowControlTypeValid =>
-      val write = new Symbol(-1, Loc.synthetic, "write")
+      val write = new Symbol("write")
       write.kind = TypeCombFunc(write, TypeVoid, Nil)
-      val valid = new Symbol(-1, Loc.synthetic, "valid")
+      val valid = new Symbol("valid")
       valid.kind = TypeUInt(1)
       List(write, valid)
     case FlowControlTypeReady =>
-      val write = new Symbol(-1, Loc.synthetic, "write")
+      val write = new Symbol("write")
       write.kind = TypeCombFunc(write, TypeVoid, Nil)
-      val valid = new Symbol(-1, Loc.synthetic, "valid")
+      val valid = new Symbol("valid")
       valid.kind = TypeUInt(1)
-      val full = new Symbol(-1, Loc.synthetic, "full")
+      val full = new Symbol("full")
       full.kind = TypeUInt(1)
-      val empty = new Symbol(-1, Loc.synthetic, "empty")
+      val empty = new Symbol("empty")
       empty.kind = TypeUInt(1)
-      val space = new Symbol(-1, Loc.synthetic, "space")
+      val space = new Symbol("space")
       val nSlices = st match {
         case StorageTypeSlices(slices) => slices.length
         case _                         => 1
@@ -359,13 +359,13 @@ trait TypeStackImpl extends TypeCompound { this: TypeStack =>
   require(size > 0)
 
   final lazy val publicSymbols: List[Symbol] = {
-    val push = new Symbol(-1, Loc.synthetic, "push")
+    val push = new Symbol("push")
     push.kind = TypeCombFunc(push, TypeVoid, Nil)
-    val pop = new Symbol(-1, Loc.synthetic, "pop")
+    val pop = new Symbol("pop")
     pop.kind = TypeCombFunc(pop, TypeVoid, Nil)
-    val top = new Symbol(-1, Loc.synthetic, "top")
+    val top = new Symbol("top")
     top.kind = kind
-    val old = new Symbol(-1, Loc.synthetic, "old")
+    val old = new Symbol("old")
     old.kind = kind
     List(push, pop, top, old)
   }
@@ -377,7 +377,7 @@ trait TypeArrayImpl extends TypeCompound { this: TypeArray =>
 
   final private val _publicSymbols: List[Symbol] = {
     val addrType = TypeUInt(Math.clog2(size) max 1)
-    val write = new Symbol(-1, Loc.synthetic, "write")
+    val write = new Symbol("write")
     write.kind = TypeCombFunc(write, TypeVoid, List(addrType, kind))
     List(write)
   }
@@ -390,11 +390,11 @@ trait TypeSramImpl extends TypeCompound { this: TypeSram =>
 
   final lazy val publicSymbols: List[Symbol] = {
     val addrType = TypeUInt(Math.clog2(size) max 1)
-    val read = new Symbol(-1, Loc.synthetic, "read")
+    val read = new Symbol("read")
     read.kind = TypeCombFunc(read, TypeVoid, List(addrType))
-    val write = new Symbol(-1, Loc.synthetic, "write")
+    val write = new Symbol("write")
     write.kind = TypeCombFunc(write, TypeVoid, List(addrType, kind))
-    val rdata = new Symbol(-1, Loc.synthetic, "rdata")
+    val rdata = new Symbol("rdata")
     rdata.kind = kind
     List(read, write, rdata)
   }

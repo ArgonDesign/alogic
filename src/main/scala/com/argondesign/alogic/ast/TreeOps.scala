@@ -19,7 +19,6 @@ package com.argondesign.alogic.ast
 import com.argondesign.alogic.antlr._
 import com.argondesign.alogic.antlr.AlogicParser._
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.MessageBuffer
 import com.argondesign.alogic.core.SourceContext
@@ -294,7 +293,7 @@ trait TreeOps extends TreePrintOps { this: Tree =>
   // Regularize the tree
   ////////////////////////////////////////////////////////////////////////////
 
-  def regularize(loc: Loc)(implicit cc: CompilerContext): this.type = {
+  def regularize(loc: Loc): this.type = {
     if (this ne Stump) {
       this rewrite new Regularize(loc)
     }

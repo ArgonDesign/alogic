@@ -1,7 +1,6 @@
 package com.argondesign.alogic.frontend
 
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlType
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeReady
@@ -27,7 +26,7 @@ object ConnectChecks {
   }
 
   // Return true if this is a well formed and typed Connect instance
-  def apply(conn: EntConnect)(implicit cc: CompilerContext): Iterator[Message] = {
+  def apply(conn: EntConnect): Iterator[Message] = {
     // Given an expression, extract sub-expressions that require active logic
     // to implement. If the returned Iterator is empty, then the given
     // expression can be implemented purely as wiring.

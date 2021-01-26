@@ -1,15 +1,10 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2018-2019 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler
-// Author: Geza Lore
-//
 // DESCRIPTION:
-//
 // Symbol representation and creation
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -18,9 +13,7 @@
 package com.argondesign.alogic.core
 
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.frontend.SymbolTable
 import com.argondesign.alogic.util.SequenceNumbers
 import com.argondesign.alogic.util.unreachable
 
@@ -28,29 +21,14 @@ import scala.util.chaining._
 
 trait Symbols { self: CompilerContext =>
 
-  final def makeBuiltinCall(name: String, loc: Loc, args: List[Expr]): ExprCall = {
-    val polySymbol = builtins.get(name) match {
-      case SymbolTable.Defined(symbol) => symbol
-      case _                           => throw Ice(s"Attempting to construct unknown builtin '$name'")
-    }
-    assert(polySymbol.isBuiltin)
-    assert(args exists { _.hasTpe })
-    val argps = args map { a =>
-      ArgP(a).regularize(a.loc)(this)
-    }
-    val symbol = polySymbol.kind.asPolyFunc.resolve(argps, None).get
-    val call = ExprSym(symbol).call(argps)(this)
-    call.regularize(loc)(this)
-  }
-
-  final private[this] val symbolSequenceNumbers = new SequenceNumbers
+  final private val symbolSequenceNumbers = new SequenceNumbers
 
   //////////////////////////////////////////////////////////////////////////////
   // Creating Symbol instances
   //////////////////////////////////////////////////////////////////////////////
 
   final def newSymbol(name: String, loc: Loc): Symbols.Symbol = synchronized {
-    new Symbols.Symbol(symbolSequenceNumbers.next, loc, name)
+    new Symbols.Symbol(name, loc, symbolSequenceNumbers.next)
   }
 
   final def newTemp(name: String, loc: Loc, kind: Type): Symbols.Symbol =
@@ -64,11 +42,11 @@ trait Symbols { self: CompilerContext =>
 object Symbols {
 
   final class Symbol(
-      val id: Int,
-      val loc: Loc,
-      initialName: String) {
+      initialName: String,
+      val loc: Loc = Loc.synthetic,
+      val id: Int = -1) {
     var name: String = initialName
-    var origName = name
+    var origName: String = name
 
     val attr: SymbolAttributes = new SymbolAttributes()
 
@@ -80,9 +58,9 @@ object Symbols {
 
     var scopeName: String = ""
 
-    def hierName = if (scopeName.nonEmpty) scopeName + "." + origName else origName
+    def hierName: String = if (scopeName.nonEmpty) scopeName + "." + origName else origName
 
-    def isDictName = name contains '#'
+    def isDictName: Boolean = name contains '#'
 
     ////////////////////////////////////////////////////////////////////////////
     // The following is the mechanism figuring out the type of the symbol

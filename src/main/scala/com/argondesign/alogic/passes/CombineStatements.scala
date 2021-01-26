@@ -19,7 +19,7 @@ import com.argondesign.alogic.core.TypeAssigner
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
 
-final class CombineStatements(implicit cc: CompilerContext) extends StatelessTreeTransformer {
+final class CombineStatements extends StatelessTreeTransformer {
 
   // Pretend all calls have a side effect for this transform
   private def noSideEffect(as: Expr*): Boolean = as forall {

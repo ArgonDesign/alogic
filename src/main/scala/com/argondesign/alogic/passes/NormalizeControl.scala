@@ -28,7 +28,7 @@ import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.enums.EntityVariant
 import com.argondesign.alogic.util.unreachable
 
-final class NormalizeControl(implicit cc: CompilerContext) extends StatelessTreeTransformer {
+final class NormalizeControl extends StatelessTreeTransformer {
 
   override def skip(tree: Tree): Boolean = tree match {
     case _: Expr => true

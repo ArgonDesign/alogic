@@ -18,8 +18,7 @@ import com.argondesign.alogic.util.unreachable
 
 import scala.collection.parallel.CollectionConverters.IterableIsParallelizable
 
-class DropPackageAndParametrizedDescs(implicit cc: CompilerContext)
-    extends StatelessTreeTransformer {
+class DropPackageAndParametrizedDescs extends StatelessTreeTransformer {
 
   override protected def enter(tree: Tree): Option[Tree] = tree match {
     case _: DescParametrized => Some(Stump) // Drop (there are no references at this point)

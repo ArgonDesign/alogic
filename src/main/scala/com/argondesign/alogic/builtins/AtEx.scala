@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
@@ -11,15 +11,13 @@
 package com.argondesign.alogic.builtins
 
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
+import com.argondesign.alogic.core.Messages.Fatal
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.frontend.Complete
 import com.argondesign.alogic.frontend.Frontend
 
-private[builtins] class AtEx(implicit cc: CompilerContext) extends BuiltinPolyFunc {
-
-  val name = "@ex"
+object AtEx extends BuiltinPolyFunc("@ex") {
 
   def returnType(args: List[Expr], feOpt: Option[Frontend]): Option[TypeFund] = args match {
     case List(_, width, expr) if expr.tpe.isPacked =>
@@ -29,27 +27,20 @@ private[builtins] class AtEx(implicit cc: CompilerContext) extends BuiltinPolyFu
             case Complete(value) => Some(TypeInt(expr.tpe.isSigned, value.toInt))
             case _               => None
           }
-        case None => Some(TypeInt(expr.tpe.isSigned, width.value.get.toInt))
+        case None => Some(TypeInt(expr.tpe.isSigned, width.valueOption.get.toInt))
       }
     case _ => None
   }
 
   val isPure: Boolean = true
 
-  def simplify(loc: Loc, args: List[Expr]) = AtEx.fold(loc, args(0), args(1), args(2))
-
-}
-
-private[builtins] object AtEx {
+  def simplify(loc: Loc, args: List[Expr]): Option[Expr] = fold(loc, args(0), args(1), args(2))
 
   def fold(
       loc: Loc,
       bitExpr: Expr,
       width: Expr,
       expr: Expr
-    )(
-      implicit
-      cc: CompilerContext
     ): Option[Expr] = {
 
     def fixSign(result: Expr): Expr = {
@@ -68,18 +59,19 @@ private[builtins] object AtEx {
     }
 
     for {
-      dstWidth <- width.value map { _.toInt }
+      dstWidth <- width.valueOption map { _.toInt }
     } yield {
       val srcWidth = expr.tpe.width.toInt
       val d = dstWidth - srcWidth
       if (d < 0) {
-        val msg = s"Result width $dstWidth of extension is less than argument width $srcWidth"
-        cc.error(loc, msg)
-        ExprError()
+        throw Fatal(
+          loc,
+          s"Result width $dstWidth of extension is less than argument width $srcWidth"
+        )
       } else if (d == 0) {
         expr
       } else {
-        bitExpr.value map { _.abs } map { bit =>
+        bitExpr.valueOption map { _.abs } map { bit =>
           // Known bit value
           assert(bit == 0 || bit == 1)
           lazy val msbs = (bit << d) - bit

@@ -25,6 +25,8 @@ import com.argondesign.alogic.frontend.Frontend
 import com.argondesign.alogic.frontend.ResolveNames
 import com.argondesign.alogic.passes._
 import com.argondesign.alogic.ExprExtractors._
+import com.argondesign.alogic.builtins.Builtins
+import com.argondesign.alogic.core.Messages.Fatal
 import org.scalatest.freespec.AnyFreeSpec
 
 final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
@@ -47,7 +49,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
     implicit val fe: Frontend = new Frontend
     val tree = text.asTree[Expr]()
     assert(cc.messages.forall(_.isInstanceOf[Warning]))
-    val expr = ResolveNames(tree, cc.builtins)
+    val expr = ResolveNames(tree, Builtins.symbolTable)
       .proceed(e => fe.typeCheck(e) map { _ => e })
       .map(Clarify(_))
       .pipe {
@@ -60,6 +62,11 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
 
   private def checkExact(tests: (String, Expr)*): Unit = tests foreach {
     case (text, result) => text in { simplify(text) shouldBe result }
+  }
+
+  private def checkExactOrFatal(tests: (String, Either[String, Expr])*): Unit = tests foreach {
+    case (text, Right(result)) => text in { simplify(text) shouldBe result }
+    case (text, Left(msg))     => text in { (the[Fatal] thrownBy simplify(text)).msg shouldBe Seq(msg) }
   }
 
   private def checkPattern(tests: (String, PartialFunction[Any, Unit])*): Unit = tests foreach {
@@ -2285,27 +2292,18 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
 
     "builtin functions" - {
       "@max" - {
-        for {
-          (text, result, err) <- List(
-            // format: off
-            ("@max(1s)", ExprNum(true, 1), Nil),
-            ("@max(1)", ExprNum(false, 1), Nil),
-            ("@max(1s, 2s)", ExprNum(true, 2), Nil),
-            ("@max(1s, 2)", ExprNum(false, 2), Nil),
-            ("@max(1, 2s)", ExprNum(false, 2), Nil),
-            ("@max(1, 2)", ExprNum(false, 2), Nil),
-            ("@max(0s, 1s)", ExprNum(true, 1), Nil),
-            ("@max(-2s, -1s)", ExprNum(true, -1), Nil),
-            ("@max(-2s, 1)", ExprNum(false, 1), Nil),
-            ("@max(0, 1, 2, 3, 4, 5)", ExprNum(false, 5), Nil)
-            // format: on
-          )
-        } {
-          text in {
-            simplify(text) shouldBe result
-            checkSingleError(err)
-          }
-        }
+        checkExact(
+          ("@max(1s)", ExprNum(true, 1)),
+          ("@max(1)", ExprNum(false, 1)),
+          ("@max(1s, 2s)", ExprNum(true, 2)),
+          ("@max(1s, 2)", ExprNum(false, 2)),
+          ("@max(1, 2s)", ExprNum(false, 2)),
+          ("@max(1, 2)", ExprNum(false, 2)),
+          ("@max(0s, 1s)", ExprNum(true, 1)),
+          ("@max(-2s, -1s)", ExprNum(true, -1)),
+          ("@max(-2s, 1)", ExprNum(false, 1)),
+          ("@max(0, 1, 2, 3, 4, 5)", ExprNum(false, 5))
+        )
       }
 
       // TODO: @ex
@@ -2313,79 +2311,61 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
       // TODO: @msb
 
       "@zx" - {
-        for {
-          (text, result, err) <- List(
-            // format: off
-            ("@zx(3, 2'b00)", ExprInt(false, 3, 0), Nil),
-            ("@zx(3, 2'b01)", ExprInt(false, 3, 1), Nil),
-            ("@zx(3, 2'b10)", ExprInt(false, 3, 2), Nil),
-            ("@zx(3, 2'b11)", ExprInt(false, 3, 3), Nil),
-            ("@zx(3, 2'sb00)", ExprInt(true, 3, 0), Nil),
-            ("@zx(3, 2'sb01)", ExprInt(true, 3, 1), Nil),
-            ("@zx(3, 2'sb10)", ExprInt(true, 3, 2), Nil),
-            ("@zx(3, 2'sb11)", ExprInt(true, 3, 3), Nil),
-            ("@zx(2, 2'b00)", ExprInt(false, 2, 0), Nil),
-            ("@zx(2, 2'b01)", ExprInt(false, 2, 1), Nil),
-            ("@zx(2, 2'b10)", ExprInt(false, 2, 2), Nil),
-            ("@zx(2, 2'b11)", ExprInt(false, 2, 3), Nil),
-            ("@zx(2, 2'sb00)", ExprInt(true, 2, 0), Nil),
-            ("@zx(2, 2'sb01)", ExprInt(true, 2, 1), Nil),
-            ("@zx(2, 2'sb10)", ExprInt(true, 2, -2), Nil),
-            ("@zx(2, 2'sb11)", ExprInt(true, 2, -1), Nil),
-            ("@zx(1, 2'b00)", ExprError(), "Result width 1 of extension is less than argument width 2" :: Nil),
-            ("@zx(1, 2'b01)", ExprError(), "Result width 1 of extension is less than argument width 2" :: Nil),
-            ("@zx(1, 2'b10)", ExprError(), "Result width 1 of extension is less than argument width 2" :: Nil),
-            ("@zx(1, 2'b11)", ExprError(), "Result width 1 of extension is less than argument width 2" :: Nil),
-            ("@zx(1, 2'sb00)", ExprError(), "Result width 1 of extension is less than argument width 2" :: Nil),
-            ("@zx(1, 2'sb01)", ExprError(), "Result width 1 of extension is less than argument width 2" :: Nil),
-            ("@zx(1, 2'sb10)", ExprError(), "Result width 1 of extension is less than argument width 2" :: Nil),
-            ("@zx(1, 2'sb11)", ExprError(), "Result width 1 of extension is less than argument width 2" :: Nil)
-            // format: on
-          )
-        } {
-          text in {
-            simplify(text) shouldBe result
-            checkSingleError(err)
-          }
-        }
+        checkExactOrFatal(
+          ("@zx(3, 2'b00)", Right(ExprInt(false, 3, 0))),
+          ("@zx(3, 2'b01)", Right(ExprInt(false, 3, 1))),
+          ("@zx(3, 2'b10)", Right(ExprInt(false, 3, 2))),
+          ("@zx(3, 2'b11)", Right(ExprInt(false, 3, 3))),
+          ("@zx(3, 2'sb00)", Right(ExprInt(true, 3, 0))),
+          ("@zx(3, 2'sb01)", Right(ExprInt(true, 3, 1))),
+          ("@zx(3, 2'sb10)", Right(ExprInt(true, 3, 2))),
+          ("@zx(3, 2'sb11)", Right(ExprInt(true, 3, 3))),
+          ("@zx(2, 2'b00)", Right(ExprInt(false, 2, 0))),
+          ("@zx(2, 2'b01)", Right(ExprInt(false, 2, 1))),
+          ("@zx(2, 2'b10)", Right(ExprInt(false, 2, 2))),
+          ("@zx(2, 2'b11)", Right(ExprInt(false, 2, 3))),
+          ("@zx(2, 2'sb00)", Right(ExprInt(true, 2, 0))),
+          ("@zx(2, 2'sb01)", Right(ExprInt(true, 2, 1))),
+          ("@zx(2, 2'sb10)", Right(ExprInt(true, 2, -2))),
+          ("@zx(2, 2'sb11)", Right(ExprInt(true, 2, -1))),
+          ("@zx(1, 2'b00)", Left("Result width 1 of extension is less than argument width 2")),
+          ("@zx(1, 2'b01)", Left("Result width 1 of extension is less than argument width 2")),
+          ("@zx(1, 2'b10)", Left("Result width 1 of extension is less than argument width 2")),
+          ("@zx(1, 2'b11)", Left("Result width 1 of extension is less than argument width 2")),
+          ("@zx(1, 2'sb00)", Left("Result width 1 of extension is less than argument width 2")),
+          ("@zx(1, 2'sb01)", Left("Result width 1 of extension is less than argument width 2")),
+          ("@zx(1, 2'sb10)", Left("Result width 1 of extension is less than argument width 2")),
+          ("@zx(1, 2'sb11)", Left("Result width 1 of extension is less than argument width 2"))
+        )
       }
 
       "@sx" - {
-        for {
-          (text, result, err) <- List(
-            // format: off
-            ("@sx(3, 2'b00)", ExprInt(false, 3, 0), Nil),
-            ("@sx(3, 2'b01)", ExprInt(false, 3, 1), Nil),
-            ("@sx(3, 2'b10)", ExprInt(false, 3, 6), Nil),
-            ("@sx(3, 2'b11)", ExprInt(false, 3, 7), Nil),
-            ("@sx(3, 2'sb00)", ExprInt(true, 3, 0), Nil),
-            ("@sx(3, 2'sb01)", ExprInt(true, 3, 1), Nil),
-            ("@sx(3, 2'sb10)", ExprInt(true, 3, -2), Nil),
-            ("@sx(3, 2'sb11)", ExprInt(true, 3, -1), Nil),
-            ("@sx(2, 2'b00)", ExprInt(false, 2, 0), Nil),
-            ("@sx(2, 2'b01)", ExprInt(false, 2, 1), Nil),
-            ("@sx(2, 2'b10)", ExprInt(false, 2, 2), Nil),
-            ("@sx(2, 2'b11)", ExprInt(false, 2, 3), Nil),
-            ("@sx(2, 2'sb00)", ExprInt(true, 2, 0), Nil),
-            ("@sx(2, 2'sb01)", ExprInt(true, 2, 1), Nil),
-            ("@sx(2, 2'sb10)", ExprInt(true, 2, -2), Nil),
-            ("@sx(2, 2'sb11)", ExprInt(true, 2, -1), Nil),
-            ("@sx(1, 2'b00)", ExprError(), "Result width 1 of extension is less than argument width 2" :: Nil),
-            ("@sx(1, 2'b01)", ExprError(), "Result width 1 of extension is less than argument width 2" :: Nil),
-            ("@sx(1, 2'b10)", ExprError(), "Result width 1 of extension is less than argument width 2" :: Nil),
-            ("@sx(1, 2'b11)", ExprError(), "Result width 1 of extension is less than argument width 2" :: Nil),
-            ("@sx(1, 2'sb00)", ExprError(), "Result width 1 of extension is less than argument width 2" :: Nil),
-            ("@sx(1, 2'sb01)", ExprError(), "Result width 1 of extension is less than argument width 2" :: Nil),
-            ("@sx(1, 2'sb10)", ExprError(), "Result width 1 of extension is less than argument width 2" :: Nil),
-            ("@sx(1, 2'sb11)", ExprError(), "Result width 1 of extension is less than argument width 2" :: Nil)
-            // format: on
-          )
-        } {
-          text in {
-            simplify(text) shouldBe result
-            checkSingleError(err)
-          }
-        }
+        checkExactOrFatal(
+          ("@sx(3, 2'b00)", Right(ExprInt(false, 3, 0))),
+          ("@sx(3, 2'b01)", Right(ExprInt(false, 3, 1))),
+          ("@sx(3, 2'b10)", Right(ExprInt(false, 3, 6))),
+          ("@sx(3, 2'b11)", Right(ExprInt(false, 3, 7))),
+          ("@sx(3, 2'sb00)", Right(ExprInt(true, 3, 0))),
+          ("@sx(3, 2'sb01)", Right(ExprInt(true, 3, 1))),
+          ("@sx(3, 2'sb10)", Right(ExprInt(true, 3, -2))),
+          ("@sx(3, 2'sb11)", Right(ExprInt(true, 3, -1))),
+          ("@sx(2, 2'b00)", Right(ExprInt(false, 2, 0))),
+          ("@sx(2, 2'b01)", Right(ExprInt(false, 2, 1))),
+          ("@sx(2, 2'b10)", Right(ExprInt(false, 2, 2))),
+          ("@sx(2, 2'b11)", Right(ExprInt(false, 2, 3))),
+          ("@sx(2, 2'sb00)", Right(ExprInt(true, 2, 0))),
+          ("@sx(2, 2'sb01)", Right(ExprInt(true, 2, 1))),
+          ("@sx(2, 2'sb10)", Right(ExprInt(true, 2, -2))),
+          ("@sx(2, 2'sb11)", Right(ExprInt(true, 2, -1))),
+          ("@sx(1, 2'b00)", Left("Result width 1 of extension is less than argument width 2")),
+          ("@sx(1, 2'b01)", Left("Result width 1 of extension is less than argument width 2")),
+          ("@sx(1, 2'b10)", Left("Result width 1 of extension is less than argument width 2")),
+          ("@sx(1, 2'b11)", Left("Result width 1 of extension is less than argument width 2")),
+          ("@sx(1, 2'sb00)", Left("Result width 1 of extension is less than argument width 2")),
+          ("@sx(1, 2'sb01)", Left("Result width 1 of extension is less than argument width 2")),
+          ("@sx(1, 2'sb10)", Left("Result width 1 of extension is less than argument width 2")),
+          ("@sx(1, 2'sb11)", Left("Result width 1 of extension is less than argument width 2"))
+        )
       }
 
       "@bits" - {
@@ -2443,58 +2423,41 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
       }
 
       "$signed" - {
-        for {
-          (text, result) <- List(
-            // format: off
-            ("$signed(1)",      ExprNum(true,  1)),
-            ("$signed(1s)",     ExprNum(true,  1)),
-            ("$signed(-1s)",    ExprNum(true, -1)),
-            ("$signed(2'd0)",   ExprInt(true, 2,    0)),
-            ("$signed(2'd1)",   ExprInt(true, 2,    1)),
-            ("$signed(2'd3)",   ExprInt(true, 2,   -1)),
-            ("$signed(2'sd0)",  ExprInt(true, 2,    0)),
-            ("$signed(2'sd1)",  ExprInt(true, 2,    1)),
-            ("$signed(-2'sd1)", ExprInt(true, 2,   -1)),
-            ("$signed(8'h7f)",  ExprInt(true, 8,  127)),
-            ("$signed(8'h80)",  ExprInt(true, 8, -128)),
-            ("$signed(8'hff)",  ExprInt(true, 8,   -1)),
-            ("$signed({1'd0, {31{1'd1}}})", ExprInt(true, 32,  2147483647)),
-            ("$signed({1'd1, {31{1'd0}}})", ExprInt(true, 32, -2147483648))
-            // format: on
-          )
-        } {
-          text in {
-            simplify(text) shouldBe result
-          }
-        }
+        checkExact(
+          ("$signed(1)", ExprNum(true, 1)),
+          ("$signed(1s)", ExprNum(true, 1)),
+          ("$signed(-1s)", ExprNum(true, -1)),
+          ("$signed(2'd0)", ExprInt(true, 2, 0)),
+          ("$signed(2'd1)", ExprInt(true, 2, 1)),
+          ("$signed(2'd3)", ExprInt(true, 2, -1)),
+          ("$signed(2'sd0)", ExprInt(true, 2, 0)),
+          ("$signed(2'sd1)", ExprInt(true, 2, 1)),
+          ("$signed(-2'sd1)", ExprInt(true, 2, -1)),
+          ("$signed(8'h7f)", ExprInt(true, 8, 127)),
+          ("$signed(8'h80)", ExprInt(true, 8, -128)),
+          ("$signed(8'hff)", ExprInt(true, 8, -1)),
+          ("$signed({1'd0, {31{1'd1}}})", ExprInt(true, 32, 2147483647)),
+          ("$signed({1'd1, {31{1'd0}}})", ExprInt(true, 32, -2147483648))
+        )
       }
 
       "$unsigned" - {
-        for {
-          (text, result, err) <- List(
-            // format: off
-            ("$unsigned(1)",        ExprNum(false,  1), Nil),
-            ("$unsigned(1s)",       ExprNum(false,  1), Nil),
-            ("$unsigned(-1s)",      ExprError(), "Cannot cast negative unsized integer to unsigned" :: Nil),
-            ("$unsigned(2'd0)",     ExprInt(false, 2,   0), Nil),
-            ("$unsigned(2'd1)",     ExprInt(false, 2,   1), Nil),
-            ("$unsigned(2'd3)",     ExprInt(false, 2,   3), Nil),
-            ("$unsigned(2'sd0)",    ExprInt(false, 2,   0), Nil),
-            ("$unsigned(2'sd1)",    ExprInt(false, 2,   1), Nil),
-            ("$unsigned(-2'sd1)",   ExprInt(false, 2,   3), Nil),
-            ("$unsigned(8'sd127)",  ExprInt(false, 8, 127), Nil),
-            ("$unsigned(-8'sd128)", ExprInt(false, 8, 128), Nil),
-            ("$unsigned(-8'sd1)",   ExprInt(false, 8, 255), Nil),
-            ("$unsigned({1'd0, {31{1'd1}}})", ExprInt(false, 32, 2147483647), Nil),
-            ("$unsigned({1'd1, {31{1'd0}}})", ExprInt(false, 32, 2147483648L), Nil)
-            // format: on
-          )
-        } {
-          text in {
-            simplify(text) shouldBe result
-            checkSingleError(err)
-          }
-        }
+        checkExactOrFatal(
+          ("$unsigned(1)", Right(ExprNum(false, 1))),
+          ("$unsigned(1s)", Right(ExprNum(false, 1))),
+          ("$unsigned(-1s)", Left("Cannot cast negative unsized integer to unsigned")),
+          ("$unsigned(2'd0)", Right(ExprInt(false, 2, 0))),
+          ("$unsigned(2'd1)", Right(ExprInt(false, 2, 1))),
+          ("$unsigned(2'd3)", Right(ExprInt(false, 2, 3))),
+          ("$unsigned(2'sd0)", Right(ExprInt(false, 2, 0))),
+          ("$unsigned(2'sd1)", Right(ExprInt(false, 2, 1))),
+          ("$unsigned(-2'sd1)", Right(ExprInt(false, 2, 3))),
+          ("$unsigned(8'sd127)", Right(ExprInt(false, 8, 127))),
+          ("$unsigned(-8'sd128)", Right(ExprInt(false, 8, 128))),
+          ("$unsigned(-8'sd1)", Right(ExprInt(false, 8, 255))),
+          ("$unsigned({1'd0, {31{1'd1}}})", Right(ExprInt(false, 32, 2147483647))),
+          ("$unsigned({1'd1, {31{1'd0}}})", Right(ExprInt(false, 32, 2147483648L)))
+        )
       }
     }
 
@@ -2744,15 +2707,19 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
           } getFirst {
             case ExprCall(_, List(_, ArgP(e))) => e
           } tap { expr =>
-            cc.messages filterNot { _.isInstanceOf[Warning] } shouldBe empty
+            cc.messages filterNot {
+              _.isInstanceOf[Warning]
+            } shouldBe empty
             val kind = kindSrc.asTree[Expr]() match {
               case ExprType(kind) => kind
               case _              => fail()
             }
-            TypeAssigner(ExprCast(kind, expr) withLoc Loc.synthetic) rewrite {
-              cc.simpifyExpr
-            } should matchPattern(pattern)
-            checkSingleError(err)
+            val call = TypeAssigner(ExprCast(kind, expr) withLoc Loc.synthetic)
+            if (err.isEmpty) {
+              SimplifyExpr(call) should matchPattern(pattern)
+            } else {
+              (the[Fatal] thrownBy SimplifyExpr(call)).msg shouldBe err
+            }
           }
         }
       }

@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
@@ -12,17 +12,14 @@ package com.argondesign.alogic.ast
 
 import com.argondesign.alogic.Config
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Messages.Ice
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.util.unreachable
 
 import scala.util.ChainingSyntax
 
 // Tree transformers are applied during a traversal of a Tree.
-abstract class TreeTransformer(private val cc: CompilerContext)
-    extends (Tree => Tree)
-    with ChainingSyntax {
+abstract class TreeTransformer extends (Tree => Tree) with ChainingSyntax {
 
   //////////////////////////////////////////////////////////////////////////////
   // Public API
@@ -38,7 +35,7 @@ abstract class TreeTransformer(private val cc: CompilerContext)
     // Call finish
     val result = finish(walked)
     // Call checks if appropriate
-    if (Config.applyTransformChecks && !cc.hasError) {
+    if (Config.applyTransformChecks) {
       // Apply default check
       defaultCheck(tree, result)
       // Apply final check
@@ -171,7 +168,7 @@ abstract class TreeTransformer(private val cc: CompilerContext)
   // Nodes with children that have been rewritten and therefore copied by
   // TreeCopier need their types assigned
   final private def assignType(tree: Tree): Tree =
-    if (typed && !tree.hasTpe) TypeAssigner(tree)(cc) else tree
+    if (typed && !tree.hasTpe) TypeAssigner(tree) else tree
 
   // Walk child, propagate Thicket/Stump
   final private def splice(child: Spliceable, treeCopier: Tree => Splice): Tree =

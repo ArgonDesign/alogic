@@ -1,22 +1,16 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2018 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler
-// Author: Geza Lore
-//
 // DESCRIPTION:
-//
 // Liveness analysis
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.analysis
 
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.util.unreachable
@@ -65,21 +59,18 @@ object Liveness {
 
   private def usedRvalPairs(
       expr: Expr
-    )(
-      implicit
-      cc: CompilerContext
     ): Iterator[(Symbol, BitSet)] = expr flatCollect {
     case ExprSym(symbol) if symbol.kind.isPacked =>
       Iterator.single(symbol -> bitRange(0, symbol.kind.width.toInt))
     case ExprIndex(ExprSym(symbol), idx) if symbol.kind.isPacked =>
-      val m = idx.value match {
+      val m = idx.valueOption match {
         case Some(bit) => symbol -> BitSet(bit.toInt)
         case None      => symbol -> bitRange(0, symbol.kind.width.toInt)
       }
       Iterator.single(m) ++ usedRvalPairs(idx)
     case ExprSlice(ExprSym(symbol), lIdx, op, rIdx) if symbol.kind.isPacked =>
-      val m = lIdx.value flatMap { l =>
-        rIdx.value map { r =>
+      val m = lIdx.valueOption flatMap { l =>
+        rIdx.valueOption map { r =>
           val (msb, lsb) = op match {
             case ":"  => (l, r)
             case "+:" => (l + r - 1, l)
@@ -96,7 +87,7 @@ object Liveness {
 
   // Given an expression, return a SymbolBitSet that holds bits that might be
   // read if this expression is not used on the left hand side of an assignment
-  def usedRv(expr: Expr)(implicit cc: CompilerContext): SymbolBitSet =
+  def usedRv(expr: Expr): SymbolBitSet =
     usedRvalPairs(expr).foldLeft(Map.empty[Symbol, BitSet]) {
       case (acc, (symbol, bits)) =>
         acc.updatedWith(symbol) {
@@ -107,7 +98,7 @@ object Liveness {
 
   // Given an expression, return a SymbolBitSet that holds bits that might be
   // read if this expression is used on the left hand side of an assignment
-  def usedLv(lval: Expr)(implicit cc: CompilerContext): SymbolBitSet = {
+  def usedLv(lval: Expr): SymbolBitSet = {
     def gather(expr: Expr): Iterator[(Symbol, BitSet)] = expr match {
       case _: ExprSym                           => Iterator.empty
       case ExprIndex(_: ExprSym, idx)           => usedRvalPairs(idx)
@@ -129,7 +120,7 @@ object Liveness {
   // Given an expression, return a SymbolBitSet that holds bits that are known
   // to be written, should this expression be used on the left hand side of an
   // assignment
-  def killed(lval: Expr)(implicit cc: CompilerContext): SymbolBitSet = {
+  def killed(lval: Expr): SymbolBitSet = {
 
     def gather(expr: Expr): Iterator[(Symbol, BitSet)] = expr match {
       case ExprSym(symbol) =>
@@ -137,12 +128,12 @@ object Liveness {
           symbol -> bitRange(0, symbol.kind.width.toInt)
         }
       case ExprIndex(ExprSym(symbol), idx) =>
-        idx.value.iterator map { bit =>
+        idx.valueOption.iterator map { bit =>
           symbol -> BitSet(bit.toInt)
         }
       case ExprSlice(ExprSym(symbol), lIdx, op, rIdx) =>
-        lIdx.value.iterator flatMap { l =>
-          rIdx.value.iterator map { r =>
+        lIdx.valueOption.iterator flatMap { l =>
+          rIdx.valueOption.iterator map { r =>
             val (msb, lsb) = op match {
               case ":"  => (l, r)
               case "+:" => (l + r - 1, l)
@@ -173,7 +164,7 @@ object Liveness {
   // read in the statements. Note that a bit that is not present in either
   // maps only means that those bits are neither read, nor assigned in the
   // given statements.
-  def apply(stmts: List[Stmt])(implicit cc: CompilerContext): (SymbolBitSet, SymbolBitSet) = {
+  def apply(stmts: List[Stmt]): (SymbolBitSet, SymbolBitSet) = {
 
     def analyse(
         cLive: SymbolBitSet,

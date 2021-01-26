@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
@@ -11,15 +11,13 @@
 package com.argondesign.alogic.builtins
 
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.frontend.Frontend
 import com.argondesign.alogic.util.unreachable
+import com.argondesign.alogic.util.PartialMatch.PartialMatchImpl
 
-private[builtins] class AtMax(implicit cc: CompilerContext) extends BuiltinPolyFunc {
-
-  val name = "@max"
+object AtMax extends BuiltinPolyFunc("@max") {
 
   def returnType(args: List[Expr], feOpt: Option[Frontend]): Option[TypeFund] = args partialMatch {
     case args if args.nonEmpty && (args forall { _.tpe.isNum }) => {
@@ -31,15 +29,14 @@ private[builtins] class AtMax(implicit cc: CompilerContext) extends BuiltinPolyF
 
   val isPure: Boolean = true
 
-  def simplify(loc: Loc, args: List[Expr]) =
+  def simplify(loc: Loc, args: List[Expr]): Option[Expr] =
     Option.when(args forall { _.isInstanceOf[ExprNum] }) {
       args match {
         case Nil       => unreachable
         case List(arg) => arg
-        case args => {
+        case args =>
           val (s, v) = (args collect { case ExprNum(signed, value) => (signed, value) }).unzip
           ExprNum(s reduceLeft { _ && _ }, v.max)
-        }
       }
     }
 
