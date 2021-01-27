@@ -1,0 +1,21 @@
+u2 inc(u2 x) {
+  return x + 1;
+}
+
+fsm simple_00 {
+  in u2 i;
+  out wire u2 o;
+
+  void main() {
+    o = inc(i);
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module simple_00(
+//    input  wire [1:0] i,
+//    output wire [1:0] o
+//  );
+//    assign o = i + 2'd1;
+//  endmodule
+// }}}

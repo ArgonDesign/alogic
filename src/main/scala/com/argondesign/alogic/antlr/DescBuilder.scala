@@ -254,6 +254,9 @@ object DescBuilder extends BaseBuilder[DescContext, Desc] with ChainingSyntax {
       override def visitDescFuncAlogic(ctx: DescFuncAlogicContext): Desc = {
         val ident = IdentBuilder(ctx.ident)
         val variant = if (ctx.stat != null) {
+          if (sc != SourceContext.Record) {
+            mb.error(ctx.stat.loc, "No 'static' modifier is allowed here")
+          }
           FuncVariant.Static
         } else {
           sc match {

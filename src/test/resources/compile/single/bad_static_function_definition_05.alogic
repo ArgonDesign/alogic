@@ -1,0 +1,6 @@
+void a() {
+  gen if (false) {
+    static void f() {}
+  }
+}
+// :3: ERROR: No 'static' modifier is allowed here

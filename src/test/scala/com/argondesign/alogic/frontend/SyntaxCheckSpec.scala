@@ -30,7 +30,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
   val checker = new SyntaxCheck
 
   "SyntaxCheck should" - {
-    "check usage of pipeline port declarations" - {
+    "check usage of pipeline port definitions" - {
       "accepting them in nested entities" - {
         for (desc <- List("in pipeline", "out pipeline")) {
           desc in {
@@ -70,7 +70,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       }
     }
 
-    "ensure declaration statements" - {
+    "ensure definition statements" - {
       "do not declare" - {
         "input ports" in {
           val tree = "in bool a;".asTree[Stmt]()
@@ -78,7 +78,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
           tree rewrite checker shouldBe StmtError()
 
           cc.messages.loneElement should beThe[Error](
-            "Only variables can be declared in declaration statements"
+            "Only variables can be defined in statement position"
           )
         }
 
@@ -88,7 +88,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
           tree rewrite checker shouldBe StmtError()
 
           cc.messages.loneElement should beThe[Error](
-            "Only variables can be declared in declaration statements"
+            "Only variables can be defined in statement position"
           )
         }
 
@@ -98,7 +98,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
           tree rewrite checker shouldBe StmtError()
 
           cc.messages.loneElement should beThe[Error](
-            "Only variables can be declared in declaration statements"
+            "Only variables can be defined in statement position"
           )
         }
 
@@ -108,7 +108,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
           tree rewrite checker shouldBe StmtError()
 
           cc.messages.loneElement should beThe[Error](
-            "Only variables can be declared in declaration statements"
+            "Only variables can be defined in statement position"
           )
         }
 
@@ -118,7 +118,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
           tree rewrite checker shouldBe StmtError()
 
           cc.messages.loneElement should beThe[Error](
-            "Only variables can be declared in declaration statements"
+            "Only variables can be defined in statement position"
           )
         }
 
@@ -128,7 +128,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
           tree rewrite checker shouldBe StmtError()
 
           cc.messages.loneElement should beThe[Error](
-            "Only variables can be declared in declaration statements"
+            "Only variables can be defined in statement position"
           )
         }
 
@@ -138,7 +138,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
           tree rewrite checker shouldBe StmtError()
 
           cc.messages.loneElement should beThe[Error](
-            "Only variables can be declared in declaration statements"
+            "Only variables can be defined in statement position"
           )
         }
       }
@@ -238,6 +238,35 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       cc.messages(1).loc.line shouldBe 3
     }
 
+    "reject disallowed package contents" - {
+      List(
+        ("u8 a;", "Variable"),
+        ("static u8 a;", "Variable"),
+        ("pipeline u8 a;", "Variable"),
+        ("in u8 a;", "Port"),
+        ("out u8 a;", "Port"),
+        ("i8 a[2];", "Distributed memory"),
+        ("sram i8 a[2];", "SRAM"),
+        ("c = new d();", "Instance"),
+        ("new fsm f {}", "Singleton entity")
+      ) foreach {
+        case (text, hint) =>
+          text in {
+            text.stripMargin.asTree[DescPackage]() rewrite checker
+            cc.messages.loneElement should beThe[Error](
+              s"$hint definition cannot appear in file scope"
+            )
+          }
+      }
+
+      "non-static assertion in" in {
+        "assert false;".stripMargin.asTree[DescPackage]() rewrite checker
+        cc.messages.loneElement should beThe[Error](
+          s"Only static assertions are allowed in file scope"
+        )
+      }
+    }
+
     "reject disallowed entity contents" - {
 
       "instantiations in" - {
@@ -331,23 +360,6 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
         }
       }
 
-      "static functions in" - {
-        "fsm" in {
-          val tree = s"""fsm a {
-                        |  static void main() {}
-                        |}""".stripMargin.asTree[Desc]()
-
-          tree rewrite checker should matchPattern {
-            case DescEntity(_, _, _, Nil) =>
-          }
-
-          cc.messages.loneElement should beThe[Error](
-            s"'fsm' cannot contain static function definitions"
-          )
-          cc.messages(0).loc.line shouldBe 2
-        }
-      }
-
       s"fence blocks in" - {
         for (variant <- List("network", "verbatim entity")) {
           variant in {
@@ -365,7 +377,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
         }
       }
 
-      s"declarations in fsm" - {
+      s"definitions in fsm" - {
         for {
           (decl, msg) <- List(
             ("pipeline i8 a", "pipeline variable")
@@ -380,14 +392,14 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
               case DescEntity(_, _, _, Nil) =>
             }
 
-            cc.messages.loneElement should beThe[Error](s"'fsm' cannot contain $msg declarations")
+            cc.messages.loneElement should beThe[Error](s"'fsm' cannot contain $msg definitions")
             cc.messages(0).loc.line shouldBe 2
           }
 
         }
       }
 
-      s"declarations in networks" - {
+      s"definitions in networks" - {
         for {
           (decl, msg) <- List(
             ("i8 a", "variable"),
@@ -410,7 +422,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
             tree rewrite checker
 
             cc.messages.loneElement should beThe[Error](
-              s"'network' cannot contain $msg declarations"
+              s"'network' cannot contain $msg definitions"
             )
             cc.messages(0).loc.line shouldBe 6
           }
@@ -418,7 +430,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
         }
       }
 
-      s"declarations in verbatim" - {
+      s"definitions in verbatim" - {
         for {
           (decl, msg) <- List(
             ("i8 a", "variable"),
@@ -440,7 +452,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
             tree rewrite checker
 
             cc.messages.loneElement should beThe[Error](
-              s"'verbatim entity' cannot contain $msg declarations"
+              s"'verbatim entity' cannot contain $msg definitions"
             )
             cc.messages(0).loc.line shouldBe 6
           }
@@ -483,7 +495,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
             }
 
             cc.messages.loneElement should beThe[Error](
-              s"Singleton entity cannot have parameters. Use a 'const' declaration instead."
+              s"Singleton entity cannot have parameters. Use a 'const' definition instead."
             )
             cc.messages.loneElement.loc.line shouldBe 3
           }
@@ -512,13 +524,13 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       }
     }
 
-    "reject disallowed class contents" - {
-      "declarations with disallowed type" - {
+    "reject disallowed record contents" - {
+      "definitions with disallowed type" - {
         for {
           (hint, decl) <- List(
             ("port", "in bool a;"),
             ("port", "out bool a;"),
-            ("pipeline", "pipeline bool a;"),
+            ("pipeline variable", "pipeline bool a;"),
             ("distributed memory", "bool a[10];"),
             ("SRAM", "sram bool a[10];"),
             ("entity", "fsm a {}"),
@@ -538,7 +550,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
             }
 
             cc.messages.loneElement should beThe[Error] {
-              s"'struct' cannot contain $hint declarations"
+              s"'struct' cannot contain $hint definitions"
             }
             cc.messages(0).loc.line shouldBe 2
           }
@@ -654,7 +666,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
     }
 
     "Check initializer expressions" - {
-      "are not present in declarations where disallowed" - {
+      "are not present in definitions where disallowed" - {
         for {
           (entity, decl, msg) <- List(
             // format: off

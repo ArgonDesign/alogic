@@ -1,0 +1,8 @@
+fsm a {
+  void main() {
+    gen if (false) {
+      static void f() {}
+    }
+  }
+}
+// :4: ERROR: No 'static' modifier is allowed here

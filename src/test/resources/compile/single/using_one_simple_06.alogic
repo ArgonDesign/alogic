@@ -14,4 +14,4 @@ fsm using_one_simple_06 {
   }
 }
 
-// :5: ERROR: Redundant 'using' declaration
+// :5: ERROR: Redundant 'using' directive

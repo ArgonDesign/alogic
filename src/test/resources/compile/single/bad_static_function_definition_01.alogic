@@ -1,0 +1,4 @@
+gen if (false) {
+  static void f() {}
+}
+// :2: ERROR: No 'static' modifier is allowed here

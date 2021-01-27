@@ -74,7 +74,7 @@ final class SyntaxCheck(implicit cc: CompilerContext) extends StatefulTreeTransf
     Stump
   }
 
-  private def clsErr(node: Tree, content: String) = {
+  private def recErr(node: Tree, content: String) = {
     cc.error(node, s"'struct' cannot contain $content")
     Stump
   }
@@ -113,15 +113,36 @@ final class SyntaxCheck(implicit cc: CompilerContext) extends StatefulTreeTransf
   override def transform(tree: Tree): Tree = tree match {
 
     case UsingOne(_: ExprIdent, None) =>
-      cc.error(tree, "Redundant 'using' declaration")
+      cc.error(tree, "Redundant 'using' directive")
       Stump
+
+    case PkgSplice(desc: Desc) =>
+      def err(hint: String): Unit = cc.error(desc, s"$hint definition cannot appear in file scope")
+      desc match {
+        case _: DescVar | _: DescStatic | _: DescPipeVar => err("Variable")
+        case _: DescIn | _: DescOut                      => err("Port")
+        case _: DescArray                                => err("Distributed memory")
+        case _: DescSram                                 => err("SRAM")
+        case _: DescInstance                             => err("Instance")
+        case _: DescSingleton                            => err("Singleton entity")
+        case _: DescVal                                  => unreachable
+        case _                                           =>
+      }
+      tree
+
+    case PkgSplice(a: Assertion) =>
+      a match {
+        case _: AssertionStatic => // OK
+        case _                  => cc.error(a, "Only static assertions are allowed in file scope")
+      }
+      tree
 
     case node: EntConnect if notVariant(EntityVariant.Net) => entErr(node, "connections")
 
     case node: EntCombProcess if notVariant(EntityVariant.Fsm) => entErr(node, "fence blocks")
 
     case EntSplice(_: DescParam) if singletonStack.top =>
-      cc.error(tree, "Singleton entity cannot have parameters. Use a 'const' declaration instead.")
+      cc.error(tree, "Singleton entity cannot have parameters. Use a 'const' definition instead.")
       Stump
 
     case EntSplice(_: DescParamType) if singletonStack.top =>
@@ -132,30 +153,28 @@ final class SyntaxCheck(implicit cc: CompilerContext) extends StatefulTreeTransf
       variantStack.top match {
         case EntityVariant.Fsm =>
           desc match {
-            case _: DescPipeVar   => entErr(desc, "pipeline variable declarations")
+            case _: DescPipeVar   => entErr(desc, "pipeline variable definitions")
             case _: DescEntity    => entErr(desc, "nested entities")
             case _: DescInstance  => entErr(desc, "instantiations")
             case _: DescSingleton => entErr(desc, "singleton entities")
-            case DescFunc(_, _, FuncVariant.Static, _, _, _) =>
-              entErr(desc, "static function definitions")
-            case _ => tree
+            case _                => tree
           }
         case EntityVariant.Net =>
           desc match {
-            case _: DescVar | _: DescVal | _: DescStatic => entErr(desc, "variable declarations")
-            case _: DescArray                            => entErr(desc, "distributed memory declarations")
-            case _: DescSram                             => entErr(desc, "SRAM declarations")
+            case _: DescVar | _: DescVal | _: DescStatic => entErr(desc, "variable definitions")
+            case _: DescArray                            => entErr(desc, "distributed memory definitions")
+            case _: DescSram                             => entErr(desc, "SRAM definitions")
             case DescFunc(_, _, funcVariant, _, _, _) if funcVariant != FuncVariant.Xeno =>
               entErr(desc, "function definitions")
             case _ => tree
           }
         case EntityVariant.Ver =>
           desc match {
-            case _: DescVar | _: DescVal | _: DescStatic => entErr(desc, "variable declarations")
-            case _: DescPipeVar                          => entErr(desc, "pipeline variable declarations")
-            case _: DescArray                            => entErr(desc, "distributed memory declarations")
+            case _: DescVar | _: DescVal | _: DescStatic => entErr(desc, "variable definitions")
+            case _: DescPipeVar                          => entErr(desc, "pipeline variable definitions")
+            case _: DescArray                            => entErr(desc, "distributed memory definitions")
             case DescSram(_, _, _, _, st) if st != StorageTypeWire =>
-              entErr(desc, "registered SRAM declarations")
+              entErr(desc, "registered SRAM definitions")
             case _: DescEntity    => entErr(desc, "nested entities")
             case _: DescInstance  => entErr(desc, "instantiations")
             case _: DescSingleton => entErr(desc, "singleton entities")
@@ -185,14 +204,14 @@ final class SyntaxCheck(implicit cc: CompilerContext) extends StatefulTreeTransf
 
     case RecSplice(desc: Desc) =>
       desc match {
-        case _: DescIn        => clsErr(desc, "port declarations")
-        case _: DescOut       => clsErr(desc, "port declarations")
-        case _: DescPipeVar   => clsErr(desc, "pipeline declarations")
-        case _: DescArray     => clsErr(desc, "distributed memory declarations")
-        case _: DescSram      => clsErr(desc, "SRAM declarations")
-        case _: DescEntity    => clsErr(desc, "entity declarations")
-        case _: DescSingleton => clsErr(desc, "entity declarations")
-        case _: DescInstance  => clsErr(desc, "instance declarations")
+        case _: DescIn        => recErr(desc, "port definitions")
+        case _: DescOut       => recErr(desc, "port definitions")
+        case _: DescPipeVar   => recErr(desc, "pipeline variable definitions")
+        case _: DescArray     => recErr(desc, "distributed memory definitions")
+        case _: DescSram      => recErr(desc, "SRAM definitions")
+        case _: DescEntity    => recErr(desc, "entity definitions")
+        case _: DescSingleton => recErr(desc, "entity definitions")
+        case _: DescInstance  => recErr(desc, "instance definitions")
         case _                => tree
       }
 
@@ -252,7 +271,7 @@ final class SyntaxCheck(implicit cc: CompilerContext) extends StatefulTreeTransf
         case _: DescGenRange => tree
         case _: DescGenVar   => tree // After Elaboration
         case _ =>
-          cc.error(tree, "Only variables can be declared in declaration statements")
+          cc.error(tree, "Only variables can be defined in statement position")
           StmtError() withLoc tree.loc
       }
 

@@ -1,0 +1,7 @@
+// @ignore
+fsm a {
+  void main() {
+    static void f() {}
+  }
+}
+// :3: ERROR: No 'static' modifier is allowed here

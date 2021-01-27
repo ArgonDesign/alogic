@@ -76,17 +76,51 @@ final class UnusedCheckSpec extends AnyFlatSpec with AlogicTest {
   }
 
   it should "issue warning for unused parameters" in {
-    check("fsm a { param i8 b = 8'd9; } b = new a();")
+    check {
+      """network c {
+        |  out bool o;
+        |  fsm a {
+        |    param i8 b = 8'd9;
+        |    void main() {
+        |      o = 1;
+        |      fence;
+        |    }
+        |  }
+        |  b = new a();
+        |}""".stripMargin
+    }
     cc.messages.loneElement should beThe[Warning]("Parameter 'b' is unused")
   }
 
   it should "issue warning for unused parameters - but not in verbatim entity" in {
-    check("verbatim entity a { param i8 b = 8'd9; }  b = new a();")
+    check {
+      """network c {
+        |  out bool o;
+        |  verbatim entity a {
+        |    out bool o;
+        |    param i8 b = 8'd9;
+        |  }
+        |  b = new a();
+        |  b.o -> o;
+        |}""".stripMargin
+    }
     cc.messages shouldBe empty
   }
 
   it should "issue warning for unused type parameters" in {
-    check("fsm a { param type b = bool; } b = new a();")
+    check {
+      """network c {
+        |  out bool o;
+        |  fsm a {
+        |    param type b = bool;
+        |    void main() {
+        |      o = 1;
+        |      fence;
+        |    }
+        |  }
+        |  b = new a();
+        |}""".stripMargin
+    }
     cc.messages.loneElement should beThe[Warning]("Type parameter 'b' is unused")
   }
 

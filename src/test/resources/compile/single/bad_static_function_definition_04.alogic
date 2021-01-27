@@ -1,0 +1,5 @@
+// @ignore
+void a() {
+  static void f() {}
+}
+// :2: ERROR: No 'static' modifier is allowed here

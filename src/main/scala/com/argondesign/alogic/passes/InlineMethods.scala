@@ -19,8 +19,11 @@ import com.argondesign.alogic.core.Messages.Fatal
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.TypeAssigner
+import com.argondesign.alogic.core.Types.Type
 import com.argondesign.alogic.core.Types.TypeCombFunc
+import com.argondesign.alogic.core.Types.TypeNormalMethod
 import com.argondesign.alogic.core.Types.TypeRecord
+import com.argondesign.alogic.core.Types.TypeStaticMethod
 import com.argondesign.alogic.core.Types.TypeType
 import com.argondesign.alogic.core.Types.TypeVoid
 import com.argondesign.alogic.transform.StatementFilter
@@ -278,20 +281,16 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatefulTreeTran
     }
   }
 
-  private def getReceiver(tgt: Expr): Option[Expr] = {
-    require(tgt.tpe.isMethod)
-    Option.unless(tgt.tpe.isStaticMethod) {
-      tgt match {
-        case ExprSel(expr, _) => expr
-        case _                => throw Ice(tgt, "Don't know how to translate that method call")
-      }
+  private def getReceiver(tgt: Expr): Option[Expr] = Option.when(tgt.tpe.isNormalMethod) {
+    tgt match {
+      case ExprSel(expr, _) => expr
+      case _                => unreachable
     }
   }
 
   private def processCallInStatementPosition(
       call: ExprCall
     ): Option[(Iterator[Stmt], Option[Symbol])] = {
-    require(call.expr.tpe.isMethod)
     // Walk args up front so they are expanded in the same order as calls
     // not in statement position
     extraStmts.push(new ListBuffer[Stmt])
@@ -321,10 +320,17 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatefulTreeTran
     case _ => false
   }
 
-  override protected def enter(tree: Tree): Option[Tree] = tree match {
+  private def mustInline(kind: Type): Boolean = kind match {
+    case _: TypeNormalMethod | _: TypeStaticMethod => true
+    case TypeCombFunc(symbol, _, _) =>
+      symbol.defnOption.nonEmpty // False for builtin methods on ports/rams etc
+    case _ => false
+  }
+
+  override def enter(tree: Tree): Option[Tree] = tree match {
     // Calls in statement position are replaced straight as they might not
     // have a return value, and even if they do it is not needed
-    case StmtExpr(call: ExprCall) if call.expr.tpe.isMethod =>
+    case StmtExpr(call: ExprCall) if mustInline(call.expr.tpe) =>
       processCallInStatementPosition(call) map {
         case (stmts, _) => Thicket(stmts.toList)
       } orElse Some(Stump)
@@ -334,14 +340,14 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatefulTreeTran
       None
 
     // Drop Method Decl/Defn
-    case Decl(symbol) if symbol.kind.isMethod => Some(Stump)
-    case Defn(symbol) if symbol.kind.isMethod => Some(Stump)
+    case Decl(symbol) if mustInline(symbol.kind) => Some(Stump)
+    case Defn(symbol) if mustInline(symbol.kind) => Some(Stump)
 
     case _ => None
   }
 
   override def transform(tree: Tree): Tree = tree match {
-    case ExprCall(tgt, args) if tgt.tpe.isMethod =>
+    case ExprCall(tgt, args) if mustInline(tgt.tpe) =>
       inlineBody(tgt.tpe.asCallable.symbol, args, getReceiver(tgt), tree.loc) map {
         case (extra, resultOpt) =>
           extraStmts.top.addAll(extra)
