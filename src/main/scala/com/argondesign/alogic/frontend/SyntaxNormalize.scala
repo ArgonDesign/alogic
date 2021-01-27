@@ -20,18 +20,15 @@ import scala.util.chaining._
 final class SyntaxNormalize(implicit cc: CompilerContext) extends StatefulTreeTransformer {
   override val typed: Boolean = false
 
-  private var tempCnt: Int = 0
-
-  private def nextTempIdent(): Ident =
-    Ident(s"`tmp_$tempCnt", Nil) tap { _ => tempCnt += 1 }
+  private val tmpNames: Iterator[String] = LazyList.from(0).iterator.map(n => s"`tmp_$n")
 
   private def adjUnnamed(desc: Desc, isLoop: Boolean): Thicket = {
     require(desc.ref == Ident("", Nil))
-    val ident = nextTempIdent() withLocOf desc
+    val name = tmpNames.next()
     val usng = if (isLoop) UsingGenLoopBody(_, Set.empty) else UsingAll(_, exprt = true)
     Thicket(
-      desc.copyRef(ref = ident) withLocOf desc,
-      usng(ExprIdent(ident) withLoc Loc.synthetic) withLoc Loc.synthetic
+      desc.copyRef(ref = Ident(name, Nil) withLocOf desc) withLocOf desc,
+      usng(ExprIdent(name, Nil) withLoc Loc.synthetic) withLoc Loc.synthetic
     )
   }
 
@@ -41,25 +38,27 @@ final class SyntaxNormalize(implicit cc: CompilerContext) extends StatefulTreeTr
       body: List[Tree],
       makeDesc: (Ident, List[Tree]) => Desc
     ): Thicket = {
-    val newIdent = nextTempIdent() withLocOf ident
-    val newBody = List(
-      DescGenScope(ident, attr, body) withLocOf ident
-    )
-    val newDesc = makeDesc(newIdent, newBody)
+    val newName = tmpNames.next()
     Thicket(
-      newDesc,
-      UsingGenLoopBody(ExprIdent(newIdent) withLoc Loc.synthetic, Set.empty) withLoc Loc.synthetic
+      makeDesc(
+        Ident(newName, Nil) withLocOf ident,
+        (DescGenScope(ident, attr, body) withLocOf ident) :: Nil
+      ),
+      UsingGenLoopBody(
+        ExprIdent(newName, Nil) withLoc Loc.synthetic,
+        Set.empty
+      ) withLoc Loc.synthetic
     )
   }
 
   private def wrapParametrized(desc: Desc): Desc = {
-    val newIdent = nextTempIdent() withLocOf desc.ref
-    val newDesc = desc.copyRef(ref = newIdent) withLocOf desc
+    val newName = tmpNames.next()
+    val newDesc = desc.copyRef(ref = Ident(newName, Nil) withLocOf desc.ref) withLocOf desc
     DescParametrized(desc.ref, Nil, newDesc, SymbolTable.empty) withLocOf desc
   }
 
   private def localName(expr: Expr): Option[Ident] = expr match {
-    case ExprIdent(ident: Ident) => Some(ident)
+    case e @ ExprIdent(base, idxs) => Some(Ident(base, idxs) withLocOf e)
     case e @ ExprDot(_, selector, idxs) =>
       Some {
         val locStart = e.loc.point + 1
@@ -111,10 +110,10 @@ final class SyntaxNormalize(implicit cc: CompilerContext) extends StatefulTreeTr
     case from @ FromOne(path, name, identOpt) =>
       identOpt orElse localName(name) match {
         case some: Some[_] =>
-          val imprtTmpIdent = nextTempIdent() withLocOf tree
+          val tmpName = tmpNames.next()
           val selected = {
             def reselect(stem: Expr, name: Expr): Expr = name match {
-              case ExprIdent(Ident(base, idxs)) =>
+              case ExprIdent(base, idxs) =>
                 ExprDot(stem, base, idxs) withLocOf name
               case ExprDot(expr, selector, idxs) =>
                 ExprDot(reselect(stem, expr), selector, idxs) withLocOf name
@@ -122,20 +121,20 @@ final class SyntaxNormalize(implicit cc: CompilerContext) extends StatefulTreeTr
                 ExprCall(reselect(stem, expr), args) withLocOf name
               case _ => unreachable // TODO: sytnaxcheck
             }
-            reselect(ExprIdent(imprtTmpIdent) withLocOf name, name)
+            reselect(ExprIdent(tmpName, Nil) withLocOf name, name)
           }
           Thicket(
-            ImportOne(path, imprtTmpIdent) withLocOf tree,
+            ImportOne(path, Ident(tmpName, Nil) withLocOf tree) withLocOf tree,
             UsingOne(selected, some) withLocOf tree
           )
         case None => cc.error(from, "from import requires 'as' clause"); tree
       }
 
     case FromAll(path) =>
-      val imprtTmpIdent = nextTempIdent() withLocOf tree
+      val tmpName = tmpNames.next()
       Thicket(
-        ImportOne(path, imprtTmpIdent) withLocOf tree,
-        UsingAll(ExprIdent(imprtTmpIdent) withLocOf tree, exprt = false) withLocOf tree
+        ImportOne(path, Ident(tmpName, Nil) withLocOf tree) withLocOf tree,
+        UsingAll(ExprIdent(tmpName, Nil) withLocOf tree, exprt = false) withLocOf tree
       )
 
     ////////////////////////////////////////////////////////////////////////////
@@ -144,7 +143,7 @@ final class SyntaxNormalize(implicit cc: CompilerContext) extends StatefulTreeTr
 
     case PkgCompile(expr, None) =>
       expr match {
-        case ExprIdent(Ident(_, Nil))      => tree
+        case ExprIdent(_, Nil)             => tree
         case ExprDot(_: ExprIdent, _, Nil) => tree
         case _                             => cc.error(tree, "'compile' requires 'as' clause"); tree
       }

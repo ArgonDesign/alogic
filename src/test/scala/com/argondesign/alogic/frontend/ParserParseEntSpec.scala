@@ -45,13 +45,13 @@ final class ParserParseEntSpec extends AnyFreeSpec with AlogicTest {
 
     "using" in {
       "using a;".asTree[Ent]() shouldBe {
-        EntSplice(UsingOne(ExprIdent(Ident("a", Nil)), None))
+        EntSplice(UsingOne(ExprIdent("a", Nil), None))
       }
     }
 
     "from" in {
       """from "a" import b;""".asTree[Ent]() shouldBe {
-        EntSplice(FromOne("a", ExprIdent(Ident("b", Nil)), None))
+        EntSplice(FromOne("a", ExprIdent("b", Nil), None))
       }
     }
 
@@ -65,8 +65,8 @@ final class ParserParseEntSpec extends AnyFreeSpec with AlogicTest {
       "single" in {
         "i.a -> j.b;".asTree[Ent]() shouldBe {
           EntConnect(
-            ExprDot(ExprIdent(Ident("i", Nil)), "a", Nil),
-            List(ExprDot(ExprIdent(Ident("j", Nil)), "b", Nil))
+            ExprDot(ExprIdent("i", Nil), "a", Nil),
+            List(ExprDot(ExprIdent("j", Nil), "b", Nil))
           )
         }
       }
@@ -74,10 +74,10 @@ final class ParserParseEntSpec extends AnyFreeSpec with AlogicTest {
       "multiple" in {
         "i.a -> j.b, k.c;".asTree[Ent]() shouldBe {
           EntConnect(
-            ExprDot(ExprIdent(Ident("i", Nil)), "a", Nil),
+            ExprDot(ExprIdent("i", Nil), "a", Nil),
             List(
-              ExprDot(ExprIdent(Ident("j", Nil)), "b", Nil),
-              ExprDot(ExprIdent(Ident("k", Nil)), "c", Nil)
+              ExprDot(ExprIdent("j", Nil), "b", Nil),
+              ExprDot(ExprIdent("k", Nil), "c", Nil)
             )
           )
         }
@@ -86,8 +86,8 @@ final class ParserParseEntSpec extends AnyFreeSpec with AlogicTest {
       "dict" in {
         "i.a#[0] -> j.b#[1, 2];".asTree[Ent]() shouldBe {
           EntConnect(
-            ExprDot(ExprIdent(Ident("i", Nil)), "a", Expr(0) :: Nil),
-            List(ExprDot(ExprIdent(Ident("j", Nil)), "b", Expr(1) :: Expr(2) :: Nil))
+            ExprDot(ExprIdent("i", Nil), "a", Expr(0) :: Nil),
+            List(ExprDot(ExprIdent("j", Nil), "b", Expr(1) :: Expr(2) :: Nil))
           )
         }
       }
@@ -95,7 +95,7 @@ final class ParserParseEntSpec extends AnyFreeSpec with AlogicTest {
 
     "fence block" in {
       "fence { a = 1; }".asTree[Ent]() shouldBe {
-        EntCombProcess(List(StmtAssign(ExprIdent(Ident("a", Nil)), Expr(1))))
+        EntCombProcess(List(StmtAssign(ExprIdent("a", Nil), Expr(1))))
       }
     }
 

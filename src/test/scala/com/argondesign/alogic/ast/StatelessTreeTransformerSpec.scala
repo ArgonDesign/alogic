@@ -62,7 +62,7 @@ final class StatelessTreeTransformerSpec extends AnyFlatSpec with AlogicTest {
 
     newTree should be theSameInstanceAs oldTree
 
-    cc.messages should have length 12
+    cc.messages should have length 9
     cc.messages.zipWithIndex foreach {
       case (msg, idx) => msg should beThe[Warning](s"Saw it $idx")
     }

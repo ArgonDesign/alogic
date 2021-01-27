@@ -402,25 +402,5 @@ final class ClarifySpec extends AnyFreeSpec with AlogicTest {
         }
       }
     }
-
-    "replace calls to polymorphic builtins" - {
-
-      "inside slice" in {
-        clarify {
-          """fsm f {
-            |  out wire bool o;
-            |  void main() {
-            |    o = 4'b1111[@zx(2, 1'd1) +: 1];
-            |    fence;
-            |  }
-            |}""".stripMargin
-        } getFirst {
-          case ExprCall(tgt, _) => tgt
-        } tap {
-          _.tpe should not be a[TypePolyFunc]
-        }
-
-      }
-    }
   }
 }

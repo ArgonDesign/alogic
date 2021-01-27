@@ -219,27 +219,28 @@ object TypeAssigner {
   //////////////////////////////////////////////////////////////////////////////
 
   private def kind(tree: Expr): Type = tree match {
-    case node: ExprCall   => kind(node)
-    case node: ExprUnary  => kind(node)
-    case node: ExprBinary => kind(node)
-    case node: ExprCond   => kind(node)
-    case node: ExprRep    => kind(node)
-    case node: ExprCat    => kind(node)
-    case node: ExprIndex  => kind(node)
-    case node: ExprSlice  => kind(node)
-    case node: ExprDot    => kind(node)
-    case node: ExprSel    => kind(node)
-    case node: ExprSymSel => kind(node)
-    case _: ExprIdent     => unreachable
-    case node: ExprSym    => kind(node)
-    case node: ExprOld    => kind(node)
-    case node: ExprThis   => kind(node)
-    case node: ExprType   => kind(node)
-    case node: ExprCast   => kind(node)
-    case node: ExprInt    => kind(node)
-    case node: ExprNum    => kind(node)
-    case node: ExprStr    => kind(node)
-    case node: ExprError  => kind(node)
+    case node: ExprCall    => kind(node)
+    case node: ExprBuiltin => kind(node)
+    case node: ExprUnary   => kind(node)
+    case node: ExprBinary  => kind(node)
+    case node: ExprCond    => kind(node)
+    case node: ExprRep     => kind(node)
+    case node: ExprCat     => kind(node)
+    case node: ExprIndex   => kind(node)
+    case node: ExprSlice   => kind(node)
+    case node: ExprDot     => kind(node)
+    case node: ExprSel     => kind(node)
+    case node: ExprSymSel  => kind(node)
+    case _: ExprIdent      => unreachable
+    case node: ExprSym     => kind(node)
+    case node: ExprOld     => kind(node)
+    case node: ExprThis    => kind(node)
+    case node: ExprType    => kind(node)
+    case node: ExprCast    => kind(node)
+    case node: ExprInt     => kind(node)
+    case node: ExprNum     => kind(node)
+    case node: ExprStr     => kind(node)
+    case node: ExprError   => kind(node)
   }
 
   private def kind(tree: ExprCall) = tree.expr.tpe match {
@@ -250,6 +251,8 @@ object TypeAssigner {
     case TypeNormalMethod(_, returnType, _) => returnType
     case _                                  => unreachable
   }
+
+  private def kind(tree: ExprBuiltin) = tree.builtin.returnType(tree.args)
 
   private def kind(tree: ExprUnary) = tree.op match {
     case "'"             => unreachable
@@ -424,6 +427,7 @@ object TypeAssigner {
   def apply(tree: Case): tree.type = assign(tree)(kind(tree))
   def apply(tree: Expr): tree.type = assign(tree)(kind(tree))
   def apply(tree: ExprCall): tree.type = assign(tree)(kind(tree))
+  def apply(tree: ExprBuiltin): tree.type = assign(tree)(kind(tree))
   def apply(tree: ExprUnary): tree.type = assign(tree)(kind(tree))
   def apply(tree: ExprBinary): tree.type = assign(tree)(kind(tree))
   def apply(tree: ExprCond): tree.type = assign(tree)(kind(tree))

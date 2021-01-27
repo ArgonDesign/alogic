@@ -10,6 +10,7 @@
 
 package com.argondesign.alogic.ast
 
+import com.argondesign.alogic.builtins.Builtin
 import com.argondesign.alogic.core.FuncVariant
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Locationed
@@ -298,6 +299,7 @@ object Trees {
   object Expr extends ExprObjOps
 
   case class ExprCall(expr: Expr, args: List[Arg]) extends Expr
+  case class ExprBuiltin(builtin: Builtin, args: List[Arg]) extends Expr
   case class ExprUnary(op: String, expr: Expr) extends Expr
   case class ExprBinary(lhs: Expr, op: String, rhs: Expr) extends Expr
   case class ExprCond(cond: Expr, thenExpr: Expr, elseExpr: Expr) extends Expr
@@ -306,16 +308,16 @@ object Trees {
   case class ExprIndex(expr: Expr, index: Expr) extends Expr
   case class ExprSlice(expr: Expr, lIdx: Expr, op: String, rIdx: Expr) extends Expr
   case class ExprDot(expr: Expr, selector: String, idxs: List[Expr]) extends Expr
-  case class ExprSel(expr: Expr, selector: String) extends Expr
   case class ExprSymSel(expr: Expr, symbol: Symbol) extends Expr
-  case class ExprIdent(ident: Ident) extends Expr
+  case class ExprSel(expr: Expr, selector: String) extends Expr
+  case class ExprIdent(base: String, idxs: List[Expr]) extends Expr
   case class ExprSym(symbol: Symbol) extends Expr
   case class ExprOld(expr: Expr) extends Expr
   case class ExprThis(expr: Expr) extends Expr
   case class ExprType(kind: TypeFund) extends Expr
   case class ExprCast(kind: TypeFund, expr: Expr) extends Expr
-  case class ExprInt(signed: Boolean, width: Int, value: BigInt) extends Expr with ExprIntImpl
-  case class ExprNum(signed: Boolean, value: BigInt) extends Expr with ExprNumImpl
+  case class ExprInt(signed: Boolean, width: Int, override val value: BigInt) extends Expr with ExprIntImpl
+  case class ExprNum(signed: Boolean,  override val value: BigInt) extends Expr with ExprNumImpl
   case class ExprStr(v: String) extends Expr
   case class ExprError() extends Expr
   // format: on

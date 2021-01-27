@@ -10,12 +10,10 @@
 
 package com.argondesign.alogic.core
 
-import com.argondesign.alogic.ast.Trees.Arg
 import com.argondesign.alogic.core.FlowControlTypes._
 import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.frontend.Frontend
 import com.argondesign.alogic.lib.Math
 
 object Types {
@@ -130,17 +128,13 @@ object Types {
   case class TypeNormalMethod(symbol: Symbol, retType: TypeFund, argTypes: List[TypeFund]) extends TypeMethod
   // format: on
 
-  // This is callable, but is not quite a TypeCallable yet
-  case class TypePolyFunc(symbol: Symbol, resolver: (List[Arg], Option[Frontend]) => Option[Symbol])
-      extends Type
-      with TypePolyFuncImpl
-
   //////////////////////////////////////////////////////////////////////////////
   // Other miscellaneous types
   //////////////////////////////////////////////////////////////////////////////
 
   case class TypeState(symbol: Symbol) extends Type
   case object TypeMisc extends Type
+  case object TypeBuiltin extends Type // type of naked builtin symbols, e.g. in: "@bits + 1"
   case object TypeError extends Type
 
   //////////////////////////////////////////////////////////////////////////////
@@ -399,10 +393,4 @@ trait TypeSramImpl extends TypeCompound { this: TypeSram =>
     List(read, write, rdata)
   }
 
-}
-
-trait TypePolyFuncImpl { this: TypePolyFunc =>
-  // Resolve based on arguments to the correct overload of the symbol
-  final def resolve(args: List[Arg], feOpt: Option[Frontend]): Option[Symbol] =
-    resolver(args, feOpt)
 }

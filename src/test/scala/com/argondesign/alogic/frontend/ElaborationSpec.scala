@@ -12,10 +12,11 @@ package com.argondesign.alogic.frontend
 
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.builtins.Builtins
+import com.argondesign.alogic.builtins.AtBits
+import com.argondesign.alogic.builtins.DollarClog2
+import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Messages.Error
 import com.argondesign.alogic.core.Messages.Warning
-import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Source
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types.TypeNum
@@ -237,16 +238,15 @@ final class ElaborationSpec extends AnyFreeSpec with AlogicTest {
 
     "resolve term names to their correct definitions - builtin" in {
       elaborate {
-        """|
-           |void f() {
-           |  @bits;
-           |}""".stripMargin
+        """void f() {
+          |  @bits(u8);
+          |}""".stripMargin
       } pipe {
         _.value
       } getFirst {
-        case ExprSym(symbol) => symbol
+        case ExprBuiltin(builtin, _) => builtin
       } tap {
-        _ shouldBe Builtins.symbolTable.get("@bits").asInstanceOf[SymbolTable.Local].symbol
+        _ shouldBe AtBits
       }
       cc.messages shouldBe empty
     }
@@ -465,7 +465,7 @@ final class ElaborationSpec extends AnyFreeSpec with AlogicTest {
         _ should matchPattern {
           case ExprCall(
                 ExprType(TypeNum(false)),
-                List(ArgP(ExprCall(ExprSym(Symbol("$clog2")), List(ArgP(_)))))
+                List(ArgP(ExprBuiltin(DollarClog2, List(ArgP(_)))))
               ) =>
         }
       }

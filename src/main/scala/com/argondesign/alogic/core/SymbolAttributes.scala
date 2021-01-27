@@ -1,22 +1,15 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2018 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler
-// Author: Geza Lore
-//
 // DESCRIPTION:
-//
-// Collection of all symbol attributes
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.core
 
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.builtins.BuiltinPolyFunc
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types.TypeEntity
 
@@ -124,9 +117,6 @@ class SymbolAttributes {
   // This choice symbol has been removed by generate processing
   val eliminated = new Attribute[Boolean]()
 
-  // For builtin symbols, points to the implementation
-  val builtin = new Attribute[BuiltinPolyFunc]()
-
   // Elaboration parameters for top-level entities
   val elab = new Attribute[List[Expr]]()
 
@@ -169,7 +159,6 @@ class SymbolAttributes {
     wasParam,
     dictResolutions,
     eliminated,
-    builtin,
     elab,
     tmp
   )
@@ -210,7 +199,6 @@ class SymbolAttributes {
     "wasParam",
     "dictResolutions",
     "eliminated",
-    "builtin",
     "elab",
     "tmp"
   )

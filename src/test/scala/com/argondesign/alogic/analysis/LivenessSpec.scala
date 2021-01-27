@@ -12,11 +12,10 @@ package com.argondesign.alogic.analysis
 
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.builtins.Builtins
+import com.argondesign.alogic.builtins.AtUnknownU
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.frontend.SymbolTable
 import org.scalatest.freespec.AnyFreeSpec
 
 import scala.collection.immutable.BitSet
@@ -42,13 +41,7 @@ class LivenessSpec extends AnyFreeSpec with AlogicTest {
   private def zext(n: Int, expr: Expr) =
     ExprCat(List(ExprInt(false, n, 0), expr)) regularize Loc.synthetic
 
-  private val randBitCall = Builtins.symbolTable.get("@unknownu") pipe {
-    case SymbolTable.Local(symbol) => symbol
-    case _                         => fail()
-  } pipe { poly =>
-    val args = (ArgP(Expr(1)) regularize Loc.synthetic) :: Nil
-    ExprCall(ExprSym(poly.kind.asPolyFunc.resolve(args, None).get), args)
-  }
+  private val randBitCall = ExprBuiltin(AtUnknownU, ArgP(Expr(1)) :: Nil) regularize Loc.synthetic
 
   private def prep(expr: Expr): Expr = {
     (expr regularize Loc.synthetic).simplify

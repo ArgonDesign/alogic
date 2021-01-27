@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
@@ -11,14 +11,14 @@ package com.argondesign.alogic.frontend
 
 import com.argondesign.alogic.analysis.StaticEvaluation
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.core.Bindings
+import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Messages.Error
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Messages.Message
 import com.argondesign.alogic.core.StorageTypes.StorageTypeDefault
 import com.argondesign.alogic.core.Symbols.Symbol
-import com.argondesign.alogic.core.Bindings
-import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.TypeCompound
 import com.argondesign.alogic.core.Types.TypeIn
 import com.argondesign.alogic.core.Types.TypeOut
@@ -133,8 +133,9 @@ object ListElaborable {
 object Elaborate {
 
   private def assertProgressIsReal[T](input: T)(result: Result[T]): Unit = result match {
-    case Complete(output) => assert(output != input, "Invalid Complete result in Elaboration")
-    case _                =>
+    case Complete(output) =>
+      assert(output != input, s"Invalid Complete result in Elaboration: $input")
+    case _ =>
   }
 
   private def definedSymbols(trees: Seq[Tree]): FinalResult[Seq[Symbol]] = {
@@ -584,7 +585,7 @@ object Elaborate {
                         List(
                           DescGenScope(ident, attr, initClones concat body) withLoc Loc.synth("a"),
                           UsingGenLoopBody(
-                            ExprIdent(ident) withLoc Loc.synth("b"),
+                            ExprIdent(ident.base, ident.idxs) withLoc Loc.synth("b"),
                             Set.empty
                           ) withLoc {
                             Loc.synth("c")
@@ -694,7 +695,10 @@ object Elaborate {
                 // Create the expansion of the current iteration
                 List(
                   DescGenScope(ident, attr, initClone :: body) withLoc Loc.synth("f"),
-                  UsingGenLoopBody(ExprIdent(ident) withLoc Loc.synth("g"), Set.empty) withLoc {
+                  UsingGenLoopBody(
+                    ExprIdent(ident.base, ident.idxs) withLoc Loc.synth("g"),
+                    Set.empty
+                  ) withLoc {
                     Loc.synth("h")
                   }
                 )
@@ -1253,24 +1257,23 @@ object Elaborate {
                       if (portSymbols exists { _.name == name }) loop(name + "_") else name
                     loop("inst")
                   }
-                  val instIdent = Ident(instName, Nil)
                   val portsAndConnects: List[Ent] = portSymbols flatMap { symbol =>
                     val ident = Ident(symbol.name, Nil)
-                    val portRef = ExprDot(ExprIdent(instIdent), ident.base, Nil)
+                    val portRef = ExprDot(ExprIdent(instName, Nil), ident.base, Nil)
                     symbol.kind match {
                       case TypeIn(kind, fc) =>
                         List(
                           EntSplice(
                             DescIn(ident, Nil, ExprType(kind), fc)
                           ),
-                          EntConnect(ExprIdent(ident), List(portRef))
+                          EntConnect(ExprIdent(ident.base, ident.idxs), List(portRef))
                         )
                       case TypeOut(kind, fc, _) =>
                         List(
                           EntSplice(
                             DescOut(ident, Nil, ExprType(kind), fc, StorageTypeDefault, None)
                           ),
-                          EntConnect(portRef, List(ExprIdent(ident)))
+                          EntConnect(portRef, List(ExprIdent(ident.base, ident.idxs)))
                         )
                       case _ =>
                         // TypePipeIn and TypePipe out only appear inside nested
@@ -1279,13 +1282,13 @@ object Elaborate {
                         unreachable
                     }
                   }
-                  EntSplice(DescInstance(instIdent, Nil, p.expr)) :: portsAndConnects
+                  EntSplice(DescInstance(Ident(instName, Nil), Nil, p.expr)) :: portsAndConnects
                 }
                 val wrapper = DescEntity(ident, Nil, EntityVariant.Net, body)
                 wrapper.preOrderIterator foreach { tree => if (!tree.hasLoc) tree withLocOf p }
                 val result: List[Pkg] = List(
                   PkgSplice(wrapper) withLocOf p,
-                  PkgCompile(ExprIdent(ident) withLocOf ident, None) withLocOf p
+                  PkgCompile(ExprIdent(ident.base, ident.idxs) withLocOf ident, None) withLocOf p
                 )
                 list[Pkg](result, symtab) map { Thicket(_) }
               }
@@ -1523,7 +1526,7 @@ object Elaborate {
         }
     } tap assertProgressIsReal(kase)
 
-  private def elaborate(
+  def elaborate(
       expr: Expr,
       symtab: SymbolTable
     )(
@@ -1538,8 +1541,81 @@ object Elaborate {
         list[Arg](e.args, symtab) map { args =>
           e.copy(args = args) withLocOf e
         }
+      } map {
+        case e @ ExprCall(ExprSym(symbol), _) =>
+          cc.getBuiltin(symbol) map { ExprBuiltin(_, e.args) withLocOf e } getOrElse e
+        case e => e
       }
-    case e => ResolveNames(e, symtab)
+    case e: ExprBuiltin =>
+      list[Arg](e.args, symtab) map { args =>
+        e.copy(args = args) withLocOf e
+      }
+    case e: ExprUnary =>
+      elaborate(e.expr, symtab) map { op =>
+        e.copy(expr = op) withLocOf e
+      }
+    case e: ExprBinary =>
+      list[Expr](e.lhs :: e.rhs :: Nil, symtab) map {
+        case lhs :: rhs :: Nil => e.copy(lhs = lhs, rhs = rhs) withLocOf e
+        case _                 => unreachable
+      }
+    case e: ExprCond =>
+      list[Expr](e.cond :: e.thenExpr :: e.elseExpr :: Nil, symtab) map {
+        case c :: te :: ee :: Nil => e.copy(cond = c, thenExpr = te, elseExpr = ee) withLocOf e
+        case _                    => unreachable
+      }
+    case e: ExprRep =>
+      list[Expr](e.count :: e.expr :: Nil, symtab) map {
+        case count :: expr :: Nil => e.copy(count = count, expr = expr) withLocOf e
+        case _                    => unreachable
+      }
+    case e: ExprCat =>
+      list[Expr](e.parts, symtab) map { parts =>
+        ExprCat(parts) withLocOf e
+      }
+    case e: ExprIndex =>
+      list[Expr](e.expr :: e.index :: Nil, symtab) map {
+        case expr :: index :: Nil => e.copy(expr = expr, index = index) withLocOf e
+        case _                    => unreachable
+      }
+    case e: ExprSlice =>
+      list[Expr](e.expr :: e.lIdx :: e.rIdx :: Nil, symtab) map {
+        case expr :: lIdx :: rIdx :: Nil =>
+          e.copy(expr = expr, lIdx = lIdx, rIdx = rIdx) withLocOf e
+        case _ => unreachable
+      }
+    case e: ExprDot =>
+      list[Expr](e.expr :: e.idxs, symtab) map {
+        case expr :: idxs => e.copy(expr = expr, idxs = idxs) withLocOf e
+        case _            => unreachable
+      } proceed { e =>
+        fe.nameFor(e.selector, e.idxs) map { name =>
+          e.copy(selector = name, idxs = Nil) withLocOf e
+        }
+      }
+    case e: ExprIdent =>
+      list[Expr](e.idxs, symtab) map { idxs =>
+        e.copy(idxs = idxs) withLocOf e
+      } proceed { e =>
+        fe.nameFor(e.base, e.idxs) flatMap { name =>
+          symtab.get(name) match {
+            case SymbolTable.Defined(symbol) => Complete(ExprSym(symbol) withLocOf e)
+            case SymbolTable.Undefined       => Unknown(ReasonUnresolved(e) :: Nil)
+            case _                           => unreachable // Defined covers all
+          }
+        }
+      }
+    case e: ExprCast =>
+      elaborate(e.expr, symtab) map { expr =>
+        e.copy(expr = expr) withLocOf e
+      }
+    case _: ExprSym | _: ExprSymSel | _: ExprType | _: ExprInt | _: ExprNum | _: ExprStr =>
+      Finished(expr)
+    case _: ExprSel | _: ExprOld | _: ExprThis | _: ExprError =>
+      unreachable // Introduced later
+  } pipe {
+    case Complete(result) if result == expr => Finished(expr)
+    case other                              => other
   } tap assertProgressIsReal(expr)
 
   private def elaborate(
@@ -1550,8 +1626,14 @@ object Elaborate {
       cc: CompilerContext,
       fe: Frontend
     ): Result[Arg] = arg pipe {
-    case a: ArgP => elaborate(a.expr, symtab) map { expr => a.copy(expr = expr) withLocOf a }
-    case a: ArgN => elaborate(a.expr, symtab) map { expr => a.copy(expr = expr) withLocOf a }
+    case a: ArgP =>
+      elaborate(a.expr, symtab) map { e =>
+        a.copy(expr = e) withLocOf a
+      }
+    case a: ArgN =>
+      elaborate(a.expr, symtab) map { e =>
+        a.copy(expr = e) withLocOf a
+      }
     case a: ArgD =>
       list[Expr](a.idxs, symtab) map { idxs =>
         a.copy(idxs = idxs) withLocOf a

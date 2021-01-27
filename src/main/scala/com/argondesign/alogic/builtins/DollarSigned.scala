@@ -11,35 +11,38 @@
 package com.argondesign.alogic.builtins
 
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.frontend.Clarify
+import com.argondesign.alogic.frontend.Complete
+import com.argondesign.alogic.frontend.Failure
+import com.argondesign.alogic.frontend.FinalResult
 import com.argondesign.alogic.frontend.Frontend
-import com.argondesign.alogic.util.PartialMatch.PartialMatchImpl
+import com.argondesign.alogic.util.BigIntOps.BigIntClassOps
 
-object DollarSigned extends BuiltinPolyFunc("$signed") {
+object DollarSigned extends Builtin("$signed", isPure = true) {
 
-  def returnType(args: List[Expr], feOpt: Option[Frontend]): Option[TypeFund] = args partialMatch {
-    case List(arg) if arg.tpe.isPacked         => TypeSInt(arg.tpe.width)
-    case List(arg) if arg.tpe.underlying.isNum => TypeNum(true)
+  def typeCheck(expr: ExprBuiltin, args: List[Expr])(implicit fe: Frontend): FinalResult[TypeFund] =
+    checkArgCount(expr, 1) flatMap { _ =>
+      val arg = args.head
+      checkNumericOrPacked(arg, s"Argument to '$name") match {
+        case Some(error) => Failure(error :: Nil)
+        case None        => Complete(if (arg.tpe.isPacked) TypeSInt(arg.tpe.width) else TypeNum(true))
+      }
+    }
+
+  def clarify(expr: ExprBuiltin)(implicit fe: Frontend): Expr =
+    Clarify(expr.args.head.expr).asSigned
+
+  def returnType(args: List[Arg]): TypeFund = if (args.head.expr.tpe.underlying.isNum) {
+    TypeNum(true)
+  } else {
+    TypeSInt(args.head.expr.tpe.width)
   }
 
-  val isPure: Boolean = true
-
-  def simplify(loc: Loc, args: List[Expr]): Option[Expr] = args partialMatch {
-    case List(e @ ExprNum(s, v)) =>
-      if (s) {
-        e
-      } else {
-        ExprNum(true, v)
-      }
-    case List(e @ ExprInt(s, w, v)) =>
-      if (s) {
-        e
-      } else if (v.testBit(w - 1)) {
-        ExprInt(true, w, v - (BigInt(1) << w))
-      } else {
-        ExprInt(true, w, v)
-      }
+  def simplify(expr: ExprBuiltin): Expr = expr.args.head.expr match {
+    case ExprInt(false, w, v) => ExprInt(true, w, v.asI(w))
+    case ExprNum(false, v)    => ExprNum(true, v)
+    case _                    => expr
   }
 
 }

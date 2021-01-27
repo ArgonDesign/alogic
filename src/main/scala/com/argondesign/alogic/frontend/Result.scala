@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
@@ -9,7 +9,7 @@
 
 package com.argondesign.alogic.frontend
 
-import com.argondesign.alogic.ast.Trees.Ident
+import com.argondesign.alogic.ast.Trees.ExprIdent
 import com.argondesign.alogic.ast.Trees.Tree
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Locatable
@@ -82,7 +82,7 @@ object Failure {
 
 // Reasons for Unknown result
 sealed trait Reason
-case class ReasonUnresolved(ident: Ident) // Name not in symbol table
+case class ReasonUnresolved(expr: ExprIdent) // Name not in symbol table
     extends Reason
 case class ReasonUnelaborated(tree: Tree) // Tree is not elaborated yet
     extends Reason

@@ -22,11 +22,10 @@ import com.argondesign.alogic.frontend.Clarify
 import com.argondesign.alogic.frontend.Complete
 import com.argondesign.alogic.frontend.Finished
 import com.argondesign.alogic.frontend.Frontend
-import com.argondesign.alogic.frontend.ResolveNames
 import com.argondesign.alogic.passes._
 import com.argondesign.alogic.ExprExtractors._
-import com.argondesign.alogic.builtins.Builtins
 import com.argondesign.alogic.core.Messages.Fatal
+import com.argondesign.alogic.frontend.Elaborate
 import org.scalatest.freespec.AnyFreeSpec
 
 final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
@@ -49,9 +48,10 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
     implicit val fe: Frontend = new Frontend
     val tree = text.asTree[Expr]()
     assert(cc.messages.forall(_.isInstanceOf[Warning]))
-    val expr = ResolveNames(tree, Builtins.symbolTable)
-      .proceed(e => fe.typeCheck(e) map { _ => e })
-      .map(Clarify(_))
+    val expr = Elaborate
+      .elaborate(tree, cc.builtinSymbolTable)
+      .proceed(e => { fe.typeCheck(e) map { _ => e } })
+      .map(Clarify.apply)
       .pipe {
         case Complete(result) => result
         case Finished(result) => result
@@ -62,11 +62,6 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
 
   private def checkExact(tests: (String, Expr)*): Unit = tests foreach {
     case (text, result) => text in { simplify(text) shouldBe result }
-  }
-
-  private def checkExactOrFatal(tests: (String, Either[String, Expr])*): Unit = tests foreach {
-    case (text, Right(result)) => text in { simplify(text) shouldBe result }
-    case (text, Left(msg))     => text in { (the[Fatal] thrownBy simplify(text)).msg shouldBe Seq(msg) }
   }
 
   private def checkPattern(tests: (String, PartialFunction[Any, Unit])*): Unit = tests foreach {
@@ -1555,15 +1550,15 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
       for {
         (text, pattern, err) <- List[(String, PartialFunction[Any, Unit], List[String])](
           // format: off
-          ("1'd0 ? 1 : 2", { case ExprNum(false, v) if v == 2                                => }, Nil),
-          ("1'd1 ? 1 : 2", { case ExprNum(false, v) if v == 1                                => }, Nil),
+          ("1'd0 ? 1 : 2", { case ExprNum(false, v) if v == 2                                  => }, Nil),
+          ("1'd1 ? 1 : 2", { case ExprNum(false, v) if v == 1                                  => }, Nil),
           ("@unknownu(1) ? 1 : 1", { case ExprNum(false, v) if v == 1                          => }, Nil),
           ("@unknownu(1) ? 2 : 2", { case ExprNum(false, v) if v == 2                          => }, Nil),
           ("@unknownu(1) ? 8'd0 : 8'd0", { case ExprInt(false, 8, v) if v == 0                 => }, Nil),
-          ("@unknownu(1) ? 8'd0 : 8'd1", { case ExprCond(_: ExprCall, _: ExprInt, _: ExprInt)  => }, Nil),
-          ("@unknownu(1) ? 8'd0 : 8'sd0", { case ExprCond(_: ExprCall, _: ExprInt, _: ExprInt) => }, Nil),
-          ("1'd1 ? 1s : 0s - 2s", { case ExprNum(true, v) if v == 1                          => }, Nil),
-          ("1'd1 ? 1s : 0", { case ExprNum(false, v) if v == 1                               => }, Nil),
+          ("@unknownu(1) ? 8'd0 : 8'd1", { case ExprCond(UnknownU(1), _: ExprInt, _: ExprInt)  => }, Nil),
+          ("@unknownu(1) ? 8'd0 : 8'sd0", { case ExprCond(UnknownU(1), _: ExprInt, _: ExprInt) => }, Nil),
+          ("1'd1 ? 1s : 0s - 2s", { case ExprNum(true, v) if v == 1                            => }, Nil),
+          ("1'd1 ? 1s : 0", { case ExprNum(false, v) if v == 1                                 => }, Nil),
           ("@unknownu(1) ? 1 - 1 : 2 - 2", { case ExprNum(false, v) if v == 0                  => }, Nil)
           // format: on
         )
@@ -1938,12 +1933,9 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
           ("c = a[6-:7]", { case ExprSym(Symbol("a")) => }),
           ("c = a[0+:7]", { case ExprSym(Symbol("a")) => }),
           ("d = b[0:0]",  { case ExprSym(Symbol("b")) => }),
-          ("c = e[6:0] + 7'd1",  { case ExprBinary(ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("e"))) :: Nil),
-                                                   "+", ExprInt(false, 7, v)) if v == 1 => }),
-          ("c = e[0+:7] + 7'd1", { case ExprBinary(ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("e"))) :: Nil),
-                                                   "+", ExprInt(false, 7, v)) if v == 1 => }),
-          ("c = e[6-:7] + 7'd1", { case ExprBinary(ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("e"))) :: Nil),
-                                                   "+", ExprInt(false, 7, v)) if v == 1 => })
+          ("c = e[6:0] + 7'd1",  { case ExprBinary(Unsigned(ExprSym(Symbol("e"))), "+", ExprInt(false, 7, v)) if v == 1 => }),
+          ("c = e[0+:7] + 7'd1", { case ExprBinary(Unsigned(ExprSym(Symbol("e"))), "+", ExprInt(false, 7, v)) if v == 1 => }),
+          ("c = e[6-:7] + 7'd1", { case ExprBinary(Unsigned(ExprSym(Symbol("e"))), "+", ExprInt(false, 7, v)) if v == 1 => })
           // format: on
         )
       } {
@@ -2004,12 +1996,10 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
     "repetitions of count 1" - {
       for {
         (text, pattern) <- List[(String, PartialFunction[Any, Unit])](
-          // format: off
-          ("{1{a}}",    { case ExprSym(Symbol("a")) => }),
-          ("{1'd1{a}}", { case ExprSym(Symbol("a"))  => }),
-          ("{1{b}}",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("b"))) :: Nil) => }),
-          ("{1'd1{b}}", { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("b"))) :: Nil) => })
-          // format: on
+          ("{1{a}}", { case ExprSym(Symbol("a")) => }),
+          ("{1'd1{a}}", { case ExprSym(Symbol("a")) => }),
+          ("{1{b}}", { case Unsigned(ExprSym(Symbol("b"))) => }),
+          ("{1'd1{b}}", { case Unsigned(ExprSym(Symbol("b"))) => })
         )
       } {
         text in {
@@ -2024,7 +2014,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
                |  }
                |}""".stripMargin
           } getFirst {
-            case ExprCall(_, _ :: ArgP(expr) :: Nil) => expr
+            case ExprBuiltin(_, _ :: ArgP(expr) :: Nil) => expr
           } tap {
             _ should matchPattern(pattern)
           }
@@ -2036,10 +2026,8 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
     "concatenation of size 1" - {
       for {
         (text, pattern) <- List[(String, PartialFunction[Any, Unit])](
-          // format: off
-          ("{a}",    { case ExprSym(Symbol("a")) => }),
-          ("{b}",    { case ExprCall(ExprSym(Symbol("$unsigned")), ArgP(ExprSym(Symbol("b"))) :: Nil) => }),
-          // format: on
+          ("{a}", { case ExprSym(Symbol("a")) => }),
+          ("{b}", { case Unsigned(ExprSym(Symbol("b"))) => })
         )
       } {
         text in {
@@ -2055,7 +2043,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
                |  }
                |}""".stripMargin
           } getFirst {
-            case ExprCall(_, _ :: ArgP(expr) :: Nil) => expr
+            case ExprBuiltin(_, _ :: ArgP(expr) :: Nil) => expr
           } tap {
             _ should matchPattern(pattern)
           }
@@ -2311,60 +2299,44 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
       // TODO: @msb
 
       "@zx" - {
-        checkExactOrFatal(
-          ("@zx(3, 2'b00)", Right(ExprInt(false, 3, 0))),
-          ("@zx(3, 2'b01)", Right(ExprInt(false, 3, 1))),
-          ("@zx(3, 2'b10)", Right(ExprInt(false, 3, 2))),
-          ("@zx(3, 2'b11)", Right(ExprInt(false, 3, 3))),
-          ("@zx(3, 2'sb00)", Right(ExprInt(true, 3, 0))),
-          ("@zx(3, 2'sb01)", Right(ExprInt(true, 3, 1))),
-          ("@zx(3, 2'sb10)", Right(ExprInt(true, 3, 2))),
-          ("@zx(3, 2'sb11)", Right(ExprInt(true, 3, 3))),
-          ("@zx(2, 2'b00)", Right(ExprInt(false, 2, 0))),
-          ("@zx(2, 2'b01)", Right(ExprInt(false, 2, 1))),
-          ("@zx(2, 2'b10)", Right(ExprInt(false, 2, 2))),
-          ("@zx(2, 2'b11)", Right(ExprInt(false, 2, 3))),
-          ("@zx(2, 2'sb00)", Right(ExprInt(true, 2, 0))),
-          ("@zx(2, 2'sb01)", Right(ExprInt(true, 2, 1))),
-          ("@zx(2, 2'sb10)", Right(ExprInt(true, 2, -2))),
-          ("@zx(2, 2'sb11)", Right(ExprInt(true, 2, -1))),
-          ("@zx(1, 2'b00)", Left("Result width 1 of extension is less than argument width 2")),
-          ("@zx(1, 2'b01)", Left("Result width 1 of extension is less than argument width 2")),
-          ("@zx(1, 2'b10)", Left("Result width 1 of extension is less than argument width 2")),
-          ("@zx(1, 2'b11)", Left("Result width 1 of extension is less than argument width 2")),
-          ("@zx(1, 2'sb00)", Left("Result width 1 of extension is less than argument width 2")),
-          ("@zx(1, 2'sb01)", Left("Result width 1 of extension is less than argument width 2")),
-          ("@zx(1, 2'sb10)", Left("Result width 1 of extension is less than argument width 2")),
-          ("@zx(1, 2'sb11)", Left("Result width 1 of extension is less than argument width 2"))
+        checkExact(
+          ("@zx(3, 2'b00)", ExprInt(false, 3, 0)),
+          ("@zx(3, 2'b01)", ExprInt(false, 3, 1)),
+          ("@zx(3, 2'b10)", ExprInt(false, 3, 2)),
+          ("@zx(3, 2'b11)", ExprInt(false, 3, 3)),
+          ("@zx(3, 2'sb00)", ExprInt(true, 3, 0)),
+          ("@zx(3, 2'sb01)", ExprInt(true, 3, 1)),
+          ("@zx(3, 2'sb10)", ExprInt(true, 3, 2)),
+          ("@zx(3, 2'sb11)", ExprInt(true, 3, 3)),
+          ("@zx(2, 2'b00)", ExprInt(false, 2, 0)),
+          ("@zx(2, 2'b01)", ExprInt(false, 2, 1)),
+          ("@zx(2, 2'b10)", ExprInt(false, 2, 2)),
+          ("@zx(2, 2'b11)", ExprInt(false, 2, 3)),
+          ("@zx(2, 2'sb00)", ExprInt(true, 2, 0)),
+          ("@zx(2, 2'sb01)", ExprInt(true, 2, 1)),
+          ("@zx(2, 2'sb10)", ExprInt(true, 2, -2)),
+          ("@zx(2, 2'sb11)", ExprInt(true, 2, -1))
         )
       }
 
       "@sx" - {
-        checkExactOrFatal(
-          ("@sx(3, 2'b00)", Right(ExprInt(false, 3, 0))),
-          ("@sx(3, 2'b01)", Right(ExprInt(false, 3, 1))),
-          ("@sx(3, 2'b10)", Right(ExprInt(false, 3, 6))),
-          ("@sx(3, 2'b11)", Right(ExprInt(false, 3, 7))),
-          ("@sx(3, 2'sb00)", Right(ExprInt(true, 3, 0))),
-          ("@sx(3, 2'sb01)", Right(ExprInt(true, 3, 1))),
-          ("@sx(3, 2'sb10)", Right(ExprInt(true, 3, -2))),
-          ("@sx(3, 2'sb11)", Right(ExprInt(true, 3, -1))),
-          ("@sx(2, 2'b00)", Right(ExprInt(false, 2, 0))),
-          ("@sx(2, 2'b01)", Right(ExprInt(false, 2, 1))),
-          ("@sx(2, 2'b10)", Right(ExprInt(false, 2, 2))),
-          ("@sx(2, 2'b11)", Right(ExprInt(false, 2, 3))),
-          ("@sx(2, 2'sb00)", Right(ExprInt(true, 2, 0))),
-          ("@sx(2, 2'sb01)", Right(ExprInt(true, 2, 1))),
-          ("@sx(2, 2'sb10)", Right(ExprInt(true, 2, -2))),
-          ("@sx(2, 2'sb11)", Right(ExprInt(true, 2, -1))),
-          ("@sx(1, 2'b00)", Left("Result width 1 of extension is less than argument width 2")),
-          ("@sx(1, 2'b01)", Left("Result width 1 of extension is less than argument width 2")),
-          ("@sx(1, 2'b10)", Left("Result width 1 of extension is less than argument width 2")),
-          ("@sx(1, 2'b11)", Left("Result width 1 of extension is less than argument width 2")),
-          ("@sx(1, 2'sb00)", Left("Result width 1 of extension is less than argument width 2")),
-          ("@sx(1, 2'sb01)", Left("Result width 1 of extension is less than argument width 2")),
-          ("@sx(1, 2'sb10)", Left("Result width 1 of extension is less than argument width 2")),
-          ("@sx(1, 2'sb11)", Left("Result width 1 of extension is less than argument width 2"))
+        checkExact(
+          ("@sx(3, 2'b00)", ExprInt(false, 3, 0)),
+          ("@sx(3, 2'b01)", ExprInt(false, 3, 1)),
+          ("@sx(3, 2'b10)", ExprInt(false, 3, 6)),
+          ("@sx(3, 2'b11)", ExprInt(false, 3, 7)),
+          ("@sx(3, 2'sb00)", ExprInt(true, 3, 0)),
+          ("@sx(3, 2'sb01)", ExprInt(true, 3, 1)),
+          ("@sx(3, 2'sb10)", ExprInt(true, 3, -2)),
+          ("@sx(3, 2'sb11)", ExprInt(true, 3, -1)),
+          ("@sx(2, 2'b00)", ExprInt(false, 2, 0)),
+          ("@sx(2, 2'b01)", ExprInt(false, 2, 1)),
+          ("@sx(2, 2'b10)", ExprInt(false, 2, 2)),
+          ("@sx(2, 2'b11)", ExprInt(false, 2, 3)),
+          ("@sx(2, 2'sb00)", ExprInt(true, 2, 0)),
+          ("@sx(2, 2'sb01)", ExprInt(true, 2, 1)),
+          ("@sx(2, 2'sb10)", ExprInt(true, 2, -2)),
+          ("@sx(2, 2'sb11)", ExprInt(true, 2, -1))
         )
       }
 
@@ -2413,7 +2385,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
                  |  }
                  |}""".stripMargin
             } getFirst {
-              case ExprCall(_, List(_, ArgP(e))) => e
+              case ExprBuiltin(_, List(_, ArgP(e))) => e
             } tap {
               _ shouldBe result
             }
@@ -2442,21 +2414,20 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
       }
 
       "$unsigned" - {
-        checkExactOrFatal(
-          ("$unsigned(1)", Right(ExprNum(false, 1))),
-          ("$unsigned(1s)", Right(ExprNum(false, 1))),
-          ("$unsigned(-1s)", Left("Cannot cast negative unsized integer to unsigned")),
-          ("$unsigned(2'd0)", Right(ExprInt(false, 2, 0))),
-          ("$unsigned(2'd1)", Right(ExprInt(false, 2, 1))),
-          ("$unsigned(2'd3)", Right(ExprInt(false, 2, 3))),
-          ("$unsigned(2'sd0)", Right(ExprInt(false, 2, 0))),
-          ("$unsigned(2'sd1)", Right(ExprInt(false, 2, 1))),
-          ("$unsigned(-2'sd1)", Right(ExprInt(false, 2, 3))),
-          ("$unsigned(8'sd127)", Right(ExprInt(false, 8, 127))),
-          ("$unsigned(-8'sd128)", Right(ExprInt(false, 8, 128))),
-          ("$unsigned(-8'sd1)", Right(ExprInt(false, 8, 255))),
-          ("$unsigned({1'd0, {31{1'd1}}})", Right(ExprInt(false, 32, 2147483647))),
-          ("$unsigned({1'd1, {31{1'd0}}})", Right(ExprInt(false, 32, 2147483648L)))
+        checkExact(
+          ("$unsigned(1)", ExprNum(false, 1)),
+          ("$unsigned(1s)", ExprNum(false, 1)),
+          ("$unsigned(2'd0)", ExprInt(false, 2, 0)),
+          ("$unsigned(2'd1)", ExprInt(false, 2, 1)),
+          ("$unsigned(2'd3)", ExprInt(false, 2, 3)),
+          ("$unsigned(2'sd0)", ExprInt(false, 2, 0)),
+          ("$unsigned(2'sd1)", ExprInt(false, 2, 1)),
+          ("$unsigned(-2'sd1)", ExprInt(false, 2, 3)),
+          ("$unsigned(8'sd127)", ExprInt(false, 8, 127)),
+          ("$unsigned(-8'sd128)", ExprInt(false, 8, 128)),
+          ("$unsigned(-8'sd1)", ExprInt(false, 8, 255)),
+          ("$unsigned({1'd0, {31{1'd1}}})", ExprInt(false, 32, 2147483647)),
+          ("$unsigned({1'd1, {31{1'd0}}})", ExprInt(false, 32, 2147483648L))
         )
       }
     }
@@ -2490,7 +2461,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
              |  }
              |}""".stripMargin
         } getFirst {
-          case ExprCall(_, _ :: ArgP(expr) :: Nil) => expr
+          case ExprBuiltin(_, _ :: ArgP(expr) :: Nil) => expr
         } tap {
           _ shouldBe value
         }
@@ -2528,7 +2499,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
              |  }
              |}""".stripMargin
         } getFirst {
-          case ExprCall(_, _ :: ArgP(expr) :: Nil) => expr
+          case ExprBuiltin(_, _ :: ArgP(expr) :: Nil) => expr
         } tap {
           _ should matchPattern(pattern)
         }
@@ -2645,7 +2616,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
           text in {
             simplify(text) should matchPattern {
               case ExprSlice(
-                    ExprCall(ExprSym(Symbol("@unknownu")), ArgP(Expr(4)) :: Nil),
+                    UnknownU(4),
                     ExprInt(false, 2, l),
                     ":",
                     ExprInt(false, 2, r)
@@ -2672,15 +2643,14 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
             ("10'd12",  "uint", { case ExprNum(false, v) if v == 12 => }, Nil),
             ("-10'sd1",  "int", { case ExprNum(true, v) if v == -1 => }, Nil),
             ("a",  "u10", { case ExprCat(List(ExprInt(false, 2, z), ExprSym(Symbol("a")))) if z == 0  => }, Nil),
-            ("b",  "i10", { case ExprCall(
-                                  ExprSym(Symbol("$signed")),
-                                  List(ArgP(ExprCat(List(
+            ("b",  "i10", { case Signed(
+                                  ExprCat(List(
                                         ExprRep(
                                           Expr(3),
                                           ExprIndex(
                                             ExprSym(Symbol("b")),
                                             ExprInt(false, 3, i))),
-                                        ExprSym(Symbol("b"))))))) if i == 6 =>
+                                        ExprSym(Symbol("b"))))) if i == 6 =>
             }, Nil),
             ("a",  "u8", { case ExprSym(Symbol("a")) => }, Nil),
             ("b",  "i7", { case ExprSym(Symbol("b")) => }, Nil),
@@ -2705,7 +2675,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
                |  }
                |}""".stripMargin
           } getFirst {
-            case ExprCall(_, List(_, ArgP(e))) => e
+            case ExprBuiltin(_, List(_, ArgP(e))) => e
           } tap { expr =>
             cc.messages filterNot {
               _.isInstanceOf[Warning]
@@ -2733,13 +2703,10 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
           ("20'10'd12", { case ExprInt(false, 20, v) if v == 12 => }),
           ("20'-10'sd1", { case ExprInt(true, 20, v) if v == -1 => }),
           ("10'a", { case ExprCat(List(ExprInt(false, 2, z), ExprSym(Symbol("a")))) if z == 0 => }),
-          ("10'b", { case ExprCall(
-                            ExprSym(Symbol("$signed")),
-                            List(ArgP(
-                              ExprCat(List(
-                                ExprRep(Expr(3), ExprIndex(ExprSym(Symbol("b")), ExprInt(false, 3, i))),
-                                ExprSym(Symbol("b"))
-                              ))
+          ("10'b", { case Signed(
+                            ExprCat(List(
+                              ExprRep(Expr(3), ExprIndex(ExprSym(Symbol("b")), ExprInt(false, 3, i))), 
+                              ExprSym(Symbol("b"))
                             ))
                           ) if i == 6 => }),
           ("8'a", { case ExprSym(Symbol("a")) => }),
@@ -2763,7 +2730,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
                |  }
                |}""".stripMargin
           } getFirst {
-            case ExprCall(_, List(_, ArgP(e))) => e
+            case ExprBuiltin(_, List(_, ArgP(e))) => e
           } tap { expr =>
             cc.messages filterNot { _.isInstanceOf[Warning] } shouldBe empty
             expr should matchPattern(pattern)

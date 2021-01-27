@@ -120,10 +120,10 @@ private[frontend] object TypeOf {
       implicit
       fe: Frontend
     ): FinalResult[Type] =
-    if (!refresh && symbol.kindIsSet || symbol.isBuiltin) {
+    if (!refresh && symbol.kindIsSet) {
       Complete(symbol.kind)
     } else {
-      symbol.desc.pipe[FinalResult[Type]] {
+      symbol.descOption.map[FinalResult[Type]] {
         case DescVar(_, _, spec, _) =>
           simpleTypeFrom(spec) flatMap ensureNotNumNorVoid(spec, "Variable")
         case DescVal(_, _, spec, _) =>
@@ -233,6 +233,9 @@ private[frontend] object TypeOf {
           definedSymbols(body) map { symbols => TypeScope(symbol, symbols) }
         case DescAlias(_, _, expr, _)     => fe.typeCheck(expr)
         case DescParametrized(_, _, _, _) => Complete(TypeParametrized(symbol))
+      } getOrElse {
+        // Must be a builtin with no desc
+        Complete(TypeBuiltin)
       } tapEach {
         symbol.kind = _
       }

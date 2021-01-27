@@ -24,17 +24,17 @@ final class ParserParseFromSpec extends AnyFreeSpec with AlogicTest {
     "From one" - {
       "without alias" - {
         """from "a" import b;""".asTree[From]() shouldBe {
-          FromOne("a", ExprIdent(Ident("b", Nil)), None)
+          FromOne("a", ExprIdent("b", Nil), None)
         }
 
         """from "a" import b.c;""".asTree[From]() shouldBe {
-          FromOne("a", ExprDot(ExprIdent(Ident("b", Nil)), "c", Nil), None)
+          FromOne("a", ExprDot(ExprIdent("b", Nil), "c", Nil), None)
         }
 
         """from "a" import b.c(2);""".asTree[From]() shouldBe {
           FromOne(
             "a",
-            ExprCall(ExprDot(ExprIdent(Ident("b", Nil)), "c", Nil), ArgP(Expr(2)) :: Nil),
+            ExprCall(ExprDot(ExprIdent("b", Nil), "c", Nil), ArgP(Expr(2)) :: Nil),
             None
           )
         }
@@ -42,17 +42,17 @@ final class ParserParseFromSpec extends AnyFreeSpec with AlogicTest {
 
       "with alias" - {
         """from "a" import b as x;""".asTree[From]() shouldBe {
-          FromOne("a", ExprIdent(Ident("b", Nil)), Some(Ident("x", Nil)))
+          FromOne("a", ExprIdent("b", Nil), Some(Ident("x", Nil)))
         }
 
         """from "a" import b.c as x;""".asTree[From]() shouldBe {
-          FromOne("a", ExprDot(ExprIdent(Ident("b", Nil)), "c", Nil), Some(Ident("x", Nil)))
+          FromOne("a", ExprDot(ExprIdent("b", Nil), "c", Nil), Some(Ident("x", Nil)))
         }
 
         """from "a" import b.c(2) as x;""".asTree[From]() shouldBe {
           FromOne(
             "a",
-            ExprCall(ExprDot(ExprIdent(Ident("b", Nil)), "c", Nil), ArgP(Expr(2)) :: Nil),
+            ExprCall(ExprDot(ExprIdent("b", Nil), "c", Nil), ArgP(Expr(2)) :: Nil),
             Some(Ident("x", Nil))
           )
         }

@@ -45,13 +45,13 @@ final class ParserParseStmtSpec extends AnyFreeSpec with AlogicTest {
 
     "using" in {
       "using a;".asTree[Stmt]() shouldBe {
-        StmtSplice(UsingOne(ExprIdent(Ident("a", Nil)), None))
+        StmtSplice(UsingOne(ExprIdent("a", Nil), None))
       }
     }
 
     "from" in {
       """from "a" import b;""".asTree[Stmt]() shouldBe {
-        StmtSplice(FromOne("a", ExprIdent(Ident("b", Nil)), None))
+        StmtSplice(FromOne("a", ExprIdent("b", Nil), None))
       }
     }
 
@@ -80,7 +80,7 @@ final class ParserParseStmtSpec extends AnyFreeSpec with AlogicTest {
     "if" - {
       "without else, without brace" in {
         "if (1) a;"
-          .asTree[Stmt]() shouldBe StmtIf(Expr(1), List(StmtExpr(ExprIdent(Ident("a", Nil)))), Nil)
+          .asTree[Stmt]() shouldBe StmtIf(Expr(1), List(StmtExpr(ExprIdent("a", Nil))), Nil)
       }
 
       "with else, without brace" in {
@@ -94,7 +94,7 @@ final class ParserParseStmtSpec extends AnyFreeSpec with AlogicTest {
 
       "without else, with brace" in {
         "if (1) {a;}"
-          .asTree[Stmt]() shouldBe StmtIf(Expr(1), List(StmtExpr(ExprIdent(Ident("a", Nil)))), Nil)
+          .asTree[Stmt]() shouldBe StmtIf(Expr(1), List(StmtExpr(ExprIdent("a", Nil))), Nil)
       }
 
       "with else, with brace" in {
@@ -127,8 +127,8 @@ final class ParserParseStmtSpec extends AnyFreeSpec with AlogicTest {
           StmtCase(
             Expr(1),
             List(
-              CaseRegular(List(Expr(1)), List(StmtExpr(ExprIdent(Ident("a", Nil))))),
-              CaseRegular(List(Expr(2)), List(StmtExpr(ExprIdent(Ident("b", Nil)))))
+              CaseRegular(List(Expr(1)), List(StmtExpr(ExprIdent("a", Nil)))),
+              CaseRegular(List(Expr(2)), List(StmtExpr(ExprIdent("b", Nil))))
             )
           )
         }
@@ -142,7 +142,7 @@ final class ParserParseStmtSpec extends AnyFreeSpec with AlogicTest {
           StmtCase(
             Expr(1),
             List(
-              CaseDefault(List(StmtExpr(ExprIdent(Ident("c", Nil)))))
+              CaseDefault(List(StmtExpr(ExprIdent("c", Nil))))
             )
           )
         }
@@ -157,8 +157,8 @@ final class ParserParseStmtSpec extends AnyFreeSpec with AlogicTest {
           StmtCase(
             Expr(1),
             List(
-              CaseRegular(List(Expr(1)), List(StmtExpr(ExprIdent(Ident("c", Nil))))),
-              CaseRegular(List(Expr(2), Expr(3)), List(StmtExpr(ExprIdent(Ident("d", Nil)))))
+              CaseRegular(List(Expr(1)), List(StmtExpr(ExprIdent("c", Nil)))),
+              CaseRegular(List(Expr(2), Expr(3)), List(StmtExpr(ExprIdent("d", Nil))))
             )
           )
         }
@@ -173,8 +173,8 @@ final class ParserParseStmtSpec extends AnyFreeSpec with AlogicTest {
           StmtCase(
             Expr(1),
             List(
-              CaseDefault(List(StmtExpr(ExprIdent(Ident("c", Nil))))),
-              CaseDefault(List(StmtExpr(ExprIdent(Ident("d", Nil)))))
+              CaseDefault(List(StmtExpr(ExprIdent("c", Nil)))),
+              CaseDefault(List(StmtExpr(ExprIdent("d", Nil))))
             )
           )
         }
@@ -191,10 +191,10 @@ final class ParserParseStmtSpec extends AnyFreeSpec with AlogicTest {
           StmtCase(
             Expr(1),
             List(
-              CaseRegular(List(Expr(1)), List(StmtExpr(ExprIdent(Ident("a", Nil))))),
-              CaseDefault(List(StmtExpr(ExprIdent(Ident("b", Nil))))),
-              CaseRegular(List(Expr(3)), List(StmtExpr(ExprIdent(Ident("c", Nil))))),
-              CaseDefault(List(StmtExpr(ExprIdent(Ident("d", Nil)))))
+              CaseRegular(List(Expr(1)), List(StmtExpr(ExprIdent("a", Nil)))),
+              CaseDefault(List(StmtExpr(ExprIdent("b", Nil)))),
+              CaseRegular(List(Expr(3)), List(StmtExpr(ExprIdent("c", Nil)))),
+              CaseDefault(List(StmtExpr(ExprIdent("d", Nil))))
             )
           )
         }
@@ -209,8 +209,8 @@ final class ParserParseStmtSpec extends AnyFreeSpec with AlogicTest {
           StmtCase(
             Expr(1),
             List(
-              CaseRegular(List(Expr(1)), List(StmtExpr(ExprIdent(Ident("a", Nil))))),
-              CaseDefault(List(StmtExpr(ExprIdent(Ident("c", Nil)))))
+              CaseRegular(List(Expr(1)), List(StmtExpr(ExprIdent("a", Nil)))),
+              CaseDefault(List(StmtExpr(ExprIdent("c", Nil))))
             )
           )
         }
@@ -225,8 +225,8 @@ final class ParserParseStmtSpec extends AnyFreeSpec with AlogicTest {
           StmtCase(
             Expr(1),
             List(
-              CaseRegular(List(Expr(1)), List(StmtExpr(ExprIdent(Ident("a", Nil))))),
-              CaseDefault(List(StmtExpr(ExprIdent(Ident("c", Nil)))))
+              CaseRegular(List(Expr(1)), List(StmtExpr(ExprIdent("a", Nil)))),
+              CaseDefault(List(StmtExpr(ExprIdent("c", Nil))))
             )
           )
         }
@@ -259,14 +259,14 @@ final class ParserParseStmtSpec extends AnyFreeSpec with AlogicTest {
       """while (a) {
         |  fence;
         |}""".stripMargin
-        .asTree[Stmt]() shouldBe StmtWhile(ExprIdent(Ident("a", Nil)), List(StmtFence()))
+        .asTree[Stmt]() shouldBe StmtWhile(ExprIdent("a", Nil), List(StmtFence()))
     }
 
     "do" in {
       """do {
         | fence;
         |} while(b);""".stripMargin
-        .asTree[Stmt]() shouldBe StmtDo(ExprIdent(Ident("b", Nil)), List(StmtFence()))
+        .asTree[Stmt]() shouldBe StmtDo(ExprIdent("b", Nil), List(StmtFence()))
     }
 
     "for" - {
@@ -279,9 +279,9 @@ final class ParserParseStmtSpec extends AnyFreeSpec with AlogicTest {
           |  2;
           |}""".stripMargin.asTree[Stmt]() shouldBe {
           StmtFor(
-            List(StmtAssign(ExprIdent(Ident("a", Nil)), Expr(2))),
-            Some(ExprIdent(Ident("a", Nil))),
-            List(StmtPost(ExprIdent(Ident("a", Nil)), "--")),
+            List(StmtAssign(ExprIdent("a", Nil), Expr(2))),
+            Some(ExprIdent("a", Nil)),
+            List(StmtPost(ExprIdent("a", Nil), "--")),
             List(StmtExpr(Expr(2)))
           )
 
@@ -294,8 +294,8 @@ final class ParserParseStmtSpec extends AnyFreeSpec with AlogicTest {
           |}""".stripMargin.asTree[Stmt]() shouldBe {
           StmtFor(
             List(StmtSplice(DescVar(Ident("a", Nil), Nil, ExprType(TypeSInt(8)), Some(Expr(2))))),
-            Some(ExprIdent(Ident("a", Nil))),
-            List(StmtPost(ExprIdent(Ident("a", Nil)), "--")),
+            Some(ExprIdent("a", Nil)),
+            List(StmtPost(ExprIdent("a", Nil), "--")),
             List(StmtExpr(Expr(2)))
           )
         }
@@ -306,7 +306,7 @@ final class ParserParseStmtSpec extends AnyFreeSpec with AlogicTest {
           StmtFor(
             List(
               StmtSplice(DescVar(Ident("a", Nil), Nil, ExprType(TypeSInt(8)), Some(Expr(2)))),
-              StmtAssign(ExprIdent(Ident("b", Nil)), Expr(1))
+              StmtAssign(ExprIdent("b", Nil), Expr(1))
             ),
             None,
             Nil,
@@ -321,8 +321,8 @@ final class ParserParseStmtSpec extends AnyFreeSpec with AlogicTest {
             Nil,
             None,
             List(
-              StmtPost(ExprIdent(Ident("a", Nil)), "++"),
-              StmtPost(ExprIdent(Ident("b", Nil)), "--")
+              StmtPost(ExprIdent("a", Nil), "++"),
+              StmtPost(ExprIdent("b", Nil), "--")
             ),
             Nil
           )
@@ -335,7 +335,7 @@ final class ParserParseStmtSpec extends AnyFreeSpec with AlogicTest {
             Nil,
             None,
             List(
-              StmtAssign(ExprIdent(Ident("a", Nil)), ExprIdent(Ident("b", Nil)))
+              StmtAssign(ExprIdent("a", Nil), ExprIdent("b", Nil))
             ),
             Nil
           )
@@ -348,7 +348,7 @@ final class ParserParseStmtSpec extends AnyFreeSpec with AlogicTest {
             Nil,
             None,
             List(
-              StmtUpdate(ExprIdent(Ident("a", Nil)), "+", ExprIdent(Ident("b", Nil)))
+              StmtUpdate(ExprIdent("a", Nil), "+", ExprIdent("b", Nil))
             ),
             Nil
           )
@@ -375,7 +375,7 @@ final class ParserParseStmtSpec extends AnyFreeSpec with AlogicTest {
                   Ident("a", Nil),
                   Nil,
                   ExprType(TypeSInt(2)),
-                  Some(ExprIdent(Ident("b", Nil)))
+                  Some(ExprIdent("b", Nil))
                 )
               ),
               StmtSplice(
@@ -383,7 +383,7 @@ final class ParserParseStmtSpec extends AnyFreeSpec with AlogicTest {
                   Ident("c", Nil),
                   Nil,
                   ExprType(TypeSInt(2)),
-                  Some(ExprIdent(Ident("a", Nil)))
+                  Some(ExprIdent("a", Nil))
                 )
               )
             ),
@@ -407,11 +407,11 @@ final class ParserParseStmtSpec extends AnyFreeSpec with AlogicTest {
 
     "goto" - {
       "goto call" in {
-        "goto a();".asTree[Stmt]() shouldBe StmtGoto(ExprCall(ExprIdent(Ident("a", Nil)), Nil))
+        "goto a();".asTree[Stmt]() shouldBe StmtGoto(ExprCall(ExprIdent("a", Nil), Nil))
       }
 
       "goto symbol" in {
-        "goto b;".asTree[Stmt]() shouldBe StmtGoto(ExprIdent(Ident("b", Nil)))
+        "goto b;".asTree[Stmt]() shouldBe StmtGoto(ExprIdent("b", Nil))
       }
 
       "goto const" in {
@@ -444,43 +444,43 @@ final class ParserParseStmtSpec extends AnyFreeSpec with AlogicTest {
     }
 
     "assign" - {
-      "a = 1;".asTree[Stmt]() shouldBe StmtAssign(ExprIdent(Ident("a", Nil)), Expr(1))
+      "a = 1;".asTree[Stmt]() shouldBe StmtAssign(ExprIdent("a", Nil), Expr(1))
     }
 
     "update" - {
       "+=" in {
-        "b += 2;".asTree[Stmt]() shouldBe StmtUpdate(ExprIdent(Ident("b", Nil)), "+", Expr(2))
+        "b += 2;".asTree[Stmt]() shouldBe StmtUpdate(ExprIdent("b", Nil), "+", Expr(2))
       }
 
       "<<=" in {
-        "c <<= 3;".asTree[Stmt]() shouldBe StmtUpdate(ExprIdent(Ident("c", Nil)), "<<", Expr(3))
+        "c <<= 3;".asTree[Stmt]() shouldBe StmtUpdate(ExprIdent("c", Nil), "<<", Expr(3))
       }
     }
 
     "post" - {
       "++" in {
-        "d++;".asTree[Stmt]() shouldBe StmtPost(ExprIdent(Ident("d", Nil)), "++")
+        "d++;".asTree[Stmt]() shouldBe StmtPost(ExprIdent("d", Nil), "++")
       }
 
       "--" in {
-        "e--;".asTree[Stmt]() shouldBe StmtPost(ExprIdent(Ident("e", Nil)), "--")
+        "e--;".asTree[Stmt]() shouldBe StmtPost(ExprIdent("e", Nil), "--")
       }
     }
 
     "expr" - {
       "identifier" in {
-        "a;".asTree[Stmt]() shouldBe StmtExpr(ExprIdent(Ident("a", Nil)))
+        "a;".asTree[Stmt]() shouldBe StmtExpr(ExprIdent("a", Nil))
       }
 
       "call" in {
-        "b();".asTree[Stmt]() shouldBe StmtExpr(ExprCall(ExprIdent(Ident("b", Nil)), Nil))
+        "b();".asTree[Stmt]() shouldBe StmtExpr(ExprCall(ExprIdent("b", Nil), Nil))
       }
     }
 
     "wait" - {
       "with condition" in {
         "wait a;".asTree[Stmt]() shouldBe {
-          StmtWait(ExprIdent(Ident("a", Nil)))
+          StmtWait(ExprIdent("a", Nil))
         }
       }
 

@@ -1423,6 +1423,15 @@ object TreeCopier {
     }
   }
 
+  def apply(tree: ExprBuiltin)(args: List[Tree]): ExprBuiltin = {
+    if (args eq tree.args) {
+      tree
+    } else {
+      assert(args forall { _.isInstanceOf[Arg] })
+      tree.copy(args = args.asInstanceOf[List[Arg]]) withLoc tree.loc
+    }
+  }
+
   def apply(tree: ExprUnary)(expr: Tree): ExprUnary = {
     if (expr eq tree.expr) {
       tree
@@ -1524,11 +1533,12 @@ object TreeCopier {
     }
   }
 
-  def apply(tree: ExprIdent)(ident: Tree): ExprIdent = {
-    if (ident eq tree.ident) {
+  def apply(tree: ExprIdent)(idxs: List[Tree]): ExprIdent = {
+    if (idxs eq tree.idxs) {
       tree
     } else {
-      ExprIdent(ident.asInstanceOf[Ident]) withLoc tree.loc
+      assert(idxs forall { _.isInstanceOf[Expr] })
+      tree.copy(idxs = idxs.asInstanceOf[List[Expr]]) withLoc tree.loc
     }
   }
 

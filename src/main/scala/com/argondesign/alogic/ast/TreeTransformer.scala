@@ -608,6 +608,9 @@ abstract class TreeTransformer extends (Tree => Tree) with ChainingSyntax {
       val expr = walk(node.expr)
       val args = walk(node.args)
       TreeCopier(node)(expr, args)
+    case node: ExprBuiltin =>
+      val args = walk(node.args)
+      TreeCopier(node)(args)
     case node: ExprUnary =>
       val expr = walk(node.expr)
       TreeCopier(node)(expr)
@@ -647,8 +650,8 @@ abstract class TreeTransformer extends (Tree => Tree) with ChainingSyntax {
       val expr = walk(node.expr)
       TreeCopier(node)(expr)
     case node: ExprIdent =>
-      val ident = walk(node.ident)
-      TreeCopier(node)(ident)
+      val idxs = walk(node.idxs)
+      TreeCopier(node)(idxs)
     case node: ExprSym => node
     case node: ExprOld =>
       val expr = walk(node.expr)

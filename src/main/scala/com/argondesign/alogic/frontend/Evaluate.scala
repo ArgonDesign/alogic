@@ -12,8 +12,6 @@ package com.argondesign.alogic.frontend
 
 import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.builtins.Builtins
-import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols.Symbol
@@ -29,7 +27,6 @@ private[frontend] object Evaluate {
       hint: => String
     )(
       implicit
-      cc: CompilerContext,
       fe: Frontend
     ): FinalResult[BigInt] =
     fe.typeCheck(expr) flatMap { _ =>
@@ -56,16 +53,9 @@ private[frontend] object Evaluate {
         // frontend for 2 reasons. One is to track dependencies, but more
         // importantly the definitions haven't been through Clarify yet, so
         // the standard constant folder cannot deal with them yet).
-        // TODO: could interpret comb functions here for bonus points...
 
         override protected def enter(tree: Tree): Option[Tree] = tree match {
-          case _: ExprDot                                   => unreachable
-          case call @ ExprCall(ExprSym(Symbol("@bits")), _) =>
-            // Mark arguments as used
-            call.args.foreach(_ visitAll {
-              case ExprSym(symbol) => symbol.attr.wasUsed set true
-            })
-            Some(walkSame(Builtins.foldCall(call)))
+          case _: ExprDot => unreachable
           case ExprSymSel(_, tSymbol) =>
             tSymbol.desc match {
               case _: DescVal | _: DescParam | _: DescConst | _: DescGenVar =>
@@ -77,10 +67,9 @@ private[frontend] object Evaluate {
         }
 
         override def transform(tree: Tree): Tree = tree match {
-          case ExprSym(symbol) if !symbol.isBuiltin =>
-            evaluate(symbol, tree.loc) getOrElse tree
-          case _: ExprIdent => throw Ice(tree, "Attempting to evaluate unresolved reference")
-          case _            => tree
+          case ExprSym(symbol) => evaluate(symbol, tree.loc) getOrElse tree
+          case _: ExprIdent    => throw Ice(tree, "Attempting to evaluate unresolved reference")
+          case _               => tree
         }
       }
 
@@ -103,7 +92,6 @@ private[frontend] object Evaluate {
       paramCheck: Boolean
     )(
       implicit
-      cc: CompilerContext,
       fe: Frontend
     ): FinalResult[Expr] =
     fe.typeCheck(symbol.desc) flatMap { _ =>

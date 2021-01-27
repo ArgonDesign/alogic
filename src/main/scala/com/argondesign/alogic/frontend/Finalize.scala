@@ -47,7 +47,7 @@ private[frontend] object Finalize {
       val dependencies = Set from {
         // Gather referenced packages
         desc collectAll {
-          case expr @ ExprSym(symbol) if expr.hasTpe && !symbol.isBuiltin => symbol
+          case expr @ ExprSym(symbol) if expr.hasTpe => symbol
         } flatMap { symbol =>
           symbol.desc match {
             case _: DescPackage =>
@@ -241,7 +241,7 @@ private[frontend] object Finalize {
               expr.copy(expr = walkSame(tgt)) withLocOf tree withTpe tree.tpe
             }
 
-          case ExprSym(symbol) if !symbol.isBuiltin && !symbol.kind.isParametrized =>
+          case ExprSym(symbol) if !symbol.kind.isParametrized =>
             symbol.desc match {
               case DescAlias(_, _, expr, _) =>
                 // We assign the type of the tree, as the result might be a

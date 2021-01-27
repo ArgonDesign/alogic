@@ -11,28 +11,39 @@
 package com.argondesign.alogic.builtins
 
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.frontend.Complete
+import com.argondesign.alogic.frontend.Failure
+import com.argondesign.alogic.frontend.FinalResult
 import com.argondesign.alogic.frontend.Frontend
+import com.argondesign.alogic.util.unreachable
 
-object AtBits extends BuiltinPolyFunc("@bits") {
+import scala.util.chaining.scalaUtilChainingOps
 
-  def returnType(args: List[Expr], feOpt: Option[Frontend]): Option[TypeFund] =
-    args.map(_.tpe) match {
-      case List(TypeType(kind)) if kind.isPacked => Some(TypeNum(false))
-      case List(TypeNone(kind)) if kind.isPacked => Some(TypeNum(false))
-      case List(kind) if kind.isPacked           => Some(TypeNum(false))
-      case _                                     => None
+object AtBits extends Builtin("@bits", isPure = true) {
+
+  def typeCheck(expr: ExprBuiltin, args: List[Expr])(implicit fe: Frontend): FinalResult[TypeFund] =
+    checkArgCount(expr, 1) flatMap { _ =>
+      args.head.tpe match {
+        case TypeType(kind) if kind.isPacked => Complete(TypeNum(false))
+        case TypeNone(kind) if kind.isPacked => Complete(TypeNum(false))
+        case kind if kind.isPacked           => Complete(TypeNum(false))
+        case _ =>
+          Failure(args.head, s"Argument to '$name' must be a packed type or a packed value")
+      }
     }
 
-  def isKnown(args: List[Expr]) = true
+  def clarify(expr: ExprBuiltin)(implicit fe: Frontend): Expr =
+    expr.args.head.expr.tpe pipe {
+      case TypeType(kind) => kind
+      case TypeNone(kind) => kind
+      case kind           => kind
+    } pipe { kind =>
+      markSymbolsUsed(expr.args.head.expr)
+      Expr(kind.width)
+    }
 
-  val isPure: Boolean = true
+  def returnType(args: List[Arg]): TypeFund = unreachable
 
-  def simplify(loc: Loc, args: List[Expr]): Option[Expr] = args.head.tpeOpt map {
-    case TypeType(kind) => Expr(kind.width)
-    case TypeNone(kind) => Expr(kind.width)
-    case kind           => Expr(kind.width)
-  }
-
+  def simplify(expr: ExprBuiltin): Expr = unreachable
 }

@@ -12,7 +12,6 @@
 package com.argondesign.alogic.frontend
 
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.builtins.Builtins
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.MessageBuffer
@@ -270,7 +269,7 @@ class Frontend(implicit cc: CompilerContext) {
       case desc: DescPackage =>
         // Elaborate the package definition
         @tailrec
-        def loop(desc: Desc): FinalResult[Desc] = Elaborate(desc, Builtins.symbolTable) match {
+        def loop(desc: Desc): FinalResult[Desc] = Elaborate(desc, cc.builtinSymbolTable) match {
           case Finished(_)            => unreachable
           case Partial(d, _)          => loop(d)
           case complete @ Complete(_) => complete
@@ -280,7 +279,7 @@ class Frontend(implicit cc: CompilerContext) {
         loop(desc).toEither
       case desc @ DescParametrized(_, _, _: DescPackage, _) =>
         // Parametrized package, will definitely not need to iterate just yet
-        Elaborate(desc, Builtins.symbolTable) match {
+        Elaborate(desc, cc.builtinSymbolTable) match {
           case Complete(value) => Right(value)
           case _               => unreachable
         }
@@ -323,7 +322,7 @@ class Frontend(implicit cc: CompilerContext) {
       case Right(desc) => Some(desc)
     } flatMap {
       case desc @ DescParametrized(_, _, _: DescPackage, _) =>
-        elaborate(params, Builtins.symbolTable, None)
+        elaborate(params, cc.builtinSymbolTable, None)
           .pipe {
             case result: FinalResult[List[Arg]] => result
             case Finished(result)               => Complete(result)

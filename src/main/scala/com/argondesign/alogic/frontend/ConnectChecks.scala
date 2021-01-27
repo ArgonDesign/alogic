@@ -42,7 +42,8 @@ object ConnectChecks {
               args.iterator flatMap { arg => activeLogic(arg.expr) }
             case _ => Iterator.single(expr)
           }
-        case _: ExprUnary => Iterator.single(expr)
+        case _: ExprBuiltin => ???
+        case _: ExprUnary   => Iterator.single(expr)
         case ExprBinary(lhs, op, rhs) =>
           op match {
             case "<<" | "<<<" | ">>" | ">>>" =>

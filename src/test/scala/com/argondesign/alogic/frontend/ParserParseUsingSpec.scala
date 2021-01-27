@@ -25,13 +25,13 @@ final class ParserParseUsingSpec extends AnyFreeSpec with AlogicTest {
       "without alias" - {
         "ident" in {
           "using a;".asTree[Using]() shouldBe {
-            UsingOne(ExprIdent(Ident("a", Nil)), None)
+            UsingOne(ExprIdent("a", Nil), None)
           }
         }
 
         "select" in {
           "using a.b;".asTree[Using]() shouldBe {
-            UsingOne(ExprDot(ExprIdent(Ident("a", Nil)), "b", Nil), None)
+            UsingOne(ExprDot(ExprIdent("a", Nil), "b", Nil), None)
           }
         }
 
@@ -39,7 +39,7 @@ final class ParserParseUsingSpec extends AnyFreeSpec with AlogicTest {
           "using a.b(0);".asTree[Using]() shouldBe {
             UsingOne(
               ExprCall(
-                ExprDot(ExprIdent(Ident("a", Nil)), "b", Nil),
+                ExprDot(ExprIdent("a", Nil), "b", Nil),
                 ArgP(ExprNum(false, 0)) :: Nil
               ),
               None
@@ -51,13 +51,13 @@ final class ParserParseUsingSpec extends AnyFreeSpec with AlogicTest {
       "with alias" - {
         "ident" in {
           "using a as x;".asTree[Using]() shouldBe {
-            UsingOne(ExprIdent(Ident("a", Nil)), Some(Ident("x", Nil)))
+            UsingOne(ExprIdent("a", Nil), Some(Ident("x", Nil)))
           }
         }
 
         "select" in {
           "using a.b as y;".asTree[Using]() shouldBe {
-            UsingOne(ExprDot(ExprIdent(Ident("a", Nil)), "b", Nil), Some(Ident("y", Nil)))
+            UsingOne(ExprDot(ExprIdent("a", Nil), "b", Nil), Some(Ident("y", Nil)))
           }
         }
 
@@ -65,7 +65,7 @@ final class ParserParseUsingSpec extends AnyFreeSpec with AlogicTest {
           "using a.b(0) as z#[2];".asTree[Using]() shouldBe {
             UsingOne(
               ExprCall(
-                ExprDot(ExprIdent(Ident("a", Nil)), "b", Nil),
+                ExprDot(ExprIdent("a", Nil), "b", Nil),
                 ArgP(ExprNum(false, 0)) :: Nil
               ),
               Some(Ident("z", ExprNum(false, 2) :: Nil))
@@ -78,20 +78,20 @@ final class ParserParseUsingSpec extends AnyFreeSpec with AlogicTest {
     "Using all" - {
       "ident" in {
         "using a.*;".asTree[Using]() shouldBe {
-          UsingAll(ExprIdent(Ident("a", Nil)), false)
+          UsingAll(ExprIdent("a", Nil), false)
         }
       }
 
       "select" in {
         "using a.b.*;".asTree[Using]() shouldBe {
-          UsingAll(ExprDot(ExprIdent(Ident("a", Nil)), "b", Nil), false)
+          UsingAll(ExprDot(ExprIdent("a", Nil), "b", Nil), false)
         }
       }
 
       "call" in {
         "using a.b(0).*;".asTree[Using]() shouldBe {
           UsingAll(
-            ExprCall(ExprDot(ExprIdent(Ident("a", Nil)), "b", Nil), ArgP(ExprNum(false, 0)) :: Nil),
+            ExprCall(ExprDot(ExprIdent("a", Nil), "b", Nil), ArgP(ExprNum(false, 0)) :: Nil),
             false
           )
         }

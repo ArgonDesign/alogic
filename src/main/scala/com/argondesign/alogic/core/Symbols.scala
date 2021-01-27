@@ -50,8 +50,6 @@ object Symbols {
 
     val attr: SymbolAttributes = new SymbolAttributes()
 
-    def isBuiltin: Boolean = this.attr.builtin.isSet
-
     override def hashCode: Int = id // TODO: review if this is still needed
 
     override def toString = s"$name@$id"

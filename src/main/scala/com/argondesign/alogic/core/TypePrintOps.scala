@@ -77,9 +77,9 @@ trait TypePrintOps { this: Type =>
     case TypeXenoFunc(s, r, as)               => s"xeno ${r.toSource} ${s.name} ${as.map(_.toSource).mkString("(", ", ", ")")}"
     case TypeStaticMethod(s, r, as)           => s"static ${r.toSource} ${s.name} ${as.map(_.toSource).mkString("(", ", ", ")")}"
     case TypeNormalMethod(s, r, as)           => s"method ${r.toSource} ${s.name} ${as.map(_.toSource).mkString("(", ", ", ")")}"
-    case _: TypePolyFunc                      => this.toString
     case TypeState(symbol)                    => s"state ${symbol.name}"
     case TypeMisc                             => this.toString
+    case TypeBuiltin                           => this.toString
     case TypeError                            => this.toString
   }
   // format: on

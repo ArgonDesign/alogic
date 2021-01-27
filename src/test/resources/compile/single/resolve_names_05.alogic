@@ -12,5 +12,3 @@ fsm resolve_names_05 {
   }
 }
 // :10: ERROR: 'N' is undefined
-// :10: ERROR: 'N' is undefined
-// TODO: single error only...

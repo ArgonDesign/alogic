@@ -73,12 +73,8 @@ final class MakeVerilog(
   // Render expression to Verilog
   @nowarn("msg=Recursive call used default arguments")
   private def vexpr(expr: Expr, indent: Int = 0): String = expr match {
-    case ExprCall(e, as) =>
-      val aa = as map {
-        case ArgP(e) => vexpr(e)
-        case _       => unreachable
-      }
-      s"${vexpr(e)}(${aa mkString ", "})"
+    case ExprCall(e, as)    => s"${vexpr(e)}(${as map { a => vexpr(a.expr) } mkString ", "})"
+    case ExprBuiltin(b, as) => s"${b.name}(${as map { a => vexpr(a.expr) } mkString ", "})"
     case ExprUnary(op, e) =>
       e match {
         case _: ExprUnary | _: ExprBinary | _: ExprCond => s"$op(${vexpr(e)})"

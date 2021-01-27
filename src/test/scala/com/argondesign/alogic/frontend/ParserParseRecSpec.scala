@@ -55,13 +55,13 @@ final class ParserParseRecSpec extends AnyFreeSpec with AlogicTest {
 
     "using" in {
       "using a;".asTree[Rec]() shouldBe {
-        RecSplice(UsingOne(ExprIdent(Ident("a", Nil)), None))
+        RecSplice(UsingOne(ExprIdent("a", Nil), None))
       }
     }
 
     "from" in {
       """from "a" import b;""".asTree[Rec]() shouldBe {
-        RecSplice(FromOne("a", ExprIdent(Ident("b", Nil)), None))
+        RecSplice(FromOne("a", ExprIdent("b", Nil), None))
       }
     }
 

@@ -170,7 +170,7 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
       //////////////////////////////////////////////////////////////////////////
 
       override def visitExprKeyword(ctx: ExprKeywordContext): Expr =
-        ExprIdent(Ident(ctx.txt, Nil) withLoc ctx.loc) withLoc ctx.loc
+        ExprIdent(ctx.txt, Nil) withLoc ctx.loc
 
       override def visitExprThis(ctx: ExprThisContext): Expr = {
         mb.error(ctx.loc, "'this' reference is not user accessible")
@@ -182,13 +182,14 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
       //////////////////////////////////////////////////////////////////////////
 
       override def visitExprIdent(ctx: ExprIdentContext): Expr =
-        ExprIdent(IdentBuilder(ctx.ident)) withLoc ctx.loc
+        ExprIdent(ctx.ident.IDENTIFIER.txt, ExprBuilder(ctx.ident.expr)) withLoc ctx.loc
 
       override def visitExprAtid(ctx: ExprAtidContext): Expr =
-        ExprIdent(IdentBuilder(ctx.ATID)) withLoc ctx.loc
+        ExprIdent(ctx.ATID.txt, Nil) withLoc ctx.loc
 
       override def visitExprDollarid(ctx: ExprDollaridContext): Expr =
-        ExprIdent(IdentBuilder(ctx.DOLLARID)) withLoc ctx.loc
+        ExprIdent(ctx.DOLLARID.txt, Nil) withLoc ctx.loc
+
       //////////////////////////////////////////////////////////////////////////
       // Call
       //////////////////////////////////////////////////////////////////////////

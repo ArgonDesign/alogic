@@ -348,6 +348,7 @@ trait TreePrintOps {
   // format: off
   final private def v(tree: Expr)(implicit indent: Int): String = tree match {
     case ExprCall(expr, args) => s"${v(expr)}(${vs(args)})"
+    case ExprBuiltin(bf, args) => s"${bf.name}(${vs(args)})"
     case ExprUnary(op, expr) => s"$op${v(expr)}"
     case ExprBinary(lhs, op, rhs) => s"(${v(lhs)} $op ${v(rhs)})"
     case ExprCond(cond, thenExpr, elseExpr) => s"(${v(cond)} ? ${v(thenExpr)} : ${v(elseExpr)})"
@@ -359,7 +360,8 @@ trait TreePrintOps {
     case ExprDot(expr, selector, idxs) => s"${v(expr)}.$selector#[${vs(idxs)}]"
     case ExprSel(expr, selector) => s"${v(expr)}.$selector"
     case ExprSymSel(expr, selector) => s"${v(expr)}.$selector"
-    case ExprIdent(ref) => v(ref)
+    case ExprIdent(base, Nil) => base
+    case ExprIdent(base, idxs) => s"${base}#[${vs(idxs)}]"
     case ExprSym(symbol) => s"${symbol.name}@${symbol.id}"
     case ExprOld(expr) => s"old(${v(expr)})"
     case ExprThis(expr) => s"this(${v(expr)})"

@@ -11,31 +11,28 @@
 package com.argondesign.alogic.builtins
 
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.Loc
-import com.argondesign.alogic.core.Messages.Fatal
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.frontend.Complete
+import com.argondesign.alogic.frontend.Failure
+import com.argondesign.alogic.frontend.FinalResult
 import com.argondesign.alogic.frontend.Frontend
 import com.argondesign.alogic.lib.Math
-import com.argondesign.alogic.util.PartialMatch.PartialMatchImpl
+import com.argondesign.alogic.util.unreachable
 
-object DollarClog2 extends BuiltinPolyFunc("$clog2") {
+object DollarClog2 extends Builtin("$clog2", isPure = true) {
 
-  // TODO: die when non-const argument
-
-  def returnType(args: List[Expr], feOpt: Option[Frontend]): Option[TypeFund] = args partialMatch {
-    case List(arg) if arg.tpe.isPacked || arg.tpe.underlying.isNum => TypeNum(false)
-  }
-
-  val isPure: Boolean = true
-
-  def simplify(loc: Loc, args: List[Expr]): Option[Expr] = {
-    args(0).valueOption map { value =>
-      if (value < 0) {
-        throw Fatal(loc, s"'$name' invoked on negative value $value")
-      } else {
-        ExprNum(false, Math.clog2(value))
-      }
+  def typeCheck(expr: ExprBuiltin, args: List[Expr])(implicit fe: Frontend): FinalResult[TypeFund] =
+    checkArgCount(expr, 1) flatMap { _ =>
+      fe.evaluate(args.head, s"argument of '$name'")
+    } flatMap {
+      case v if v < 0 => Failure(args.head, s"'$name' invoked on negative argument $v")
+      case _          => Complete(TypeNum(false))
     }
-  }
 
+  def clarify(expr: ExprBuiltin)(implicit fe: Frontend): Expr =
+    ExprNum(false, Math.clog2(fe.evaluate(expr.args.head.expr, unreachable).get))
+
+  def returnType(args: List[Arg]): TypeFund = unreachable
+
+  def simplify(expr: ExprBuiltin): Expr = unreachable
 }

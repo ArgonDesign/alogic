@@ -176,7 +176,7 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
   private def checkWidth(width: BigInt, expr: Expr, subject: String)(implicit tree: Tree): Unit = {
     def complain(problem: String): Unit =
       error(expr, s"$subject $problem, a $width bit value is expected")
-    if (expr.tpe.isNum) {
+    if (expr.tpe.underlying.isNum) {
       complain("yields an unsized value")
     } else if (!expr.tpe.isPacked) {
       complain("is of non-packed type")
@@ -367,8 +367,8 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
   override def enter(tree: Tree): Option[Tree] = {
     implicit val theTree: Tree = tree
     tree pipe {
-      case ExprIdent(ident) =>
-        rAcc addOne ReasonUnresolved(ident)
+      case e: ExprIdent =>
+        rAcc addOne ReasonUnresolved(e)
         Some(tree)
       case Desc(_: Ident) | _: DescGenIf | _: DescGenFor | _: DescGenRange | _: Using | _: Import =>
         rAcc addOne ReasonUnelaborated(tree)
@@ -420,7 +420,6 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
                 case TypeXenoFunc(_, _, argTypes)     => check(argTypes)
                 case TypeStaticMethod(_, _, argTypes) => check(argTypes)
                 case TypeNormalMethod(_, _, argTypes) => check(argTypes)
-                case _: TypePolyFunc                  => None // Will be resolved in postOrder
                 case TypeParametrized(symbol)         =>
                   // Specialize here without type checking the arguments as
                   // the arguments (parameter assignments) are not typeable
@@ -945,17 +944,19 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
             case TypeXenoFunc(_, _, argTypes)     => check(argTypes)
             case TypeStaticMethod(_, _, argTypes) => check(argTypes)
             case TypeNormalMethod(_, _, argTypes) => check(argTypes)
-            case tpe: TypePolyFunc =>
-              tpe.resolve(args, Some(fe)) match {
-                case Some(symbol) => tree withTpe symbol.kind.asCombFunc.retType
-                case None =>
-                  error(
-                    s"Builtin function '${expr.toSource}' cannot be applied to arguments of types",
-                    args map { arg => s"'${arg.expr.tpe.toSource}'" }: _*
-                  )
-              }
-            case _ => unreachable // Handled in enter
+            case _                                => unreachable // Handled in enter
           }
+      }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Builtin
+    ////////////////////////////////////////////////////////////////////////////
+
+    case expr: ExprBuiltin =>
+      expr.builtin.typeCheck(expr) match {
+        case Complete(kind) => expr withTpe kind
+        case Unknown(rs)    => rAcc addAll rs; None
+        case Failure(ms)    => mAcc addAll ms; error; None
       }
 
     ////////////////////////////////////////////////////////////////////////////

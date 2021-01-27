@@ -1,15 +1,10 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2018 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler
-// Author: Geza Lore
-//
 // DESCRIPTION:
-//
 // Fold expressions and statements
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -17,9 +12,10 @@ package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.builtins.DollarSigned
+import com.argondesign.alogic.builtins.DollarUnsigned
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.TypeAssigner
-import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
@@ -35,8 +31,8 @@ final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer 
 
   private def simplifyAssignmentSource(expr: Expr): Expr = expr.simplify match {
     // Drop pointless call to $unsigned/$signed
-    case ExprCall(ExprSym(Symbol("$unsigned" | "$signed")), args) => args.head.expr
-    case other                                                    => other
+    case ExprBuiltin(DollarUnsigned | DollarSigned, args) => args.head.expr
+    case other                                            => other
   }
 
   private var condLvl = 0

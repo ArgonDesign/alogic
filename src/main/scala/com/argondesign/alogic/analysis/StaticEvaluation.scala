@@ -86,6 +86,7 @@ object StaticEvaluation {
       case ExprUnary(_, e)       => p(e)
       case ExprCond(c, ts, es)   => p(c) || p(ts) || p(es)
       case ExprCall(e, as)       => p(e) || (as exists { a => p(a.expr) })
+      case ExprBuiltin(_, as)    => as exists { a => p(a.expr) }
       case ExprIndex(e, i)       => p(e) || p(i)
       case ExprSlice(e, l, _, r) => p(e) || p(l) || p(r)
       case ExprCat(ps)           => ps exists p
@@ -93,13 +94,10 @@ object StaticEvaluation {
       case ExprSel(e, _)         => p(e)
       case ExprCast(_, e)        => p(e)
       case ExprOld(e)            => p(e)
-      case _: ExprType           => false
-      case _: ExprStr            => false
-      case _: ExprError          => false
-      case _: ExprDot            => unreachable
-      case _: ExprSymSel         => unreachable
-      case _: ExprIdent          => unreachable
-      case _: ExprThis           => unreachable
+      case _: ExprType | _: ExprStr | _: ExprError =>
+        false
+      case _: ExprDot | _: ExprSymSel | _: ExprIdent | _: ExprThis =>
+        unreachable
     }
     p(expr)
   }

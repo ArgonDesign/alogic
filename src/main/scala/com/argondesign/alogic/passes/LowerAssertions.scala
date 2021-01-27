@@ -51,44 +51,28 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
   private def modifiable(symbol: Symbol): Boolean = symbol.kind match {
     // Fundamental type
     case _: TypeInt    => true
-    case _: TypeNum    => unreachable
     case _: TypeVector => true
-    case TypeVoid      => unreachable
-    case TypeStr       => unreachable
     case _: TypeRecord => true
     case _: TypeEntity => false
     // Derived
     case _: TypeIn          => false
     case TypeOut(_, fct, _) => fct == FlowControlTypeNone
-    case _: TypePipeVar     => unreachable
-    case _: TypeParam       => unreachable
     case _: TypeConst       => false
-    case _: TypeGen         => unreachable
     case _: TypeArray       => false
     case _: TypeSram        => false
     case _: TypeStack       => false
     // Pipeline ports
-    case _: TypePipeIn  => unreachable
-    case _: TypePipeOut => unreachable
     // Function types
-    case _: TypeCombFunc     => false
-    case _: TypeCtrlFunc     => unreachable
-    case _: TypePolyFunc     => unreachable
-    case _: TypeXenoFunc     => false
-    case _: TypeStaticMethod => unreachable
-    case _: TypeNormalMethod => unreachable
+    case _: TypeCombFunc => false
+    case _: TypeXenoFunc => false
     // Misc types
-    case _: TypeType         => false
-    case _: TypeNone         => unreachable
-    case _: TypeParametrized => unreachable
-    case TypeCombStmt        => unreachable
-    case TypeCtrlStmt        => unreachable
+    case _: TypeType => false
     //
-    case _: TypeState   => unreachable
-    case TypeMisc       => unreachable
-    case TypeError      => unreachable
-    case _: TypePackage => unreachable
-    case _: TypeScope   => unreachable
+    case _: TypeNum | TypeVoid | TypeStr | _: TypePipeVar | _: TypeParam | _: TypeGen |
+        _: TypeCtrlFunc | _: TypeStaticMethod | _: TypeNormalMethod | _: TypePipeIn |
+        _: TypePipeOut | _: TypeNone | _: TypeParametrized | TypeCombStmt | TypeCtrlStmt |
+        _: TypeState | TypeMisc | TypeBuiltin | TypeError | _: TypePackage | _: TypeScope =>
+      unreachable
   }
 
   override protected def skip(tree: Tree): Boolean = tree match {

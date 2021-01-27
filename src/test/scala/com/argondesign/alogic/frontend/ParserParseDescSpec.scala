@@ -471,7 +471,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
       "instance" - {
         "plain" in {
           "i = new j;".asTree[Desc]() shouldBe {
-            DescInstance(Ident("i", Nil), Nil, ExprIdent(Ident("j", Nil)))
+            DescInstance(Ident("i", Nil), Nil, ExprIdent("j", Nil))
           }
         }
 
@@ -480,14 +480,14 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
             DescInstance(
               Ident("i", Nil),
               Nil,
-              ExprCall(ExprIdent(Ident("j", Nil)), List(ArgN("A", Expr(2)), ArgN("B", Expr(3))))
+              ExprCall(ExprIdent("j", Nil), List(ArgN("A", Expr(2)), ArgN("B", Expr(3))))
             )
           }
         }
 
         "with attribute" in {
           "(* foo *) i = new j;".asTree[Desc]() shouldBe {
-            DescInstance(Ident("i", Nil), List(AttrBool("foo")), ExprIdent(Ident("j", Nil)))
+            DescInstance(Ident("i", Nil), List(AttrBool("foo")), ExprIdent("j", Nil))
           }
         }
       }
@@ -614,7 +614,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
                 Ident("f", Nil),
                 Nil,
                 FuncVariant.Comb,
-                ExprIdent(Ident("r", Nil)),
+                ExprIdent("r", Nil),
                 Nil,
                 Nil
               )
@@ -653,7 +653,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
             DescGenIf(
               Ident("", Nil),
               Nil,
-              List(GenCase(ExprIdent(Ident("i", Nil)) < ExprNum(false, 0), List(StmtFence()))),
+              List(GenCase(ExprIdent("i", Nil) < ExprNum(false, 0), List(StmtFence()))),
               Nil
             )
           }
@@ -664,7 +664,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
             DescGenIf(
               Ident("", Nil),
               Nil,
-              List(GenCase(ExprIdent(Ident("i", Nil)) < ExprNum(false, 0), List(StmtFence()))),
+              List(GenCase(ExprIdent("i", Nil) < ExprNum(false, 0), List(StmtFence()))),
               List(StmtFence(), StmtBreak())
             )
           }
@@ -682,8 +682,8 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
               Ident("", Nil),
               Nil,
               List(
-                GenCase(ExprIdent(Ident("i", Nil)), List(StmtFence())),
-                GenCase(ExprIdent(Ident("j", Nil)), List(StmtReturn(comb = false, None)))
+                GenCase(ExprIdent("i", Nil), List(StmtFence())),
+                GenCase(ExprIdent("j", Nil), List(StmtReturn(comb = false, None)))
               ),
               List(StmtBreak())
             )
@@ -704,11 +704,11 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
               Ident("", Nil),
               Nil,
               List(
-                GenCase(ExprIdent(Ident("i", Nil)), List(StmtFence())),
-                GenCase(ExprIdent(Ident("j", Nil)), List(StmtReturn(comb = false, None))),
+                GenCase(ExprIdent("i", Nil), List(StmtFence())),
+                GenCase(ExprIdent("j", Nil), List(StmtReturn(comb = false, None))),
                 GenCase(
-                  ExprIdent(Ident("k", Nil)),
-                  List(StmtExpr(ExprCall(ExprIdent(Ident("f", Nil)), Nil)))
+                  ExprIdent("k", Nil),
+                  List(StmtExpr(ExprCall(ExprIdent("f", Nil), Nil)))
                 )
               ),
               List(StmtBreak())
@@ -721,7 +721,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
             DescGenIf(
               Ident("foo", Nil),
               Nil,
-              List(GenCase(ExprIdent(Ident("i", Nil)) < ExprNum(false, 0), List(StmtFence()))),
+              List(GenCase(ExprIdent("i", Nil) < ExprNum(false, 0), List(StmtFence()))),
               Nil
             )
           }
@@ -732,7 +732,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
             DescGenIf(
               Ident("", Nil),
               Nil,
-              List(GenCase(ExprIdent(Ident("i", Nil)) < ExprNum(false, 0), Nil)),
+              List(GenCase(ExprIdent("i", Nil) < ExprNum(false, 0), Nil)),
               Nil
             )
           }
@@ -744,8 +744,8 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
               Ident("", Nil),
               Nil,
               List(
-                GenCase(ExprIdent(Ident("i", Nil)) < ExprNum(false, 0), Nil),
-                GenCase(ExprIdent(Ident("i", Nil)) < ExprNum(false, 1), Nil)
+                GenCase(ExprIdent("i", Nil) < ExprNum(false, 0), Nil),
+                GenCase(ExprIdent("i", Nil) < ExprNum(false, 1), Nil)
               ),
               Nil
             )
@@ -757,7 +757,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
             DescGenIf(
               Ident("", Nil),
               Nil,
-              List(GenCase(ExprIdent(Ident("i", Nil)) < ExprNum(false, 0), Nil)),
+              List(GenCase(ExprIdent("i", Nil) < ExprNum(false, 0), Nil)),
               Nil
             )
           }
@@ -773,8 +773,8 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
               Ident("", Nil),
               Nil,
               List(DescGenVar(Ident("a", Nil), Nil, ExprType(TypeSInt(8)), Expr(2))),
-              ExprIdent(Ident("a", Nil)),
-              List(StmtPost(ExprIdent(Ident("a", Nil)), "--")),
+              ExprIdent("a", Nil),
+              List(StmtPost(ExprIdent("a", Nil), "--")),
               List(StmtExpr(Expr(2)))
             )
           }
@@ -806,10 +806,10 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
               List(
                 DescGenVar(Ident("a", Nil), Nil, ExprType(TypeNum(false)), Expr(0))
               ),
-              ExprIdent(Ident("a", Nil)),
+              ExprIdent("a", Nil),
               List(
-                StmtPost(ExprIdent(Ident("a", Nil)), "++"),
-                StmtPost(ExprIdent(Ident("b", Nil)), "--")
+                StmtPost(ExprIdent("a", Nil), "++"),
+                StmtPost(ExprIdent("b", Nil), "--")
               ),
               Nil
             )
@@ -822,8 +822,8 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
               Ident("foo", Nil),
               Nil,
               List(DescGenVar(Ident("a", Nil), Nil, ExprType(TypeSInt(8)), Expr(2))),
-              ExprIdent(Ident("a", Nil)),
-              List(StmtPost(ExprIdent(Ident("a", Nil)), "--")),
+              ExprIdent("a", Nil),
+              List(StmtPost(ExprIdent("a", Nil), "--")),
               Nil
             )
           }

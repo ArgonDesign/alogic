@@ -12,7 +12,7 @@
 package com.argondesign.alogic.ast
 
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.builtins.Builtins
+import com.argondesign.alogic.builtins._
 import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.TypeAssigner
@@ -50,11 +50,11 @@ trait ExprOps { this: Expr =>
     }
   }
 
-  final private def mkIndex(idx: Int) = {
+  final private def mkIndex(idx: Long) = {
     fix(ExprInt(false, (clog2(tpe.shapeIter.next()) max 1).toInt, idx))
   }
 
-  final private def mkSliceLength(idx: Int) = {
+  final private def mkSliceLength(idx: Long) = {
     fix(ExprInt(false, clog2(tpe.shapeIter.next() + 1), idx))
   }
 
@@ -98,7 +98,8 @@ trait ExprOps { this: Expr =>
   final def >=(rhs: Int): ExprBinary = this >= mkSized(rhs)
 
   final def index(idx: Expr): ExprIndex = fix(ExprIndex(this, idx))
-  final def index(idx: Int): ExprIndex = this index mkIndex(idx)
+  final def index[T: Numeric](idx: T): ExprIndex =
+    this index mkIndex(implicitly[Numeric[T]].toInt(idx))
 
   final def slice(lIdx: Expr, op: String, rIdx: Expr): ExprSlice =
     fix(ExprSlice(this, lIdx, op, rIdx))
@@ -116,7 +117,8 @@ trait ExprOps { this: Expr =>
   final def cat(rhs: Expr): ExprCat = fix(ExprCat(List(this, rhs)))
 
   final def rep(cnt: Expr): ExprRep = fix(ExprRep(cnt, this))
-  final def rep(cnt: Int): ExprRep = this rep fix(Expr(cnt))
+  final def rep[T: Numeric](cnt: T): ExprRep =
+    this rep fix(Expr(implicitly[Numeric[T]].toLong(cnt)))
 
   final def cast(kind: TypeFund): ExprCast = fix(ExprCast(kind, this))
 
@@ -127,17 +129,18 @@ trait ExprOps { this: Expr =>
   final def unary_~ : ExprUnary = unary("~")
   final def unary_! : ExprUnary = unary("!")
 
-  final def zx(width: Expr): ExprCall = Builtins.makeCall("@zx", loc, List(width, this))
-  final def zx(width: Int): ExprCall = this zx fix(Expr(width))
+  final def zx(width: Expr): ExprBuiltin =
+    fix(ExprBuiltin(AtZx, List(fix(ArgP(width)), fix(ArgP(this)))))
+  final def zx(width: Int): ExprBuiltin = this zx fix(Expr(width))
 
-  final def sx(width: Expr): ExprCall = Builtins.makeCall("@sx", loc, List(width, this))
-  final def sx(width: Int): ExprCall = this sx fix(Expr(width))
+  final def sx(width: Expr): ExprBuiltin =
+    fix(ExprBuiltin(AtSx, List(fix(ArgP(width)), fix(ArgP(this)))))
+  final def sx(width: Int): ExprBuiltin = this sx fix(Expr(width))
 
-  final def castUnsigned: ExprCall = Builtins.makeCall("$unsigned", loc, this :: Nil)
-  final def castSigned: ExprCall = Builtins.makeCall("$signed", loc, this :: Nil)
+  final def castUnsigned: ExprBuiltin = fix(ExprBuiltin(DollarUnsigned, List(fix(ArgP(this)))))
+  final def castSigned: ExprBuiltin = fix(ExprBuiltin(DollarSigned, List(fix(ArgP(this)))))
 
-  final def asUnsigned: Expr =
-    if (tpe.isSigned) castUnsigned else this
+  final def asUnsigned: Expr = if (tpe.isSigned) castUnsigned else this
   final def asSigned: Expr = if (tpe.isSigned) this else castSigned
   final def withSignedness(signed: Boolean): Expr =
     if (tpe.isSigned && !signed) castUnsigned else if (!tpe.isSigned && signed) castSigned else this
@@ -165,12 +168,8 @@ trait ExprOps { this: Expr =>
 
   final def isPure: Boolean = {
     def p(expr: Expr): Boolean = expr match {
-      case call @ ExprCall(tgt, _) =>
-        tgt.tpe match {
-          case TypePolyFunc(symbol, _) if symbol.isBuiltin    => Builtins.isPureCall(call)
-          case TypeCombFunc(symbol, _, _) if symbol.isBuiltin => Builtins.isPureCall(call)
-          case _                                              => false
-        }
+      case _: ExprCall             => false // Assume all calls are impure
+      case ExprBuiltin(b, as)      => b.isPure && as.forall(_.expr.isPure)
       case ExprUnary(_, e)         => p(e)
       case ExprBinary(l, _, r)     => p(l) && p(r)
       case ExprCond(c, t, e)       => p(c) && p(t) && p(e)
@@ -255,32 +254,35 @@ trait ExprOps { this: Expr =>
     case _                                 => None
   }
 
+  def value: BigInt = valueOption.get
+
   // True if this we know the value of this expression (same as value.isDefined)
   def isKnown: Boolean = valueOption.isDefined
 
   def cpy(): Expr = this match {
     // $COVERAGE-OFF$ Trivial to keep full, but not necessarily used
-    case expr: ExprCall   => expr.copy()
-    case expr: ExprUnary  => expr.copy()
-    case expr: ExprBinary => expr.copy()
-    case expr: ExprCond   => expr.copy()
-    case expr: ExprRep    => expr.copy()
-    case expr: ExprCat    => expr.copy()
-    case expr: ExprIndex  => expr.copy()
-    case expr: ExprSlice  => expr.copy()
-    case expr: ExprDot    => expr.copy()
-    case expr: ExprSel    => expr.copy()
-    case expr: ExprSymSel => expr.copy()
-    case expr: ExprIdent  => expr.copy()
-    case expr: ExprSym    => expr.copy()
-    case expr: ExprOld    => expr.copy()
-    case expr: ExprThis   => expr.copy()
-    case expr: ExprType   => expr.copy()
-    case expr: ExprCast   => expr.copy()
-    case expr: ExprInt    => expr.copy()
-    case expr: ExprNum    => expr.copy()
-    case expr: ExprStr    => expr.copy()
-    case expr: ExprError  => ExprError()
+    case expr: ExprCall    => expr.copy()
+    case expr: ExprBuiltin => expr.copy()
+    case expr: ExprUnary   => expr.copy()
+    case expr: ExprBinary  => expr.copy()
+    case expr: ExprCond    => expr.copy()
+    case expr: ExprRep     => expr.copy()
+    case expr: ExprCat     => expr.copy()
+    case expr: ExprIndex   => expr.copy()
+    case expr: ExprSlice   => expr.copy()
+    case expr: ExprDot     => expr.copy()
+    case expr: ExprSel     => expr.copy()
+    case expr: ExprSymSel  => expr.copy()
+    case expr: ExprIdent   => expr.copy()
+    case expr: ExprSym     => expr.copy()
+    case expr: ExprOld     => expr.copy()
+    case expr: ExprThis    => expr.copy()
+    case expr: ExprType    => expr.copy()
+    case expr: ExprCast    => expr.copy()
+    case expr: ExprInt     => expr.copy()
+    case expr: ExprNum     => expr.copy()
+    case expr: ExprStr     => expr.copy()
+    case _: ExprError      => ExprError()
     // $COVERAGE-ON$
   }
 
@@ -288,7 +290,7 @@ trait ExprOps { this: Expr =>
 
 trait ExprObjOps { self: Expr.type =>
   // Helpers to easily create ExprNum from integers
-  final def apply(n: Int): ExprNum = ExprNum(false, n)
+  final def apply(n: Long): ExprNum = ExprNum(false, n)
   final def apply(n: BigInt): ExprNum = ExprNum(false, n)
 
   object ImplicitConversions {

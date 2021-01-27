@@ -11,27 +11,41 @@
 package com.argondesign.alogic.builtins
 
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.frontend.Clarify
+import com.argondesign.alogic.frontend.Complete
+import com.argondesign.alogic.frontend.Failure
+import com.argondesign.alogic.frontend.FinalResult
 import com.argondesign.alogic.frontend.Frontend
-import com.argondesign.alogic.util.PartialMatch.PartialMatchImpl
 
-object DollarDisplay extends BuiltinPolyFunc("$display") {
+import scala.util.chaining.scalaUtilChainingOps
 
-  private def validArg(expr: Expr) = expr.tpe.underlying match {
-    case TypeVoid   => false
-    case _: TypeNum => true
-    case kind       => kind.isPacked
-  }
+object DollarDisplay extends Builtin("$display", isPure = false) {
 
-  def returnType(args: List[Expr], feOpt: Option[Frontend]): Option[TypeFund] = args partialMatch {
-    case Nil                                                         => TypeVoid
-    case str :: rest if str.tpe == TypeStr && (rest forall validArg) => TypeVoid
-  }
+  def typeCheck(expr: ExprBuiltin, args: List[Expr])(implicit fe: Frontend): FinalResult[TypeFund] =
+    if (
+      args pipe {
+        case Nil => true
+        case str :: rest =>
+          str.tpe.isStr && rest.map(_.tpe.underlying).forall {
+            case TypeVoid   => false
+            case _: TypeNum => true
+            case kind       => kind.isPacked
+          }
+      }
+    ) {
+      Complete(TypeVoid)
+    } else {
+      Failure(
+        expr,
+        s"First argument to '$name' must be a string, the rest must be packed (or unsized)"
+      )
+    }
 
-  def isKnown(args: List[Expr]) = false
+  def clarify(expr: ExprBuiltin)(implicit fe: Frontend): Expr =
+    expr.copy(args = expr.args map Clarify.apply)
 
-  val isPure: Boolean = false
+  def returnType(args: List[Arg]): TypeFund = TypeVoid
 
-  def simplify(loc: Loc, args: List[Expr]): Option[Expr] = None
+  def simplify(expr: ExprBuiltin): Expr = expr
 }

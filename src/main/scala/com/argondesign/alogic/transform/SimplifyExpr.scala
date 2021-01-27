@@ -14,7 +14,8 @@ package com.argondesign.alogic.transform
 import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.ast.Trees.Expr.Integral
-import com.argondesign.alogic.builtins.Builtins
+import com.argondesign.alogic.builtins.DollarSigned
+import com.argondesign.alogic.builtins.DollarUnsigned
 import com.argondesign.alogic.core.Messages.Fatal
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols.Symbol
@@ -319,16 +320,16 @@ object SimplifyExpr extends StatelessTreeTransformer {
     // Everything else, dispatch based on the root node to speed things up
     //////////////////////////////////////////////////////////////////////////
 
-    case expr: ExprSym    => transformSym(expr)
-    case expr: ExprUnary  => transformUnary(expr)
-    case expr: ExprBinary => transformBinary(expr)
-    case expr: ExprCond   => transformTernary(expr)
-    case expr: ExprIndex  => transformIndex(expr)
-    case expr: ExprSlice  => transformSlice(expr)
-    case expr: ExprCat    => transformCat(expr)
-    case expr: ExprRep    => transformRep(expr)
-    case expr: ExprCast   => transformCast(expr)
-    case expr: ExprCall   => transformCall(expr)
+    case expr: ExprSym     => transformSym(expr)
+    case expr: ExprUnary   => transformUnary(expr)
+    case expr: ExprBinary  => transformBinary(expr)
+    case expr: ExprCond    => transformTernary(expr)
+    case expr: ExprIndex   => transformIndex(expr)
+    case expr: ExprSlice   => transformSlice(expr)
+    case expr: ExprCat     => transformCat(expr)
+    case expr: ExprRep     => transformRep(expr)
+    case expr: ExprCast    => transformCast(expr)
+    case expr: ExprBuiltin => expr.builtin.simplify(expr)
 
     //////////////////////////////////////////////////////////////////////////
     // Leave rest alone
@@ -372,12 +373,13 @@ object SimplifyExpr extends StatelessTreeTransformer {
         throw Ice(tree, s"SimplifyExpr changed packedness." :: hints: _*)
       }
       if (result.tpe.isSigned != tree.tpe.isSigned) {
+        s"SimplifyExpr changed signedness." :: hints foreach println
         throw Ice(tree, s"SimplifyExpr changed signedness." :: hints: _*)
       }
       if (result.tpe.isPacked && result.tpe.width != tree.tpe.width) {
         throw Ice(tree, s"SimplifyExpr changed width." :: hints: _*)
       }
-      if (result.tpe.isNum != tree.tpe.underlying.isNum) {
+      if (result.tpe.underlying.isNum != tree.tpe.underlying.isNum) {
         throw Ice(tree, s"SimplifyExpr changed Num'ness." :: hints: _*)
       }
       if (result.tpe.isType != tree.tpe.isType) {
@@ -742,7 +744,7 @@ object SimplifyExpr extends StatelessTreeTransformer {
     // Fold index over $signed/$unsigned
     ////////////////////////////////////////////////////////////////////////////
 
-    case ExprIndex(ExprCall(ExprSym(Symbol("$signed" | "$unsigned")), args), idx) =>
+    case ExprIndex(ExprBuiltin(DollarSigned | DollarUnsigned, args), idx) =>
       ExprIndex(args.head.expr, idx) withLoc tree.loc
 
     ////////////////////////////////////////////////////////////////////////////
@@ -783,7 +785,8 @@ object SimplifyExpr extends StatelessTreeTransformer {
         // Fold index zero of width one
         ////////////////////////////////////////////////////////////////////////////
 
-        case _ => if (index == 0 && expr.tpe.isPacked && expr.tpe.width == 1) expr else tree
+        case _ =>
+          if (index == 0 && expr.tpe.isPacked && expr.tpe.width == 1) expr.asUnsigned else tree
       }
 
     case _ => tree
@@ -851,7 +854,7 @@ object SimplifyExpr extends StatelessTreeTransformer {
     // Fold slice over $signed/$unsigned
     ////////////////////////////////////////////////////////////////////////////
 
-    case ExprSlice(ExprCall(ExprSym(Symbol("$signed" | "$unsigned")), args), _, _, _) =>
+    case ExprSlice(ExprBuiltin(DollarSigned | DollarUnsigned, args), _, _, _) =>
       tree.copy(expr = args.head.expr) withLoc tree.loc
 
     ////////////////////////////////////////////////////////////////////////////
@@ -985,13 +988,13 @@ object SimplifyExpr extends StatelessTreeTransformer {
     ////////////////////////////////////////////////////////////////////////////
 
     case ExprCat(args) if args exists {
-          case ExprCall(ExprSym(Symbol("$signed" | "$unsigned")), _) => true
-          case _                                                     => false
+          case ExprBuiltin(DollarSigned | DollarUnsigned, _) => true
+          case _                                             => false
         } =>
       ExprCat {
         args map {
-          case ExprCall(ExprSym(Symbol("$signed" | "$unsigned")), args) => args.head.expr
-          case arg                                                      => arg
+          case ExprBuiltin(DollarSigned | DollarUnsigned, args) => args.head.expr
+          case arg                                              => arg
         }
       } withLoc tree.loc
 
@@ -1029,7 +1032,7 @@ object SimplifyExpr extends StatelessTreeTransformer {
     // Remove pointless $signed/$unsigned Rep arguments
     ////////////////////////////////////////////////////////////////////////////
 
-    case ExprRep(count, ExprCall(ExprSym(Symbol("$signed" | "$unsigned")), args)) =>
+    case ExprRep(count, ExprBuiltin(DollarSigned | DollarUnsigned, args)) =>
       ExprRep(count, args.head.expr) withLoc tree.loc
 
     ////////////////////////////////////////////////////////////////////////////
@@ -1111,18 +1114,6 @@ object SimplifyExpr extends StatelessTreeTransformer {
 
       case _ => tree
     }
-  }
-
-  private def transformCall(tree: ExprCall): Expr = tree match {
-    ////////////////////////////////////////////////////////////////////////////
-    // Fold built-in functions
-    ////////////////////////////////////////////////////////////////////////////
-
-    case call @ ExprCall(ExprSym(symbol), _) if symbol.isBuiltin =>
-      val result = Builtins.foldCall(call)
-      if (result eq call) call else result regularize tree.loc
-
-    case _ => tree
   }
 
 }

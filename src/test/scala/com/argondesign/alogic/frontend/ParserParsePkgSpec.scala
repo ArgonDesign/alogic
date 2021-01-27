@@ -45,13 +45,13 @@ final class ParserParsePkgSpec extends AnyFreeSpec with AlogicTest {
 
     "using" in {
       "using a;".asTree[Pkg]() shouldBe {
-        PkgSplice(UsingOne(ExprIdent(Ident("a", Nil)), None))
+        PkgSplice(UsingOne(ExprIdent("a", Nil), None))
       }
     }
 
     "from" in {
       """from "a" import b;""".asTree[Pkg]() shouldBe {
-        PkgSplice(FromOne("a", ExprIdent(Ident("b", Nil)), None))
+        PkgSplice(FromOne("a", ExprIdent("b", Nil), None))
       }
     }
 

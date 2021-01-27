@@ -761,7 +761,8 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
           } tap { tree =>
             if (msg.isEmpty) {
               tree getFirst {
-                case e: ExprCall => e
+                case e: ExprCall    => e
+                case e: ExprBuiltin => e
               } tap {
                 _.tpe shouldBe kind
               }

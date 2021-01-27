@@ -56,7 +56,6 @@ trait TypeOps extends TypePrintOps { this: Type =>
   final def isCallable: Boolean = this.isInstanceOf[TypeCallable]
   final def isCombFunc: Boolean = this.isInstanceOf[TypeCombFunc]
   final def isCtrlFunc: Boolean = this.isInstanceOf[TypeCtrlFunc]
-  final def isPolyFunc: Boolean = this.isInstanceOf[TypePolyFunc]
   final def isXenoFunc: Boolean = this.isInstanceOf[TypeXenoFunc]
   final def isMethod: Boolean = this.isInstanceOf[TypeMethod]
   final def isStaticMethod: Boolean = this.isInstanceOf[TypeStaticMethod]
@@ -99,7 +98,6 @@ trait TypeOps extends TypePrintOps { this: Type =>
   final def asCallable: TypeCallable = this.asInstanceOf[TypeCallable]
   final def asCombFunc: TypeCombFunc = this.asInstanceOf[TypeCombFunc]
   final def asCtrlFunc: TypeCtrlFunc = this.asInstanceOf[TypeCtrlFunc]
-  final def asPolyFunc: TypePolyFunc = this.asInstanceOf[TypePolyFunc]
   final def asXenoFunc: TypeXenoFunc = this.asInstanceOf[TypeXenoFunc]
   final def asMethod: TypeMethod = this.asInstanceOf[TypeMethod]
   final def asStaticMethod: TypeStaticMethod = this.asInstanceOf[TypeStaticMethod]
@@ -141,7 +139,7 @@ trait TypeOps extends TypePrintOps { this: Type =>
     case self: TypeRecord        => self.dataMembers.foldLeft(0L)(_ + _.kind.width)
     case TypeVoid                => 0 // TODO: should void be packed?
     case TypeVector(eType, size) => size * eType.width
-    case _                       => unreachable
+    case _                       => println(this); unreachable
   }
 
   final def shapeIter: Iterator[Long] = underlying match {

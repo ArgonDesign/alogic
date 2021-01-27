@@ -11,27 +11,37 @@
 package com.argondesign.alogic.builtins
 
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.frontend.Clarify
+import com.argondesign.alogic.frontend.Complete
+import com.argondesign.alogic.frontend.Failure
+import com.argondesign.alogic.frontend.FinalResult
 import com.argondesign.alogic.frontend.Frontend
-import com.argondesign.alogic.util.PartialMatch.PartialMatchImpl
+import com.argondesign.alogic.util.unreachable
 
-object AtMsb extends BuiltinPolyFunc("@msb") {
+import scala.annotation.tailrec
 
-  def returnType(args: List[Expr], feOpt: Option[Frontend]): Option[TypeFund] = args partialMatch {
-    case List(expr) if expr.tpe.isPacked && expr.tpe.width > 0 => TypeInt(false, 1)
-  }
+object AtMsb extends Builtin("@msb", isPure = true) {
 
-  val isPure: Boolean = true
-
-  def simplify(loc: Loc, args: List[Expr]): Option[Expr] = fold(loc, args(0))
-
-  def fold(loc: Loc, expr: Expr): Option[Expr] = Some {
-    if (expr.tpe.width == 1) {
-      if (expr.tpe.isSigned) expr.castUnsigned else expr
-    } else {
-      (expr index (expr.tpe.width.toInt - 1)).simplify
+  def typeCheck(expr: ExprBuiltin, args: List[Expr])(implicit fe: Frontend): FinalResult[TypeFund] =
+    checkArgCount(expr, 1) flatMap { _ =>
+      checkPacked(args.head, s"Argument of '$name'") match {
+        case Some(error) => Failure(error)
+        case None        => Complete(TypeUInt(1))
+      }
     }
+
+  def clarify(expr: ExprBuiltin)(implicit fe: Frontend): Expr = {
+    val arg = Clarify(expr.args.head.expr)
+    @tailrec
+    def loop(sub: Expr): Expr = sub.tpe.underlying match {
+      case TypeVector(_, size) => loop(sub index (size - 1))
+      case other               => sub index (other.width - 1)
+    }
+    loop(arg)
   }
 
+  def returnType(args: List[Arg]): TypeFund = unreachable
+
+  def simplify(expr: ExprBuiltin): Expr = unreachable
 }

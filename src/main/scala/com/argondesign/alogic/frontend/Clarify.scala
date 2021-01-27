@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
@@ -32,7 +32,6 @@ package com.argondesign.alogic.frontend
 
 import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.TypeCompound
@@ -48,15 +47,13 @@ import com.argondesign.alogic.util.unreachable
 
 object Clarify {
 
-  def apply[T <: Tree](tree: T)(implicit cc: CompilerContext, fe: Frontend): T =
-    Clarify(tree, None)
+  def apply[T <: Tree](tree: T)(implicit fe: Frontend): T = Clarify(tree, None)
 
   private def apply[T <: Tree](
       tree: T,
       enclosingFunctionType: Option[TypeCallable]
     )(
       implicit
-      cc: CompilerContext,
       fe: Frontend
     ): T = {
     require(tree.hasTpe)
@@ -108,19 +105,10 @@ object Clarify {
           Some(ExprSymSel(newTgt, symbol))
 
         ////////////////////////////////////////////////////////////////////////
-        // Replace calls to polymorphic functions with the resolved calls
+        // Clarify invocations of builtins
         ////////////////////////////////////////////////////////////////////////
 
-        case ExprCall(expr, args) if expr.tpe.isPolyFunc =>
-          assert(
-            expr.asInstanceOf[ExprSym].symbol.attr.builtin.isSet,
-            "All polymorphic functions should be built-in"
-          )
-          val newArgs = args map walkSame
-          // TypeChecker already proved this application is valid so get is safe
-          val symbol = expr.tpe.asPolyFunc.resolve(newArgs, Some(fe)).get
-          val tgt = TypeAssigner(ExprSym(symbol) withLocOf expr)
-          Some(ExprCall(tgt, newArgs))
+        case expr: ExprBuiltin => Some(expr.builtin.clarify(expr))
 
         ////////////////////////////////////////////////////////////////////////
         // Ignore arguments in parameter specialization calls
@@ -340,8 +328,6 @@ object Clarify {
           case ExprCall(tgt, _) if tgt.tpe.isParametrized => finalCheck(tgt)
           case node @ ExprUnary("'", _) =>
             throw Ice(node, s"Clarify: Unary ' remains")
-          case node: Tree if node.tpe.isPolyFunc =>
-            throw Ice(node, s"Clarify: node of type TypePolyFunc remains")
           case DescConst(Sym(s), _, _, init) if init.tpe.underlying != s.kind.underlying =>
             throw Ice(init, s"Clarify: bad initializer type ${s.kind.underlying}  vs ${init.tpe}")
         }

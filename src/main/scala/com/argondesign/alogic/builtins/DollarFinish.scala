@@ -11,21 +11,28 @@
 package com.argondesign.alogic.builtins
 
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.frontend.Complete
+import com.argondesign.alogic.frontend.Failure
+import com.argondesign.alogic.frontend.FinalResult
 import com.argondesign.alogic.frontend.Frontend
-import com.argondesign.alogic.util.PartialMatch.PartialMatchImpl
 
-object DollarFinish extends BuiltinPolyFunc("$finish") {
+object DollarFinish extends Builtin("$finish", isPure = false) {
 
-  def returnType(args: List[Expr], feOpt: Option[Frontend]): Option[TypeFund] = args partialMatch {
-    case Nil                           => TypeVoid
-    case expr :: Nil if expr.tpe.isNum => TypeVoid
-  }
+  def typeCheck(expr: ExprBuiltin, args: List[Expr])(implicit fe: Frontend): FinalResult[TypeFund] =
+    args match {
+      case Nil => Complete(TypeVoid)
+      case expr :: Nil =>
+        fe.evaluate(expr, s"Argument to '$name'") flatMap { _ =>
+          Complete(TypeVoid)
+        }
+      case _ => Failure(expr, s"Too many arguments to '$name'")
+    }
 
-  def isKnown(args: List[Expr]) = false
+  def clarify(expr: ExprBuiltin)(implicit fe: Frontend): Expr =
+    expr.copy(args = expr.args map clarifyUintArg)
 
-  val isPure: Boolean = false
+  def returnType(args: List[Arg]): TypeFund = TypeVoid
 
-  def simplify(loc: Loc, args: List[Expr]): Option[Expr] = None
+  def simplify(expr: ExprBuiltin): Expr = expr
 }

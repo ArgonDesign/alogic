@@ -29,7 +29,7 @@ final class ParserParseAttrSpec extends AnyFreeSpec with AlogicTest {
 
     "expression attribute" in {
       "foo = bar".asTree[Attr]() shouldBe {
-        AttrExpr("foo", ExprIdent(Ident("bar", Nil)))
+        AttrExpr("foo", ExprIdent("bar", Nil))
       }
     }
   }

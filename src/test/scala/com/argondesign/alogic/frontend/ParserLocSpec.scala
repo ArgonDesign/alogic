@@ -54,7 +54,7 @@ final class ParserLocSpec extends AnyFreeSpec with AlogicTest {
                       ident.loc.line shouldBe 3
                       ident.loc.file shouldBe "<asTree>"
                       inside(spec) {
-                        case ExprIdent(ident @ Ident("bar", Nil)) =>
+                        case ident @ ExprIdent("bar", Nil) =>
                           ident.loc.line shouldBe 3
                           ident.loc.file shouldBe "<asTree>"
                       }
@@ -105,7 +105,7 @@ final class ParserLocSpec extends AnyFreeSpec with AlogicTest {
                       ident.loc.line shouldBe 101
                       ident.loc.file shouldBe "foo.bar"
                       inside(spec) {
-                        case ExprIdent(ident @ Ident("bar", Nil)) =>
+                        case ident @ ExprIdent("bar", Nil) =>
                           ident.loc.line shouldBe 100
                           ident.loc.file shouldBe "foo.bar"
                       }
