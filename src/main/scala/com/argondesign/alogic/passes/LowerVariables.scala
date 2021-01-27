@@ -165,9 +165,13 @@ final class LowerVariables(implicit cc: CompilerContext) extends StatefulTreeTra
               List(StmtIf(ExprSym(goSymbol), assigns, Nil))
           }
         }
+        val resetRefOpt = cc.settings.resetStyle match {
+          case ResetStyle.AsyncHigh | ResetStyle.AsyncLow => Some(ExprSym(rst))
+          case _                                          => None
+        }
         EntClockedProcess(
           ExprSym(clk),
-          Some(ExprSym(rst)),
+          resetRefOpt,
           List(
             StmtComment("Reset flops"),
             StmtIf(

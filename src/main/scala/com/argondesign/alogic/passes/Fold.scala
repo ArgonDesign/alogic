@@ -70,11 +70,12 @@ final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer 
           EntAssign(lhs.simplifyLValue, simplifyAssignmentSource(rhs)) withLoc tree.loc
         }
       }
+
     // Fold 'if' with known conditions
     case StmtIf(cond, thenStmts, elseStmts) =>
       cond.valueOption match {
         case Some(v) if v != 0    => Some(Thicket(walk(thenStmts)))
-        case Some(v) /* v == 0 */ => Some(Thicket(walk(elseStmts)))
+        case Some(_) /* v == 0 */ => Some(Thicket(walk(elseStmts)))
         case None =>
           condLvl += 1
           None
@@ -155,14 +156,20 @@ final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer 
     // Remove all blocks (this will also remove empty blocks)
     case StmtBlock(stmts) => Thicket(stmts)
 
-    // Simplify 'if' with empty branches
+    // Simplify 'if'
     case StmtIf(cond, ts, es) =>
       condLvl -= 1
+      // Check for empty branches
       (empty(ts), empty(es)) match {
         case (true, true)  => Stump
         case (false, true) => TypeAssigner(StmtIf(cond, ts, Nil) withLoc tree.loc)
         case (true, false) => TypeAssigner(StmtIf((!cond).simplify, es, Nil) withLoc tree.loc)
-        case _             => tree
+        case _ =>
+          if (ts == es) {
+            Thicket(ts) // Collapse if both branches are the same
+          } else {
+            tree
+          }
       }
 
     // Remove empty 'case' statements
