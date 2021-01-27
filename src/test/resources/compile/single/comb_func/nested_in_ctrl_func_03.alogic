@@ -1,0 +1,23 @@
+fsm nested_in_ctrl_func_03 {
+  in u2 i;
+  out wire u2 o;
+
+  void main() {
+    u2 dubinv(u2 x) {
+      u2 dub() {
+        return x << 1;
+      }
+      return ~dub();
+    }
+    o = dubinv(i);
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module nested_in_ctrl_func_03(
+//    input  wire [1:0] i,
+//    output wire [1:0] o
+//  );
+//    assign o = ~(i << 1);
+//  endmodule
+// }}}

@@ -1,4 +1,3 @@
-// @ignore
 fsm a {
   void main() {
     static void f() {}

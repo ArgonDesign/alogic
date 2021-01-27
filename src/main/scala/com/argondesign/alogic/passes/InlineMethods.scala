@@ -57,16 +57,17 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatefulTreeTran
     }
   }
 
-  // Given a function symbol, a list of actual arguments, and an optional
-  // 'this' expression, return an iterator holding the statements to be emitted
-  // to inline the function, and the symbol holding the return value, if the
-  // function has non-void return type.
+  // Given a function symbol, a list of actual arguments, and optional
+  // 'this' expression, and an optional symbol the return value should be
+  // assigned to, return an iterator holding the statements to be emitted
+  // to inline the function.
   private def inlineBody(
       symbol: Symbol,
       args: List[Arg],
       thisOpt: Option[Expr],
+      rSymbolOpt: Option[Symbol],
       loc: Loc
-    ): Option[(Iterator[Stmt], Option[Symbol])] = {
+    ): Option[Iterator[Stmt]] = {
 
     if (recDepth(symbol) == 0) {
       rootLoc(symbol) = loc
@@ -111,15 +112,6 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatefulTreeTran
         }
       }
 
-      // Temporary symbol holding return value, if any
-      val rSymbolOpt: Option[Symbol] = symbol.kind.asCallable.retType match {
-        case TypeVoid => None
-        case kind =>
-          Some {
-            cc.newTemp(s"_${symbol.name}${cc.sep}ret", loc, kind) tap { _.attr.combSignal set true }
-          }
-      }
-
       // Statements introducing the temporaries
       val temporaries = {
         // Decl/Defn for non-constant actual arguments
@@ -127,8 +119,7 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatefulTreeTran
           StmtSplice(aSymbol.mkDecl) regularize aSymbol.loc
         }
         val aDefns = (aSymbols.iterator zip aExprs.iterator) map {
-          case (aSymbol, aExpr) =>
-            StmtSplice(aSymbol.mkDefn(Some(aExpr))) regularize aSymbol.loc
+          case (aSymbol, aExpr) => StmtSplice(aSymbol.mkDefn(Some(aExpr))) regularize aSymbol.loc
         }
 
         // Decl/Defn for optional return value
@@ -150,11 +141,22 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatefulTreeTran
           fSymbols.iterator zip aSymbols.iterator
         }
 
-        // - Do not replace return statements yet!
         // - Substitute formal argument references with the actual argument symbol
+        // - Rewrite return statements as assignments to the return symbol
         // - Clone local definitions
         // - Substitute ExprThis
         object Transform extends StatelessTreeTransformer {
+          // Need to keep track of whether we are in an inner function
+          var innerFunction: Int = 0
+
+          override def enter(tree: Tree): Option[Tree] = {
+            tree match {
+              case _: DefnFunc => innerFunction += 1
+              case _           =>
+            }
+            None
+          }
+
           override def transform(tree: Tree): Tree = tree match {
             case decl @ Decl(symbol) =>
               // Declarations in function bodies (statements) are in-order with
@@ -169,7 +171,20 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatefulTreeTran
               TypeAssigner(decl.cpy(symbol = newSymbol) withLoc tree.loc)
 
             case defn @ Defn(symbol) =>
+              defn match {
+                case _: DefnFunc => innerFunction -= 1
+                case _           =>
+              }
               TypeAssigner(defn.cpy(symbol = substitution(symbol)) withLoc tree.loc)
+
+            case StmtReturn(_, exprOpt) if innerFunction == 0 =>
+              exprOpt match {
+                case Some(expr) =>
+                  rSymbolOpt map { rSymbol =>
+                    StmtAssign(ExprSym(rSymbol), expr) regularize tree.loc
+                  } getOrElse Stump
+                case None => Stump
+              }
 
             case ExprSym(symbol) =>
               substitution.get(symbol) match {
@@ -190,39 +205,34 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatefulTreeTran
 
             case _ => tree
           }
+
+          override def finalCheck(tree: Tree): Unit = {
+            assert(innerFunction == 0)
+          }
         }
 
-        defn.body.iterator map { _ rewrite Transform }
+        // Transform the body, then drop function definitions from the
+        // transformed body (these will be inlined just below and the
+        // definitions are still attached to the reference symbols)
+        defn.body.iterator flatMap {
+          Transform(_) match {
+            case Stump      => None
+            case stmt: Stmt => Some(stmt)
+            case _          => unreachable
+          }
+//        } filter {
+//          case StmtSplice(_: DeclFunc) | StmtSplice(_: DefnFunc) => false
+//          case _                                                 => true
+        }
       }
 
       // Simplify the result so we have a hope to terminate recursion.
       val simplified = simplify(temporaries concat stmts)
 
       // Drop any trailing statements after a statement that always returns
-      val reachable = {
+      val result = {
         val (init, tail) = simplified.iterator.span(!_.alwaysReturns)
         init concat tail.nextOption()
-      }
-
-      // Now convert return statements
-      val result = {
-        object Transform extends StatelessTreeTransformer {
-          override def transform(tree: Tree): Tree = tree match {
-            case StmtReturn(_, exprOpt) =>
-              exprOpt match {
-                case Some(expr) => StmtAssign(ExprSym(rSymbolOpt.get), expr) regularize tree.loc
-                case None       => Stump
-              }
-            case _ => tree
-          }
-        }
-        reachable flatMap { stmt =>
-          Transform(stmt) match {
-            case result: Stmt => Some(result)
-            case Stump        => None
-            case _            => unreachable
-          }
-        }
       }
 
       // Walk the result recursively so we inline calls within function bodies,
@@ -240,44 +250,40 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatefulTreeTran
       }
       recDepth(symbol) -= 1
 
-      // A quick pass to drop any unused temporaries so we don't have to carry
-      // them around just to be dropped at the end of compilation.
-      val pruned = {
-        val referenced = Set from {
-          rSymbolOpt.iterator concat {
-            inlined.iterator flatMap {
-              // TODO: factor this out with RemoveUnused?
-              case stmt @ StmtAssign(lhs, rhs) =>
-                lhs match {
-                  case _: ExprCat => stmt collect { case ExprSym(symbol) => symbol }
-                  case _          => ReadSymbols.lval(lhs) ++ ReadSymbols.rval(rhs)
-                }
-              case stmt => stmt collect { case ExprSym(symbol) => symbol }
-            }
-          }
-        }
-        val unused = Set from {
-          inlined.iterator collect {
-            case StmtSplice(Decl(symbol)) if !referenced(symbol) => symbol
-          }
-        }
-        val filter = StatementFilter {
-          case StmtSplice(Decl(symbol)) => !unused(symbol)
-          case StmtSplice(Defn(symbol)) => !unused(symbol)
-          case StmtAssign(lhs, _)       => !(WrittenSymbols(lhs) forall unused)
-        }
-        inlined.iterator flatMap {
-          filter(_) match {
-            case s: Stmt        => Iterator.single(s)
-            case Thicket(trees) => trees.asInstanceOf[List[Stmt]].iterator
-            case Stump          => Iterator.empty
-            case _              => unreachable
+      // A quick pass to drop any unused temporaries so we don't have to
+      // carry them around just to be dropped at the end of compilation,
+      // but otherwise we are done!
+      val referenced = Set from {
+        rSymbolOpt.iterator concat {
+          inlined.iterator flatMap {
+            // TODO: factor this out with RemoveUnused?
+            case stmt @ StmtAssign(lhs, rhs) =>
+              lhs match {
+                case _: ExprCat => stmt collect { case ExprSym(symbol) => symbol }
+                case _          => ReadSymbols.lval(lhs) ++ ReadSymbols.rval(rhs)
+              }
+            case stmt => stmt collect { case ExprSym(symbol) => symbol }
           }
         }
       }
-
-      // We are done!
-      (pruned, rSymbolOpt)
+      val unused = Set from {
+        inlined.iterator collect {
+          case StmtSplice(Decl(symbol)) if !referenced(symbol) => symbol
+        }
+      }
+      val filter = StatementFilter {
+        case StmtSplice(Decl(symbol)) => !unused(symbol)
+        case StmtSplice(Defn(symbol)) => !unused(symbol)
+        case StmtAssign(lhs, _)       => !(WrittenSymbols(lhs) forall unused)
+      }
+      inlined.iterator flatMap {
+        filter(_) match {
+          case s: Stmt        => Iterator.single(s)
+          case Thicket(trees) => trees.asInstanceOf[List[Stmt]].iterator
+          case Stump          => Iterator.empty
+          case _              => unreachable
+        }
+      }
     }
   }
 
@@ -290,7 +296,7 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatefulTreeTran
 
   private def processCallInStatementPosition(
       call: ExprCall
-    ): Option[(Iterator[Stmt], Option[Symbol])] = {
+    ): Option[Iterator[Stmt]] = {
     // Walk args up front so they are expanded in the same order as calls
     // not in statement position
     extraStmts.push(new ListBuffer[Stmt])
@@ -299,8 +305,8 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatefulTreeTran
     if (tgt.tpe.isError || (args exists { _.tpe.isError })) {
       None
     } else {
-      inlineBody(tgt.tpe.asCallable.symbol, args, getReceiver(tgt), call.loc) map {
-        case (extra, retOpt) => (extraStmts.top.iterator concat extra, retOpt)
+      inlineBody(tgt.tpe.asCallable.symbol, args, getReceiver(tgt), None, call.loc) map {
+        case extra => (extraStmts.top.iterator concat extra)
       }
     }
   } tap { _ =>
@@ -331,8 +337,8 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatefulTreeTran
     // Calls in statement position are replaced straight as they might not
     // have a return value, and even if they do it is not needed
     case StmtExpr(call: ExprCall) if mustInline(call.expr.tpe) =>
-      processCallInStatementPosition(call) map {
-        case (stmts, _) => Thicket(stmts.toList)
+      processCallInStatementPosition(call) map { stmts =>
+        Thicket(stmts.toList)
       } orElse Some(Stump)
 
     case _: Stmt =>
@@ -348,10 +354,25 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatefulTreeTran
 
   override def transform(tree: Tree): Tree = tree match {
     case ExprCall(tgt, args) if mustInline(tgt.tpe) =>
-      inlineBody(tgt.tpe.asCallable.symbol, args, getReceiver(tgt), tree.loc) map {
-        case (extra, resultOpt) =>
-          extraStmts.top.addAll(extra)
-          TypeAssigner(ExprSym(resultOpt.get) withLoc tree.loc)
+      // The function symbol
+      val fSymbol = tgt.tpe.asCallable.symbol
+
+      // Temporary symbol holding return value, if any
+      val rSymbol: Symbol = tgt.tpe.asCallable.retType match {
+        case TypeVoid =>
+          // void functions can only be called in statement position,
+          // which is handled in enter
+          unreachable
+        case kind =>
+          cc.newTemp(s"_${fSymbol.name}${cc.sep}ret", tree.loc, kind) tap {
+            _.attr.combSignal set true
+          }
+      }
+
+      // The replacement
+      inlineBody(fSymbol, args, getReceiver(tgt), Some(rSymbol), tree.loc) map { extra =>
+        extraStmts.top.addAll(extra)
+        TypeAssigner(ExprSym(rSymbol) withLoc tree.loc)
       } getOrElse TypeAssigner(ExprError() withLoc tree.loc)
 
     case stmt: Stmt =>

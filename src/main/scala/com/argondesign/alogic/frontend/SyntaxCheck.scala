@@ -270,6 +270,7 @@ final class SyntaxCheck(implicit cc: CompilerContext) extends StatefulTreeTransf
         case _: DescGenFor   => tree
         case _: DescGenRange => tree
         case _: DescGenVar   => tree // After Elaboration
+        case _: DescFunc     => tree
         case _ =>
           cc.error(tree, "Only variables can be defined in statement position")
           StmtError() withLoc tree.loc

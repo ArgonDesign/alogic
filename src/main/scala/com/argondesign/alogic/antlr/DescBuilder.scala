@@ -260,11 +260,10 @@ object DescBuilder extends BaseBuilder[DescContext, Desc] with ChainingSyntax {
           FuncVariant.Static
         } else {
           sc match {
-            case SourceContext.Package  => FuncVariant.Comb
-            case SourceContext.Entity   => FuncVariant.Ctrl
-            case SourceContext.Record   => FuncVariant.Method
-            case SourceContext.FuncCtrl => FuncVariant.Ctrl
-            case SourceContext.FuncComb => FuncVariant.Comb
+            case SourceContext.Entity => FuncVariant.Ctrl
+            case SourceContext.Record => FuncVariant.Method
+            case SourceContext.Package | SourceContext.FuncCtrl | SourceContext.FuncComb =>
+              FuncVariant.Comb
             case SourceContext.Unknown =>
               throw Ice("Cannot parse function definition without source context")
           }

@@ -1,4 +1,3 @@
-// @ignore
 void a() {
   static void f() {}
 }

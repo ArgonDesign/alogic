@@ -1,0 +1,20 @@
+fsm nested_in_ctrl_func_00 {
+  in u2 i;
+  out wire u2 o;
+
+  void main() {
+    u2 inv(u2 x) {
+      return ~x;
+    }
+    o = inv(i);
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module nested_in_ctrl_func_00(
+//    input  wire [1:0] i,
+//    output wire [1:0] o
+//  );
+//    assign o = ~i;
+//  endmodule
+// }}}

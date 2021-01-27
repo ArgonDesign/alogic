@@ -1,0 +1,24 @@
+u2 incinv(u2 x) {
+  u2 inv(u2 x) {
+    return ~x;
+  }
+  return inv(x + 1);
+}
+
+fsm nested_in_comb_func_00 {
+  in u2 i;
+  out wire u2 o;
+
+  void main() {
+    o = incinv(i);
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module nested_in_comb_func_00(
+//    input  wire [1:0] i,
+//    output wire [1:0] o
+//  );
+//    assign o = ~(i + 2'd1);
+//  endmodule
+// }}}

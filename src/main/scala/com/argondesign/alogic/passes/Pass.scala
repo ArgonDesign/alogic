@@ -153,28 +153,10 @@ trait PairTransformerPass extends PairsTransformerPass with ChainingSyntax {
         }
       case pair => Iterator.single(pair)
     }
-    // Check pairs are consistent
-    transformed foreach {
-      case (decl, defn) => assert(decl.symbol == defn.symbol, s"${decl.symbol} != ${defn.symbol}")
-    }
     // Call finish
     finish(transformed) tapEach {
-      // Ensure Decl/Defn are always in pairs
-      case (decl, defn) =>
-        val declSymbols = Set from {
-          decl collect {
-            case Decl(symbol) if symbol != decl.symbol => symbol
-          }
-        }
-        val defnSymbols = Set from {
-          defn flatCollect {
-            case EntSplice(Defn(symbol))               => Some(symbol) // Do not recurse into sub symbols
-            case RecSplice(Defn(symbol))               => Some(symbol) // Do not recurse into sub symbols
-            case _: EntCombProcess                     => None // Do no recurse
-            case Defn(symbol) if symbol != decl.symbol => Some(symbol)
-          }
-        }
-        assert(declSymbols == defnSymbols, name)
+      // Check pairs are consistent
+      case (decl, defn) => assert(decl.symbol == defn.symbol, s"${decl.symbol} != ${defn.symbol}")
     }
   }
 

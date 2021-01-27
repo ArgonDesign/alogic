@@ -1,0 +1,27 @@
+u2 incdubinv(u2 x) {
+  u2 dubinv(u2 x) {
+    u2 dub() {
+      return x << 1;
+    }
+    return ~dub();
+  }
+  return dubinv(x + 1);
+}
+
+fsm nested_in_comb_func_03 {
+  in u2 i;
+  out wire u2 o;
+
+  void main() {
+    o = incdubinv(i);
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module nested_in_comb_func_03(
+//    input  wire [1:0] i,
+//    output wire [1:0] o
+//  );
+//    assign o = ~((i + 2'd1) << 1);
+//  endmodule
+// }}}

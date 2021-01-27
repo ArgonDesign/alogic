@@ -375,9 +375,10 @@ object StaticEvaluation {
         // Infer stall condition will be true (by the time subsequent statements execute
         case StmtWait(cond) => Some(inferTrueTransitive(curr, cond))
 
-        case _: StmtExpr         => Some(curr)
-        case _: StmtComment      => Some(curr)
-        case StmtSplice(_: Decl) => Some(curr)
+        case _: StmtExpr             => Some(curr)
+        case _: StmtComment          => Some(curr)
+        case StmtSplice(_: Decl)     => Some(curr)
+        case StmtSplice(_: DefnFunc) => Some(curr)
 
         // TODO: This could be improved by indicating this branch does not join
         // hence shouldn't constrain subsequent statements.

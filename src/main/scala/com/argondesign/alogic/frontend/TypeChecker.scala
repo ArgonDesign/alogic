@@ -650,7 +650,7 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
       //}
 
       desc match {
-        case DescFunc(Sym(symbol), _, _, _, _, body) =>
+        case DescFunc(Sym(symbol), _, variant, _, _, body) =>
           if (symbol.kind.isCtrlFunc) {
             if (body.isEmpty) {
               error(
