@@ -38,13 +38,13 @@ ThisBuild / resolvers += Resolver.JCenterRepository
 // Some of the build is conditional and built only on Java 11
 ////////////////////////////////////////////////////////////////////////////////
 
-val onJava11 = System.getProperty("java.version").startsWith("11.")
+val fromJava11 = System.getProperty("java.version").takeWhile(_ != '.').toInt >= 11
 
 unmanagedSources / excludeFilter := {
-  if (onJava11) {
+  if (fromJava11) {
     ""
   } else {
-    new SimpleFileFilter(_.getCanonicalPath contains "com/argondesign/alogic/gcp")
+    new SimpleFileFilter(_.getCanonicalFile.toPath.getParent endsWith "gcp")
   }
 }
 
@@ -71,7 +71,7 @@ libraryDependencies ++= Seq(
 
 // Java 11 only
 libraryDependencies ++= {
-  if (onJava11) {
+  if (fromJava11) {
     Seq("com.google.cloud.functions" % "functions-framework-api" % "1.0.3")
   } else {
     Seq.empty
