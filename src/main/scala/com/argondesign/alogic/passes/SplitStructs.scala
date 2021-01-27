@@ -19,6 +19,7 @@ import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.FuncVariant
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.TypeAssigner
@@ -53,7 +54,8 @@ final class SplitStructsA(
       first tap { _ =>
         first = false
       }
-    case _ => false
+    case _: TypeXenoFunc => true
+    case _               => false
   }
 
   override def enter(tree: Tree): Option[Tree] = {
@@ -99,6 +101,34 @@ final class SplitStructsA(
   }
 
   override def transform(tree: Tree): Tree = tree match {
+
+    //////////////////////////////////////////////////////////////////////////
+    // Replace structure references in foreign function definitions
+    //////////////////////////////////////////////////////////////////////////
+
+    case d @ DeclFunc(_, FuncVariant.Xeno, ret, args) =>
+      val newRet = ret.tpe match {
+        case TypeType(kind: TypeRecord) =>
+          TypeAssigner(ExprType(TypeUInt(kind.width)) withLocOf ret)
+        case _ => ret
+      }
+
+      val newArgs = args mapConserve {
+        case d @ DeclVar(_, spec) =>
+          spec.tpe match {
+            case TypeType(kind: TypeRecord) =>
+              val newSpec = TypeAssigner(ExprType(TypeUInt(kind.width)) withLocOf spec)
+              TypeAssigner(d.copy(spec = newSpec) withLocOf d)
+            case _ => d
+          }
+        case _ => unreachable
+      }
+
+      if ((newRet ne ret) || (newArgs ne args)) {
+        TypeAssigner(d.copy(ret = newRet, args = newArgs) withLocOf d)
+      } else {
+        tree
+      }
 
     //////////////////////////////////////////////////////////////////////////
     // Replace Decl/Defn with field Decls/Defns
