@@ -140,18 +140,33 @@ final class InlineKnownVars(
     case _ => None
   }
 
+  // true if any sub-exprssion has a non-numeric type, or if the whole
+  // expression is a call to a builtin. Builtin calls (eg $signed/$unsigned)
+  // are ignored because they yield even more temporaries when indexed/sliced,
+  // so we are better off not inlining them.
+  private def ignore(expr: Expr): Boolean = expr match {
+    case _: ExprBuiltin => true
+    case _ =>
+      expr existsAll {
+        case e: Expr => !e.tpe.isNumeric
+        case _: Arg  => true
+      }
+  }
+
   override def transform(tree: Tree): Tree = tree match {
     // Substitute known constants of scalar types
     case ExprSym(symbol) if symbol.kind.underlying.isNumeric =>
       // Drop bindings which contain non-numeric symbols, as operators change
-      // over them. This only happens prior to SplitStructs and LowerVectors.
-      val bs: Symbol => Option[Expr] =
-        bindings.top.get(_).filterNot(_ existsAll { case tree => !tree.tpe.isNumeric })
+      // their meaning over them during lowering. This is only relevant prior
+      // to SplitStructs and LowerVectors.
+      val bs: Symbol => Option[Expr] = bindings.top.get(_).filterNot(ignore)
+
       @tailrec // Recursively replace with bound values
       def simplify(expr: Expr): Expr = (expr substitute bs).simplify match {
         case simplified: ExprInt => simplified
         case simplified          => if (simplified eq expr) expr else simplify(simplified)
       }
+
       bs(symbol) map simplify match {
         // If the value is known, replace the ref
         case Some(expr: ExprInt) => expr
@@ -159,8 +174,10 @@ final class InlineKnownVars(
         // another symbol, replace the temporary with the other symbol
         case Some(expr: ExprSym) if symbol.attr.tmp.isSet => expr
         // Replace temporaries explicitly marked to be dropped, even if they
-        // are bound to a complex expression
-        case Some(expr) if temporariesToDrop(symbol) && symbol.kind == expr.tpe => expr
+        // are bound to a complex expression, but don't recursively expand
+        // the bound value as that might introduce redundancy if the bound
+        // expression references the same symbol multiple times
+        case Some(expr) if temporariesToDrop(symbol) => expr
         //
         case _ => tree
       }
