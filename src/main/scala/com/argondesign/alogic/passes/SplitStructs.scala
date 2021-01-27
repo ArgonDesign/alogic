@@ -75,9 +75,10 @@ final class SplitStructsA(
                 }
                 cc.newSymbol(fName, symbol.loc) tap { s =>
                   s.kind = nKind
-                  symbol.attr.payloadOfPort.get foreach {
-                    s.attr.payloadOfPort.set
-                  }
+                  // Propagate attributes
+                  symbol.attr.payloadOfPort.get foreach { s.attr.payloadOfPort.set }
+                  symbol.attr.combSignal.get foreach { s.attr.combSignal.set }
+                  symbol.attr.tmp.get foreach { s.attr.tmp.set }
                 }
               }
               val widths = newSymbols map { _.kind.width }
