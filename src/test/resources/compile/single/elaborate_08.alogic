@@ -1,0 +1,22 @@
+fsm elaborate_08 {
+  struct s {
+    u8 a;
+    u4 b;
+  }
+
+  const s STRUCT = {8'd5, 4'd4};
+
+  out wire uint(STRUCT.a) o;
+
+  void main() {
+    o = 'STRUCT.b;
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module elaborate_08(
+//    output wire [4:0] o
+//  );
+//    assign o = 5'd4;
+//  endmodule
+// }}}
