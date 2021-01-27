@@ -338,8 +338,8 @@ final class MakeVerilog(
 
             for ((pSymbol, i) <- pSymbols.zipWithIndex) {
               val dir = pSymbol.kind match {
-                case _: TypeIn => "<-"
-                case _         => "->"
+                case _: TypeIn => "<- "
+                case _         => " ->"
               }
 
               val pStr = instancePortExpr.get(iSymbol) flatMap {
