@@ -29,10 +29,11 @@ final class InlineKnownVars(
     cc: CompilerContext)
     extends StatefulTreeTransformer {
 
-  private[this] var stmtBindings: Map[Int, Bindings] = _
-  private[this] var endOfCycleBindings: Bindings = _
+  private var stmtBindings: Map[Int, Bindings] = _
+  private var endOfCycleBindings: Bindings = _
+  private var temporariesToDrop: Set[Symbol] = _
 
-  private[this] val bindings = mutable.Stack[Bindings]()
+  private val bindings = mutable.Stack[Bindings]()
 
   def computeEvaluation(stmt: Stmt): Unit = StaticEvaluation(stmt, Bindings.empty) match {
     case None =>
@@ -40,6 +41,10 @@ final class InlineKnownVars(
       stmtBindings = evaluation._1
       endOfCycleBindings = if (combOnly) Bindings.empty else evaluation._2
       bindings.push(endOfCycleBindings)
+      val readCount = evaluation._4
+      temporariesToDrop = Set from { // Drop temporaries read once
+        readCount.iterator.collect { case (symbol, 1) if symbol.attr.tmp.isSet => symbol }
+      }
   }
 
   override def start(tree: Tree): Unit = tree match {
@@ -49,8 +54,10 @@ final class InlineKnownVars(
     case defn: DefnState =>
       assert(combOnly)
       computeEvaluation(StmtBlock(defn.body))
-    case stmt: Stmt => computeEvaluation(stmt)
-    case _          =>
+    case stmt: Stmt =>
+      assert(combOnly)
+      computeEvaluation(stmt)
+    case _ =>
   }
 
   override def skip(tree: Tree): Boolean = bindings.isEmpty
@@ -151,7 +158,11 @@ final class InlineKnownVars(
         // If the current ref is a temporary, and the replacement is simply
         // another symbol, replace the temporary with the other symbol
         case Some(expr: ExprSym) if symbol.attr.tmp.isSet => expr
-        case _                                            => tree
+        // Replace temporaries explicitly marked to be dropped, even if they
+        // are bound to a complex expression
+        case Some(expr) if temporariesToDrop(symbol) && symbol.kind == expr.tpe => expr
+        //
+        case _ => tree
       }
 
     case _: Stmt =>

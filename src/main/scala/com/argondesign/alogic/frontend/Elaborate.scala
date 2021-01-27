@@ -596,7 +596,7 @@ object Elaborate {
                       lazy val failure = Failure(step, "Cannot statically evaluate step statements")
                       StaticEvaluation(step, bindings) match {
                         case None => failure
-                        case Some((_, nextBindings)) =>
+                        case Some((_, nextBindings, _, _)) =>
                           if (inits forall { desc => nextBindings contains desc.symbol }) {
                             expandLoopBody(nextBindings, count + 1, currBody :: acc)
                           } else {

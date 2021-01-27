@@ -23,6 +23,7 @@ import scala.annotation.tailrec
 import scala.collection.immutable
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
+import scala.util.chaining.scalaUtilChainingOps
 
 object StaticEvaluation {
 
@@ -265,13 +266,56 @@ object StaticEvaluation {
   def apply(
       stmt: Stmt,
       initialBindings: Bindings = Bindings.empty
-    ): Option[(Map[Int, Bindings], Bindings)] = {
+    ): Option[(Map[Int, Bindings], Bindings, Map[Symbol, Int], Map[Symbol, Int])] = {
     val res = mutable.Map[Int, Bindings]()
+
+    // We count read and write accesses to each symbol. We do this here to save
+    // on a second traversal doing the same, though that would probably not be
+    // very expensive either, so this can be factored out if required.
+    val writeCount = mutable.Map[Symbol, Int]() withDefaultValue 0
+    val readCount = mutable.Map[Symbol, Int]() withDefaultValue 0
+
+    def countAccessesLValue(expr: Expr): Unit = {
+      WrittenSymbols(expr) foreach { writeCount(_) += 1 }
+      ReadSymbols.lval(expr) foreach { readCount(_) += 1 }
+    }
+
+    def countAccessesRValue(expr: Expr): Unit =
+      ReadSymbols.rval(expr) foreach { readCount(_) += 1 }
 
     def analyse(curr: Ctx, stmt: Stmt): Option[Ctx] = {
       // Annotate the current statement right at the beginning,
       // this side-effect builds the final map we are returning
       res(stmt.id) = curr.bindings
+
+      // Count assignments and references
+      stmt pipe {
+        case StmtAssign(lhs, rhs) =>
+          countAccessesLValue(lhs)
+          countAccessesRValue(rhs)
+        case StmtUpdate(lhs, _, rhs) =>
+          countAccessesLValue(lhs)
+          countAccessesRValue(rhs)
+        case StmtPost(lhs, _) => countAccessesLValue(lhs)
+        case StmtOutcall(lhs, f, rhss) =>
+          countAccessesLValue(lhs)
+          countAccessesRValue(f)
+          rhss foreach countAccessesRValue
+        case StmtSplice(s) =>
+          s.children foreach {
+            case expr: Expr => countAccessesRValue(expr)
+            case _          =>
+          }
+        case other =>
+          other.children foreach {
+            case expr: Expr            => countAccessesRValue(expr)
+            case CaseRegular(conds, _) => conds foreach countAccessesRValue
+            case _: CaseDefault        => // Will count when 'analyze' called on children
+            case _: Stmt               => // Will count when 'analyze' called on it
+            case _                     => unreachable
+          }
+      }
+
       //
       def analyseOpt(ctxOpt: Option[Ctx], stmt: Stmt): Option[Ctx] =
         ctxOpt.flatMap(analyse(_, stmt))
@@ -390,7 +434,7 @@ object StaticEvaluation {
     }
 
     analyse(Ctx.from(initialBindings), stmt) map { finalCtx =>
-      (res.toMap, finalCtx.bindings)
+      (res.toMap, finalCtx.bindings, writeCount.toMap, readCount.toMap)
     }
   }
 
