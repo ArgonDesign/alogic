@@ -194,7 +194,7 @@ final class InlineKnownVars(
 object InlineKnownVars {
 
   def apply(combOnly: Boolean): EntityTransformerPass =
-    new EntityTransformerPass(declFirst = false) {
+    new EntityTransformerPass(declFirst = false, parallel = true) {
       val name = "inline-known-vars"
 
       override def skip(decl: Decl, defn: Defn)(implicit cc: CompilerContext): Boolean =

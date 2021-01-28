@@ -49,7 +49,9 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatefulTreeTran
       val block = StmtBlock(it.toList)
       TypeAssigner(block withLoc block.body.head.loc)
       // Simplify it
-      cc.fold(block rewrite new RemoveStructuralSharing rewrite new InlineKnownVars) match {
+      block rewrite new RemoveStructuralSharing rewrite new InlineKnownVars pipe {
+        new Fold
+      } match {
         case Thicket(trees) => trees.asInstanceOf[List[Stmt]]
         case tree: Stmt     => List(tree)
         case _              => unreachable

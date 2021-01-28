@@ -17,7 +17,6 @@ trait StatelessTransforms { this: CompilerContext =>
   val descToDeclDefn = new DescToDeclDefn
   val desugar = new Desugar()(cc = this)
   val combineStatements = new CombineStatements
-  val fold = new Fold()(cc = this)
   val portCheck = new PortCheck()(cc = this)
   val simplifyCat = new SimplifyCat
   val inferImplications = new InferImplications

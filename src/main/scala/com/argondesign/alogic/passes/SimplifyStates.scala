@@ -38,7 +38,7 @@ final class SimplifyStates(implicit cc: CompilerContext) extends StatefulTreeTra
     case defn: DefnState =>
       Some {
         // Simplify bodies then gather reachability pairs
-        defn rewrite new InlineKnownVars rewrite cc.fold tap { simplified =>
+        defn rewrite new InlineKnownVars rewrite new Fold tap { simplified =>
           reachability addAll {
             simplified.body.iterator flatMap {
               _ collect { case ExprSym(symbol) if symbol.kind.isState => defn.symbol -> symbol }

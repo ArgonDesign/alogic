@@ -25,6 +25,7 @@ import com.argondesign.alogic.core.Symbols.Symbol
 
 import scala.annotation.nowarn
 import scala.annotation.tailrec
+import scala.collection.parallel.CollectionConverters.IterableIsParallelizable
 import scala.util.ChainingSyntax
 import scala.util.chaining.scalaUtilChainingOps
 
@@ -107,7 +108,9 @@ trait PairsTransformerPass extends SimplePass[Iterable[(Decl, Defn)], Iterable[(
 
 }
 
-trait PairTransformerPass extends PairsTransformerPass with ChainingSyntax {
+abstract class PairTransformerPass(parallel: Boolean = false)
+    extends PairsTransformerPass
+    with ChainingSyntax {
 
   // Called before any pair has been transformed with the input pairs
   @nowarn("msg=parameter value cc .* is never used")
@@ -138,21 +141,30 @@ trait PairTransformerPass extends PairsTransformerPass with ChainingSyntax {
     ): Iterable[(Decl, Defn)] = {
     // Call start
     start(pairs)
-    // Apply transform to all pairs, flatten Thicket/Stump
-    val transformed = pairs flatMap {
+
+    // transform one pair, flatten Thicket/Stump
+    def transformation(pair: (Decl, Defn)): Iterator[(Decl, Defn)] = pair match {
       case (decl, defn) if !skip(decl, defn) =>
         transform(decl, defn) match {
           case (newDecl: Decl, newDefn: Defn) => Iterator.single((newDecl, newDefn))
           case (Thicket(newDecls), Thicket(newDefns)) =>
             assert(newDecls.lengthIs == newDecls.length)
-            assert(newDecls forall { _.isInstanceOf[Decl] })
-            assert(newDefns forall { _.isInstanceOf[Defn] })
-            newDecls.asInstanceOf[List[Decl]] lazyZip newDefns.asInstanceOf[List[Defn]]
-          case (Stump, Stump) => Nil
+            assert(newDecls.forall(_.isInstanceOf[Decl]))
+            assert(newDefns.forall(_.isInstanceOf[Defn]))
+            (newDecls.iterator zip newDefns.iterator).asInstanceOf[Iterator[(Decl, Defn)]]
+          case (Stump, Stump) => Iterator.empty
           case other          => throw Ice(s"Sadly, no. $other")
         }
       case pair => Iterator.single(pair)
     }
+
+    // Apply the transformation
+    val transformed = if (parallel) {
+      pairs.par.flatMap(transformation).seq
+    } else {
+      pairs.flatMap(transformation)
+    }
+
     // Call finish
     finish(transformed) tapEach {
       // Check pairs are consistent
@@ -162,7 +174,8 @@ trait PairTransformerPass extends PairsTransformerPass with ChainingSyntax {
 
 }
 
-abstract class EntityTransformerPass(declFirst: Boolean) extends PairTransformerPass {
+abstract class EntityTransformerPass(declFirst: Boolean, parallel: Boolean = false)
+    extends PairTransformerPass(parallel) {
 
   // Only process entities
   override protected def skip(
