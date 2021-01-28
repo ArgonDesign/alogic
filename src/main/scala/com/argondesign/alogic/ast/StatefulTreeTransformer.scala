@@ -93,7 +93,11 @@ abstract class StatefulTreeTransformer(implicit cc: CompilerContext) extends Tre
         // Transform the replaced decl immediately to ensure types are known
         descend(cpyDecl) match {
           case decl: Decl => decl
-          case _          => throw Ice("Replaced symbol Decl transformed into something unexpected")
+          case other =>
+            throw Ice(
+              s"Replaced symbol Decl transformed into something unexpected:",
+              other.toString
+            )
         }
       }
     )

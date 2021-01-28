@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
@@ -57,7 +57,7 @@ object BigIntOps {
     def asLong: Long = value.bigInteger.longValueExact
   }
 
-  implicit final class BigIntObjectOps(private val subject: BigInt.type) extends AnyVal {
+  implicit final class BigIntObjectOps(private val unused: BigInt.type) extends AnyVal {
     def mask(width: Int): BigInt = (BigInt(1) << width) - 1
     def mask(width: BigInt): BigInt = (BigInt(1) << width.toInt) - 1
 

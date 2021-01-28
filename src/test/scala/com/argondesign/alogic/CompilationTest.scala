@@ -135,14 +135,14 @@ trait CompilationTest
     val logFile = cwd.resolve(logfile).toFile
     val logger = ProcessLogger(logFile)
     if (config.verbose > 0) {
-      println(s"${AnsiColor.BOLD}=== Running in directory: $cwd${AnsiColor.RESET}")
+      println(s"${AnsiColor.BOLD}=== Running command in working directory $cwd${AnsiColor.RESET}:")
       println(cmd)
     }
     val ret = Process(cmd, cwd.toFile, extraEnv.toSeq: _*) ! logger
     logger.flush()
     logger.close()
     if (config.verbose > 0) {
-      println("=== Output:")
+      println(s"${AnsiColor.BOLD}${AnsiColor.YELLOW}=== Output:${AnsiColor.RESET}")
       readFile(logFile).linesIterator foreach println
     }
     if (!failOk && ret != 0) {

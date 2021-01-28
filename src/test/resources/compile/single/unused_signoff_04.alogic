@@ -1,0 +1,39 @@
+network a {
+  in  u2 i;
+  out u2 o;
+  i -> o;
+}
+
+network b {
+  in u2 i;
+  inner = new a;
+  i -> inner.i;
+}
+
+network c {
+  in  u2 i;
+  out bool o;
+  inner = new b;
+  i -> inner.i;
+  i[0] -> o;
+}
+
+network unused_signoff_05 {
+  in  u2 i;
+  out bool o;
+
+  inner = new c;
+
+  i -> inner.i; inner.o -> o;
+}
+
+compile unused_signoff_05;
+
+// @fec/golden {{{
+//  module unused_signoff_05(
+//    input  wire [1:0] i,
+//    output wire       o
+//  );
+//    assign o = i[0];
+//  endmodule
+// }}}

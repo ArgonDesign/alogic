@@ -17,7 +17,7 @@ object BooleanOps {
     def |->(other: => Boolean): Boolean = !value || other
   }
 
-  implicit final class BooleanObjectOps(private val value: Boolean.type) extends AnyVal {
+  implicit final class BooleanObjectOps(private val unused: Boolean.type) extends AnyVal {
     //
   }
 

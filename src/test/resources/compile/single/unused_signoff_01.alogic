@@ -1,0 +1,17 @@
+network unused_signoff_01 {
+  in  u4 i;
+  in  u4 b;
+  out u4 o;
+
+  i -> o;
+}
+// :3: WARNING: Input port 'b' is unused
+// @fec/golden {{{
+//  module unused_signoff_01(
+//    input   wire [3:0] i,
+//    input   wire [3:0] b,
+//    output  wire [3:0] o
+//  );
+//    assign o = i;
+//  endmodule
+// }}}

@@ -1,15 +1,10 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2018-2020 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler
-// Author: Geza Lore
-//
 // DESCRIPTION:
-//
 // A data structure representing a set of (symbol, bit index) pairs in an
 // efficient and convenient way
 ////////////////////////////////////////////////////////////////////////////////
@@ -117,6 +112,8 @@ final class SymbolBitSet(val underlying: Map[Symbol, BitSet]) extends AnyVal {
 object SymbolBitSet {
 
   val empty = new SymbolBitSet(Map.empty)
+
+  def apply(symbol: Symbol, bitSet: BitSet): SymbolBitSet = new SymbolBitSet(Map(symbol -> bitSet))
 
   implicit def apply(underlying: Map[Symbol, BitSet]): SymbolBitSet = {
     new SymbolBitSet(underlying)

@@ -1,46 +1,48 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2018 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler
-// Author: Geza Lore
-//
 // DESCRIPTION:
-//
-// Remove local variable and port symbols which are never used
+// Remove all unused symbols if possible, and sign off the rest
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.passes
 
+import com.argondesign.alogic.analysis.ReadSymbolBits
 import com.argondesign.alogic.analysis.ReadSymbols
+import com.argondesign.alogic.analysis.SymbolBitSet
 import com.argondesign.alogic.analysis.WrittenSymbols
 import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.ast.Trees.Expr.InstancePortSel
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.enums.EntityVariant
+import com.argondesign.alogic.core.Loc
+import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.util.unreachable
+import com.argondesign.alogic.util.BitSetOps._
+import com.argondesign.alogic.util.IteratorOps._
 
 import scala.annotation.tailrec
+import scala.collection.immutable.BitSet
 import scala.collection.immutable.HashSet
+import scala.collection.parallel.CollectionConverters.IterableIsParallelizable
+import scala.collection.parallel.ParIterable
 
-final class RemoveUnused(unusedSymbols: Set[Symbol])(implicit cc: CompilerContext)
+// The transform that removes all symbols for which the given predicate fails
+final private class RemoveSymbols(
+    retainedInternal: Symbol => Boolean, // Used to check local symbols
+    retainedExternal: Map[Symbol, Symbol => Boolean] // used ot check assignment to instance ports
+  )(
+    implicit
+    cc: CompilerContext)
     extends StatefulTreeTransformer {
 
-  override def replace(symbol: Symbol): Boolean = !unusedSymbols(symbol) && {
-    symbol.kind match {
-      case TypeType(TypeEntity(_, publicSymbols)) => publicSymbols exists unusedSymbols
-      case TypeEntity(_, publicSymbols)           => publicSymbols exists unusedSymbols
-      case _                                      => false
-    }
-  }
-
-  def emptyStmt(stmt: Stmt): Boolean = stmt match {
+  private def emptyStmt(stmt: Stmt): Boolean = stmt match {
     case StmtBlock(body)         => body forall emptyStmt
     case StmtIf(_, eBody, tBody) => (eBody forall emptyStmt) && (tBody forall emptyStmt)
     case StmtCase(_, cases) =>
@@ -54,35 +56,55 @@ final class RemoveUnused(unusedSymbols: Set[Symbol])(implicit cc: CompilerContex
 
   override def enter(tree: Tree): Option[Tree] = tree match {
     ////////////////////////////////////////////////////////////////////////////
-    // Remove connects driving only unused symbols
+    // Remove connects driving only dropped symbols
     ////////////////////////////////////////////////////////////////////////////
 
-    case EntAssign(lhs, _) if WrittenSymbols(lhs) forall unusedSymbols => Some(Stump)
+    case EntAssign(InstancePortSel(iSymbol, pSymbol), _) =>
+      Some {
+        if (retainedInternal(iSymbol) && retainedExternal(iSymbol.kind.asEntity.symbol)(pSymbol)) {
+          tree
+        } else {
+          Stump
+        }
+      }
+    case EntAssign(lhs, _) =>
+      Some(if (WrittenSymbols(lhs) exists retainedInternal) tree else Stump)
 
-    case EntAssign(InstancePortSel(_, pSymbol), _) if unusedSymbols(pSymbol) => Some(Stump)
+    ////////////////////////////////////////////////////////////////////////////
+    // Remove assignments to only dropped symbols
+    ////////////////////////////////////////////////////////////////////////////
 
+    case StmtAssign(lhs, _) if !(WrittenSymbols(lhs) exists retainedInternal)  => Some(Stump)
+    case StmtDelayed(lhs, _) if !(WrittenSymbols(lhs) exists retainedInternal) => Some(Stump)
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Skip foreign function Decl/Defn (which are the only functions left)
+    ////////////////////////////////////////////////////////////////////////////
+
+    case _: DeclFunc | _: DefnFunc => Some(tree)
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Skip expressions
+    ////////////////////////////////////////////////////////////////////////////
+
+    case _: Expr => Some(tree)
+
+    //
     case _ => None
   }
 
   override def transform(tree: Tree): Tree = tree match {
     ////////////////////////////////////////////////////////////////////////////
-    // Fold empty statements
+    // Fold empty statements as we go to get rid of unused branch conditions
     ////////////////////////////////////////////////////////////////////////////
 
     case stmt: Stmt if emptyStmt(stmt) => Stump
 
     ////////////////////////////////////////////////////////////////////////////
-    // Remove assignments that write only unused symbols
+    // Remove Decl/Defn of symbol not being retained
     ////////////////////////////////////////////////////////////////////////////
 
-    case StmtAssign(lhs, _) if WrittenSymbols(lhs) forall unusedSymbols  => Stump
-    case StmtDelayed(lhs, _) if WrittenSymbols(lhs) forall unusedSymbols => Stump
-
-    ////////////////////////////////////////////////////////////////////////////
-    // Remove decl/defn of unused symbols
-    ////////////////////////////////////////////////////////////////////////////
-
-    case Decl(symbol) if unusedSymbols(symbol) =>
+    case Decl(symbol) if !retainedInternal(symbol) =>
       // If we are removing a _q, drop the suffix from the _d
       symbol.attr.flop.get foreach { dSymbol =>
         assert(dSymbol.name endsWith "_d")
@@ -91,7 +113,7 @@ final class RemoveUnused(unusedSymbols: Set[Symbol])(implicit cc: CompilerContex
       }
       Stump
 
-    case Defn(symbol) if unusedSymbols(symbol) => Stump
+    case Defn(symbol) if !retainedInternal(symbol) => Stump
 
     //
     case _ => tree
@@ -102,18 +124,69 @@ final class RemoveUnused(unusedSymbols: Set[Symbol])(implicit cc: CompilerContex
 object RemoveUnused extends PairsTransformerPass {
   val name = "remove-unused"
 
-  private def gather(
-      pairs: Iterable[(Decl, Defn)]
+  private def signOffUnused(
+      decl: DeclEntity,
+      defn: DefnEntity,
+      usedSymbolBits: SymbolBitSet
     )(
-      f: (DeclEntity, DefnEntity) => Iterator[Symbol]
-    ): Set[Symbol] =
-    HashSet from {
-      (pairs.iterator collect {
-        case (decl: DeclEntity, defn: DefnEntity) => f(decl, defn)
-      }).flatten
+      implicit
+      cc: CompilerContext
+    ): (Decl, Defn) = {
+
+    // Turns (6, 5, 4, 2, 1, 0) into ((6, 4), (2, 1), (0, 0)), etc.
+    def collapseConsecutiveValues(it: Iterator[Int]): Iterator[(Int, Int)] = {
+      require(it.hasNext)
+
+      def f(hi: Int, lo: Int): Iterator[(Int, Int)] = it.nextOption() match {
+        case None                   => Iterator.single((hi, lo))
+        case Some(n) if n == lo - 1 => f(hi, n)
+        case Some(n)                => Iterator.single((hi, lo)) concat f(n, n)
+      }
+
+      val first = it.next()
+      f(first, first)
     }
 
-  @tailrec
+    val unusedTerms = decl.decls.iterator map {
+      _.symbol
+    } flatMap {
+      case symbol if !symbol.kind.isPacked => Iterator.empty
+      case symbol =>
+        val usedBits = usedSymbolBits.getOrElse(symbol, BitSet.empty)
+        if (usedBits.size == symbol.kind.width) {
+          Iterator.empty
+        } else if (usedBits.isEmpty) {
+          Iterator.single(TypeAssigner(ExprSym(symbol) withLoc Loc.synthetic))
+        } else {
+          val unusedBits = Iterator.range(symbol.kind.width.toInt - 1, -1, -1).filterNot(usedBits)
+
+          def ref: ExprSym = TypeAssigner(ExprSym(symbol) withLoc Loc.synthetic)
+
+          collapseConsecutiveValues(unusedBits) map {
+            case (hi, lo) if hi == lo => ref index hi
+            case (hi, lo)             => ref.slice(hi, ":", lo)
+          }
+        }
+    }
+
+    if (!unusedTerms.hasNext) {
+      (decl, defn)
+    } else {
+      val unusedSymbol = cc.newSymbol("_unused", Loc.synthetic)
+      unusedSymbol.kind = TypeUInt(1)
+      unusedSymbol.attr.combSignal set true
+      val unusedDecl = unusedSymbol.mkDecl regularize Loc.synthetic
+      val unusedDefn = EntSplice(unusedSymbol.mkDefn) regularize Loc.synthetic
+      val reduction = ExprUnary("&", ExprCat(ExprInt(false, 1, 0) :: unusedTerms.toList))
+      val unusedAssign = EntAssign(ExprSym(unusedSymbol), reduction) regularize Loc.synthetic
+      val newDecl = TypeAssigner(decl.copy(decls = unusedDecl :: decl.decls) withLocOf decl)
+      val newDefn = TypeAssigner(
+        defn.copy(body = unusedDefn :: unusedAssign :: defn.body) withLocOf defn
+      )
+      (newDecl, newDefn)
+    }
+  }
+
   def process(
       pairs: Iterable[(Decl, Defn)]
     )(
@@ -121,109 +194,214 @@ object RemoveUnused extends PairsTransformerPass {
       cc: CompilerContext
     ): Iterable[(Decl, Defn)] = {
     // TODO: Could prune every entity completely that has only inputs left
-    // (unless it has non-pure contents like foreign function calls..)
+    //       unless it has non-pure contents like foreign function calls,
+    //       assumption is that this is very rare, so don't bother for now.
 
-    // TODO: Rename interconnect for removed ports
+    // We can do a lot in parallel
+    val parPairs = pairs.par
 
-    // Gather all symbols considered for removal
-    val candidateSymbols = gather(pairs) { (decl, defn) =>
-      val eSymbol = decl.symbol
-
-      val isTopLevel = eSymbol.attr.topLevel.get contains true
-
-      val eSymbols = if (isTopLevel) Iterator.empty else Iterator.single(eSymbol)
-
-      val dSymbols = if (defn.variant == EntityVariant.Ver) {
-        // Retain all definitions for verbatim entities
-        Iterator.empty
-      } else {
-        decl.decls.iterator map {
-          _.symbol
-        } filter { symbol =>
-          // Retain inputs and outputs of top level entities,
-          // remove clock and reset if possible)
-          symbol.kind match {
-            case _: TypeIn  => !isTopLevel || symbol.attr.clk.isSet || symbol.attr.rst.isSet
-            case _: TypeOut => !isTopLevel
-            case _          => true
+    // Gather (by entity) all symbols that must be kept, even if they are
+    // unused.
+    val keptSymbols: Map[Symbol, HashSet[Symbol]] = Map from {
+      parPairs.iterator map {
+        case (DeclEntity(symbol, decls), defn: DefnEntity) =>
+          symbol -> HashSet.from {
+            Iterator.when(symbol.attr.topLevel.isSet) thenIterator {
+              // Keep input ports of top level entities (except for ones added
+              // by the compiler), in order to preserve the user defined
+              // interface
+              decls.iterator
+                .map(_.symbol)
+                .filter(_.kind.isIn)
+                .filterNot { symbol =>
+                  symbol.attr.clk.isSet || symbol.attr.rst.isSet
+                }
+            } concat {
+              // Gather symbols that must be kept because they are used as a
+              // placeholder in a concatenation on the left hand side of an
+              // assignment
+              defn flatCollect {
+                case EntAssign(lhs: ExprCat, _)  => WrittenSymbols(lhs)
+                case StmtAssign(lhs: ExprCat, _) => WrittenSymbols(lhs)
+                case _: Expr                     => Iterator.empty // Stop descent
+              }
+            }
           }
+        case (decl, _) => decl.symbol -> HashSet.empty
+      }
+    }
+
+    @tailrec
+    def loop(parPairs: ParIterable[(Decl, Defn)]): Iterable[(Decl, Defn)] = {
+      // Gather (by entity) all used symbols (excluding symbols not defined in
+      // the entity). A symbol is used if it's value is consumed. This can happen
+      // when it is read in an rvalue, read in an lvalue, or is a top level
+      // output.
+      val usedInternalSymbols: Map[Symbol, HashSet[Symbol]] = Map from {
+        parPairs.iterator.map {
+          case (DeclEntity(symbol, decls), defn: DefnEntity) =>
+            symbol -> HashSet.from {
+              Iterator.when(symbol.attr.topLevel.isSet) thenIterator {
+                // Assume all output ports in top level entities are used
+                decls.iterator.map(_.symbol).filter(_.kind.isOut)
+              } concat {
+                Iterator.when(defn.variant == EntityVariant.Ver) thenIterator {
+                  // Assume everything is used in verbatim entities as signals
+                  // might be used in verbatim blocks
+                  decls.iterator.map(_.symbol)
+                }
+              } concat {
+                defn.collect {
+                  case EntAssign(lhs, InstancePortSel(iSymbol, _)) =>
+                    ReadSymbols.lval(lhs) concat Iterator.single(iSymbol)
+                  case EntAssign(_: ExprSel, rhs) =>
+                    ReadSymbols.rval(rhs)
+                  case EntAssign(lhs, rhs) =>
+                    ReadSymbols.lval(lhs) concat ReadSymbols.rval(rhs)
+                  case StmtAssign(lhs, rhs) =>
+                    ReadSymbols.lval(lhs) concat ReadSymbols.rval(rhs)
+                  case StmtDelayed(lhs, rhs) =>
+                    ReadSymbols.lval(lhs) concat ReadSymbols.rval(rhs)
+                  case StmtOutcall(lhs, f, rhss) =>
+                    ReadSymbols.lval(lhs) concat (f :: rhss).iterator.flatMap(ReadSymbols.rval)
+                  case expr: Expr =>
+                    ReadSymbols.rval(expr)
+                }.flatten
+              }
+            }
+          case (decl, _) => decl.symbol -> HashSet.empty
         }
       }
-      eSymbols ++ dSymbols
-    }
 
-    // Gather all used symbols. A symbol is used if it's value is consumed,
-    // this can happen when it is read in an rvalue, read in an lvalue, or
-    // is instantiated. Furthermore all flop _d signals and array
-    // _we/_waddr/_wdata signals are used. At the moment we also cannot remove
-    // symbols that are written through a concatenation lvalue, as they are
-    // required as placeholders
-    val usedSymbols = gather(pairs) { (decl, defn) =>
-      val partA = decl flatCollect {
-        case DeclInstance(_, ExprSym(eSymbol)) =>
-          // Instantiated entity
-          Iterator.single(eSymbol)
-        case ExprSym(symbol) if !symbol.kind.isType =>
-          // Any other reference is used (unless it's a type)
-          Iterator.single(symbol)
+      // Gather external symbols referenced in entities
+      val usedExternalSymbols = HashSet from {
+        parPairs.iterator.flatMap {
+          case (DeclEntity(_, decls), DefnEntity(_, _, body)) =>
+            decls.iterator.collect {
+              // Instantiated entities
+              case DeclInstance(_, ExprSym(symbol)) => symbol
+            } concat {
+              body.iterator.collect {
+                // Read ports of instances
+                case EntAssign(_, InstancePortSel(_, pSymbol)) => pSymbol
+              }
+            }
+          case _ => Iterator.empty
+        }
       }
-      val partB = defn flatCollect {
-        case EntAssign(lhs: ExprCat, rhs) =>
-          // Concatenation on the right, everything is used, if only as a placeholder
-          // TODO: if any symbol in the concatenation is used, then all are used
-          val lSymbols = rhs match {
-            case InstancePortSel(iSymbol, pSymbol) => Iterator(iSymbol, pSymbol)
-            case _                                 => ReadSymbols.rval(rhs)
+
+      // Predicate function for symbols referenced externally, including top
+      // level entities
+      val externallyUsed: Symbol => Boolean = { symbol =>
+        usedExternalSymbols(symbol) || symbol.attr.topLevel.isSet
+      }
+
+      // First drop all entities not marked for retention, then apply the pruning
+      // transform to the rest.
+      val processedPairs =
+        parPairs
+          .withFilter(pair => externallyUsed(pair._1.symbol)) // Keep only used entities
+          .map {
+            case (decl, defn) =>
+              val usedInternal = usedInternalSymbols(decl.symbol)
+              val keptInternal = keptSymbols(decl.symbol)
+              // Predicate for symbols retained in this entity on this iteration
+              val retained: Symbol => Boolean = { symbol =>
+                usedInternal(symbol) || keptInternal(symbol) || externallyUsed(symbol)
+              }
+              // Apply the pruning transform
+              val transform = new RemoveSymbols(retained, usedInternalSymbols)
+              (decl rewrite transform, defn rewrite transform)
           }
-          val rSymbols = lhs collect { case ExprSym(symbol) => symbol }
-          lSymbols ++ rSymbols
-        case EntAssign(lhs, InstancePortSel(iSymbol, pSymbol)) =>
-          // instance.port on left hand side
-          Iterator(iSymbol, pSymbol) ++ ReadSymbols.lval(lhs)
-        case EntAssign(InstancePortSel(_, _), rhs) =>
-          // instance.port on right hand side
-          ReadSymbols.rval(rhs)
-        case EntAssign(lhs, rhs) =>
-          // Everything on the right, but on the left only stuff that is read
-          ReadSymbols.rval(rhs) ++ ReadSymbols.lval(lhs)
-        case stmt @ StmtAssign(_: ExprCat, _) =>
-          // Concatenation on the left, everything is used, if only as a placeholder
-          // TODO: if any symbol in the concatenation is used, then all are used
-          stmt collect { case ExprSym(symbol) => symbol }
-        case StmtAssign(lhs, rhs) =>
-          // Everything on the right, but on the left only stuff that is read
-          ReadSymbols.lval(lhs) ++ ReadSymbols.rval(rhs)
-        case StmtDelayed(lhs, rhs) =>
-          // Everything on the right, but on the left only stuff that is read
-          ReadSymbols.lval(lhs) ++ ReadSymbols.rval(rhs)
-        // TODO: Same as assign for StmtOutcall if it's a pure function,
-        // currently all are assumed to be non-pure...
-        case ExprSym(symbol) if !symbol.kind.isType =>
-          // Any other reference is used (unless it's a type)
-          Iterator.single(symbol)
+
+      if ( // Check if we removed any symbol at all
+        (processedPairs.iterator zip parPairs.iterator).exists {
+          case ((declA, defnA), (declB, defnB)) => (declA ne declB) || (defnA ne defnB)
+        }
+      ) {
+        // We removed some symbols. Try again to see if anything have in turn
+        // became unused as a result of the removals.
+        loop(processedPairs)
+      } else {
+        // No more removals were possible. Finish up by signing off any unused
+        // signal bits.
+
+        // Need to update types of entities and instances as ports might have
+        // been removed
+        val updatedPairs = {
+          object UpdateTypes extends StatefulTreeTransformer {
+            override def replace(symbol: Symbol): Boolean = symbol.kind match {
+              case TypeType(_: TypeEntity) => true
+              case _: TypeEntity           => true
+              case _                       => false
+            }
+          }
+          // This we need to do sequentially as it's a global mapping of symbols
+          processedPairs.seq.map {
+            case (decl, defn) => (decl rewrite UpdateTypes, defn rewrite UpdateTypes)
+          }.par
+        }
+
+        // Gather all used symbol bits. This is almost the same as the above
+        // gathering of used symbols, but we don't include non-packed symbols,
+        // and we used bitwise precision. This is a lot slower than working on
+        // whole symbol granularity, so we only use bitwise precision at the
+        // end to generate signoffs. Also note that we need not gather output
+        // symbols here, as all wholly unused ports would have been removed
+        // during the iteration, and unused sub ranges of output ports will be
+        // signed off where the port is used at the instantiating side.
+        val usedLocalSymbolBits: Map[Symbol, SymbolBitSet] = Map from {
+          updatedPairs.iterator
+            .map {
+              case (DeclEntity(symbol, decls), defn: DefnEntity) =>
+                symbol ->
+                  // Assume all output ports are used
+                  decls.iterator
+                    .map(_.symbol)
+                    .filter(_.kind.isOut)
+                    .map(symbol => SymbolBitSet(symbol, BitSet.whole(symbol)))
+                    .concat {
+                      Iterator.when(defn.variant == EntityVariant.Ver) thenIterator {
+                        // Assume everything is used in verbatim entities as signals
+                        // might be used in verbatim blocks
+                        decls.iterator.map(decl =>
+                          SymbolBitSet(decl.symbol, BitSet.whole(decl.symbol))
+                        )
+                      }
+                    }
+                    .concat {
+                      defn collect {
+                        case EntAssign(lhs, _: ExprSel) =>
+                          ReadSymbolBits.lval(lhs)
+                        case EntAssign(_: ExprSel, rhs) =>
+                          ReadSymbolBits.rval(rhs)
+                        case EntAssign(lhs, rhs) =>
+                          ReadSymbolBits.lval(lhs) union ReadSymbolBits.rval(rhs)
+                        case StmtAssign(lhs, rhs) =>
+                          ReadSymbolBits.lval(lhs) union ReadSymbolBits.rval(rhs)
+                        case StmtDelayed(lhs, rhs) =>
+                          ReadSymbolBits.lval(lhs) union ReadSymbolBits.rval(rhs)
+                        case StmtOutcall(lhs, f, rhss) =>
+                          (f :: rhss).foldLeft(ReadSymbolBits.lval(lhs))(
+                            _ union ReadSymbolBits.rval(_)
+                          )
+                        case expr: Expr => ReadSymbolBits.rval(expr)
+                      }
+                    }
+                    .foldLeft(SymbolBitSet.empty)(_ union _)
+              case _ => unreachable
+            }
+        }
+
+        updatedPairs.map {
+          case (decl: DeclEntity, defn: DefnEntity) =>
+            // Update types then add unused signoffs
+            signOffUnused(decl, defn, usedLocalSymbolBits(decl.symbol))
+          case other => other
+        }.seq
       }
-      partA concat partB
     }
-
-    // Compute the unused ports
-    val unusedSymbols = candidateSymbols diff usedSymbols
-
-    if (unusedSymbols.isEmpty) {
-      // Stop if we no longer have any unused symbols
-      pairs
-    } else {
-      // Remove unused pairs
-      val usedPairs = pairs filterNot { unusedSymbols contains _._1.symbol }
-
-      // Remove unused symbols
-      val results = List from {
-        val transform = new RemoveUnused(unusedSymbols)(cc)
-        usedPairs map { case (decl, defn) => (decl rewrite transform, defn rewrite transform) }
-      }
-
-      // Go again to check for symbols that have now became unused
-      process(results)
-    }
+    loop(parPairs)
   }
 
 }

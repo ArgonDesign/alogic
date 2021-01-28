@@ -1,0 +1,14 @@
+network unused_signoff_00 {
+  in  u8 i;
+  out u4 o;
+
+  i[2 +: 4] -> o;
+}
+// @fec/golden {{{
+//  module unused_signoff_00(
+//    input   wire [7:0] i,
+//    output  wire [3:0] o
+//  );
+//    assign o = i[5:2];
+//  endmodule
+// }}}

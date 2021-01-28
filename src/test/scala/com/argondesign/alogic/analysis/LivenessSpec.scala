@@ -51,9 +51,9 @@ class LivenessSpec extends AnyFreeSpec with AlogicTest {
 
   private def killed(expr: Expr) = Liveness.killed(prep(expr))
 
-  private def usedLval(expr: Expr) = Liveness.usedLv(prep(expr))
+  private def usedLval(expr: Expr) = ReadSymbolBits.lval(prep(expr))
 
-  private def usedRval(expr: Expr) = Liveness.usedRv(prep(expr))
+  private def usedRval(expr: Expr) = ReadSymbolBits.rval(prep(expr))
 
   "Liveness" - {
 

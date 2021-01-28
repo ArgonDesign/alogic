@@ -79,6 +79,7 @@ final class MakeVerilog(
       e match {
         case _: ExprUnary | _: ExprBinary | _: ExprCond => s"$op(${vexpr(e)})"
         case _: ExprInt | _: ExprNum                    => throw Ice(e, "Should have been folded")
+        case _: ExprCat                                 => s"$op${vexpr(e, indent)}" // Allow wrapping
         case _                                          => s"$op${vexpr(e)}"
       }
     case ExprBinary(l, op, r) =>

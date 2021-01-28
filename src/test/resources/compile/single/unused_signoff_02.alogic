@@ -1,0 +1,26 @@
+struct struct_t {
+  bool a;
+  bool b;
+}
+
+fsm unused_signoff_02 {
+  in        u2 i;
+  out wire  u2 o;
+
+  void main() {
+    // This assignment needs a placeholder that is otherwise unused
+    struct_t t = i;
+    o = {t.a, 1'b0};
+    fence;
+  }
+}
+
+// @fec/golden {{{
+//  module unused_signoff_02(
+//    input  wire [1:0] i,
+//    output wire [1:0] o
+//  );
+//    assign o[1] = i[1];
+//    assign o[0] = 1'd0;
+//  endmodule
+// }}}
