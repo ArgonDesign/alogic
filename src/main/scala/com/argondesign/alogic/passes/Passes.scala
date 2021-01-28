@@ -104,6 +104,7 @@ object Passes extends ChainingSyntax {
         Fold andThen
         InterconnectCheck andThen
         CreateTemporaries andThen
+        SignOffUnused andThen
         RenameSymbols(last = true) andThen
         WriteAux andThen
         CodeGeneration

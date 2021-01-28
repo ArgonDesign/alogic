@@ -5,14 +5,12 @@
 // See the LICENSE file for the precise wording of the license.
 //
 // DESCRIPTION:
-// Remove all unused symbols if possible, and sign off the rest
+// Remove all wholly unused symbols if possible
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.analysis.ReadSymbolBits
 import com.argondesign.alogic.analysis.ReadSymbols
-import com.argondesign.alogic.analysis.SymbolBitSet
 import com.argondesign.alogic.analysis.WrittenSymbols
 import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
@@ -20,15 +18,11 @@ import com.argondesign.alogic.ast.Trees.Expr.InstancePortSel
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.enums.EntityVariant
-import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Symbols.Symbol
-import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.util.unreachable
-import com.argondesign.alogic.util.BitSetOps._
 import com.argondesign.alogic.util.IteratorOps._
 
 import scala.annotation.tailrec
-import scala.collection.immutable.BitSet
 import scala.collection.immutable.HashSet
 import scala.collection.parallel.CollectionConverters.IterableIsParallelizable
 import scala.collection.parallel.ParIterable
@@ -123,69 +117,6 @@ final private class RemoveSymbols(
 
 object RemoveUnused extends PairsTransformerPass {
   val name = "remove-unused"
-
-  private def signOffUnused(
-      decl: DeclEntity,
-      defn: DefnEntity,
-      usedSymbolBits: SymbolBitSet
-    )(
-      implicit
-      cc: CompilerContext
-    ): (Decl, Defn) = {
-
-    // Turns (6, 5, 4, 2, 1, 0) into ((6, 4), (2, 1), (0, 0)), etc.
-    def collapseConsecutiveValues(it: Iterator[Int]): Iterator[(Int, Int)] = {
-      require(it.hasNext)
-
-      def f(hi: Int, lo: Int): Iterator[(Int, Int)] = it.nextOption() match {
-        case None                   => Iterator.single((hi, lo))
-        case Some(n) if n == lo - 1 => f(hi, n)
-        case Some(n)                => Iterator.single((hi, lo)) concat f(n, n)
-      }
-
-      val first = it.next()
-      f(first, first)
-    }
-
-    val unusedTerms = decl.decls.iterator map {
-      _.symbol
-    } flatMap {
-      case symbol if !symbol.kind.isPacked => Iterator.empty
-      case symbol =>
-        val usedBits = usedSymbolBits.getOrElse(symbol, BitSet.empty)
-        if (usedBits.size == symbol.kind.width) {
-          Iterator.empty
-        } else if (usedBits.isEmpty) {
-          Iterator.single(TypeAssigner(ExprSym(symbol) withLoc Loc.synthetic))
-        } else {
-          val unusedBits = Iterator.range(symbol.kind.width.toInt - 1, -1, -1).filterNot(usedBits)
-
-          def ref: ExprSym = TypeAssigner(ExprSym(symbol) withLoc Loc.synthetic)
-
-          collapseConsecutiveValues(unusedBits) map {
-            case (hi, lo) if hi == lo => ref index hi
-            case (hi, lo)             => ref.slice(hi, ":", lo)
-          }
-        }
-    }
-
-    if (!unusedTerms.hasNext) {
-      (decl, defn)
-    } else {
-      val unusedSymbol = cc.newSymbol("_unused", Loc.synthetic)
-      unusedSymbol.kind = TypeUInt(1)
-      unusedSymbol.attr.combSignal set true
-      val unusedDecl = unusedSymbol.mkDecl regularize Loc.synthetic
-      val unusedDefn = EntSplice(unusedSymbol.mkDefn) regularize Loc.synthetic
-      val reduction = ExprUnary("&", ExprCat(ExprInt(false, 1, 0) :: unusedTerms.toList))
-      val unusedAssign = EntAssign(ExprSym(unusedSymbol), reduction) regularize Loc.synthetic
-      val newDecl = TypeAssigner(decl.copy(decls = unusedDecl :: decl.decls) withLocOf decl)
-      val newDefn = TypeAssigner(
-        defn.copy(body = unusedDefn :: unusedAssign :: defn.body) withLocOf defn
-      )
-      (newDecl, newDefn)
-    }
-  }
 
   def process(
       pairs: Iterable[(Decl, Defn)]
@@ -323,82 +254,19 @@ object RemoveUnused extends PairsTransformerPass {
         // became unused as a result of the removals.
         loop(processedPairs)
       } else {
-        // No more removals were possible. Finish up by signing off any unused
-        // signal bits.
-
-        // Need to update types of entities and instances as ports might have
-        // been removed
-        val updatedPairs = {
-          object UpdateTypes extends StatefulTreeTransformer {
-            override def replace(symbol: Symbol): Boolean = symbol.kind match {
-              case TypeType(_: TypeEntity) => true
-              case _: TypeEntity           => true
-              case _                       => false
-            }
+        // No more removals were possible. Need to update types of entities
+        // and instances as ports might have been removed.
+        object UpdateTypes extends StatefulTreeTransformer {
+          override def replace(symbol: Symbol): Boolean = symbol.kind match {
+            case TypeType(_: TypeEntity) => true
+            case _: TypeEntity           => true
+            case _                       => false
           }
-          // This we need to do sequentially as it's a global mapping of symbols
-          processedPairs.seq.map {
-            case (decl, defn) => (decl rewrite UpdateTypes, defn rewrite UpdateTypes)
-          }.par
         }
-
-        // Gather all used symbol bits. This is almost the same as the above
-        // gathering of used symbols, but we don't include non-packed symbols,
-        // and we used bitwise precision. This is a lot slower than working on
-        // whole symbol granularity, so we only use bitwise precision at the
-        // end to generate signoffs. Also note that we need not gather output
-        // symbols here, as all wholly unused ports would have been removed
-        // during the iteration, and unused sub ranges of output ports will be
-        // signed off where the port is used at the instantiating side.
-        val usedLocalSymbolBits: Map[Symbol, SymbolBitSet] = Map from {
-          updatedPairs.iterator
-            .map {
-              case (DeclEntity(symbol, decls), defn: DefnEntity) =>
-                symbol ->
-                  // Assume all output ports are used
-                  decls.iterator
-                    .map(_.symbol)
-                    .filter(_.kind.isOut)
-                    .map(symbol => SymbolBitSet(symbol, BitSet.whole(symbol)))
-                    .concat {
-                      Iterator.when(defn.variant == EntityVariant.Ver) thenIterator {
-                        // Assume everything is used in verbatim entities as signals
-                        // might be used in verbatim blocks
-                        decls.iterator.map(decl =>
-                          SymbolBitSet(decl.symbol, BitSet.whole(decl.symbol))
-                        )
-                      }
-                    }
-                    .concat {
-                      defn collect {
-                        case EntAssign(lhs, _: ExprSel) =>
-                          ReadSymbolBits.lval(lhs)
-                        case EntAssign(_: ExprSel, rhs) =>
-                          ReadSymbolBits.rval(rhs)
-                        case EntAssign(lhs, rhs) =>
-                          ReadSymbolBits.lval(lhs) union ReadSymbolBits.rval(rhs)
-                        case StmtAssign(lhs, rhs) =>
-                          ReadSymbolBits.lval(lhs) union ReadSymbolBits.rval(rhs)
-                        case StmtDelayed(lhs, rhs) =>
-                          ReadSymbolBits.lval(lhs) union ReadSymbolBits.rval(rhs)
-                        case StmtOutcall(lhs, f, rhss) =>
-                          (f :: rhss).foldLeft(ReadSymbolBits.lval(lhs))(
-                            _ union ReadSymbolBits.rval(_)
-                          )
-                        case expr: Expr => ReadSymbolBits.rval(expr)
-                      }
-                    }
-                    .foldLeft(SymbolBitSet.empty)(_ union _)
-              case _ => unreachable
-            }
+        // This we need to do sequentially as it's a global mapping of symbols
+        processedPairs.seq.map {
+          case (decl, defn) => (decl rewrite UpdateTypes, defn rewrite UpdateTypes)
         }
-
-        updatedPairs.map {
-          case (decl: DeclEntity, defn: DefnEntity) =>
-            // Update types then add unused signoffs
-            signOffUnused(decl, defn, usedLocalSymbolBits(decl.symbol))
-          case other => other
-        }.seq
       }
     }
     loop(parPairs)
