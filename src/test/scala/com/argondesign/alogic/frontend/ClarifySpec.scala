@@ -400,6 +400,75 @@ final class ClarifySpec extends AnyFreeSpec with AlogicTest {
             }
           }
         }
+
+        "case statement expressions" - {
+          s"scrutinee" in {
+            clarify {
+              s"""fsm a {
+                 |  void main() {
+                 |    case (1) {
+                 |      2'd0: {}
+                 |    }    
+                 |    fence;
+                 |  }
+                 |}""".stripMargin
+            } getFirst {
+              case StmtCase(cond, _) => cond
+            } shouldBe {
+              ExprCast(TypeUInt(2), ExprNum(false, 1))
+            }
+            cc.messages shouldBe empty
+          }
+
+          "item" - {
+
+            s"single " in {
+              clarify {
+                s"""fsm a {
+                   |  void main() {
+                   |    case (2'd0) {
+                   |      1: {}
+                   |    }    
+                   |    fence;
+                   |  }
+                   |}""".stripMargin
+              } getFirst {
+                case CaseRegular(cond :: Nil, _) => cond
+              } shouldBe {
+                ExprCast(TypeUInt(2), ExprNum(false, 1))
+              }
+
+              cc.messages shouldBe empty
+            }
+
+            s"multiple " in {
+              val result = clarify {
+                s"""fsm a {
+                   |  void main() {
+                   |    case (2'd0) {
+                   |      1s, 2: {}
+                   |    }    
+                   |    fence;
+                   |  }
+                   |}""".stripMargin
+              }
+
+              result getFirst {
+                case CaseRegular(cond :: _ :: Nil, _) => cond
+              } shouldBe {
+                ExprCast(TypeSInt(2), ExprNum(true, 1))
+              }
+
+              result getFirst {
+                case CaseRegular(_ :: cond :: Nil, _) => cond
+              } shouldBe {
+                ExprCast(TypeUInt(2), ExprNum(false, 2))
+              }
+
+              cc.messages shouldBe empty
+            }
+          }
+        }
       }
     }
   }

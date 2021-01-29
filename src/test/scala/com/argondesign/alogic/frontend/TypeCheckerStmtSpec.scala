@@ -126,7 +126,7 @@ final class TypeCheckerStmtSpec extends AnyFreeSpec with AlogicTest {
           ),
           (
             "case(void) { 1: $display(); }",
-            "'case' expression is of neither numeric nor packed type" :: Nil
+            "'case' scrutinee expression is of neither numeric nor packed type" :: Nil
           ),
           ("loop { fence; }", Nil),
           ("loop { }", "Body of 'loop' must be a control statement" :: Nil),

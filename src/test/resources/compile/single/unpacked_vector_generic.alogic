@@ -43,6 +43,7 @@ fsm unpacked_vector_generic {
     fence;
   }
 }
+// @verilator-lint-off
 // @fec/mode: bmc
 // @fec/solver: boolector
 // @fec/golden {{{

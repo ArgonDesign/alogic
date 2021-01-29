@@ -246,6 +246,29 @@ object Clarify {
             }
           } getOrElse tree
 
+        case StmtCase(expr, cases) =>
+          val exprs = expr :: cases.flatMap {
+            case CaseRegular(cond, _) => cond
+            case _: CaseDefault       => Nil
+            case _: CaseSplice        => unreachable
+          }
+          if (!exprs.exists(_.tpe.underlying.isNum)) {
+            tree
+          } else {
+            val kind = exprs.collectFirst { case e if e.tpe.isPacked => e.tpe }.get
+            val newExpr = if (expr.tpe.isPacked) expr else castToMatchWidth(expr, kind)
+            val newCases = cases map {
+              case c @ CaseRegular(cond, _) if cond.exists(_.tpe.underlying.isNum) =>
+                val newCond = cond map {
+                  case e if e.tpe.isPacked => e
+                  case e                   => castToMatchWidth(e, kind)
+                }
+                TypeAssigner(c.copy(cond = newCond) withLocOf c)
+              case other => other
+            }
+            StmtCase(newExpr, newCases)
+          }
+
         case expr @ ExprIndex(tgt, idx) if idx.tpe.underlying.isNum =>
           tgt.tpe.shapeIter.nextOption() map { size =>
             expr.copy(index = cast(TypeUInt(clog2(size) max 1), idx))

@@ -152,6 +152,8 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
     if (value == 1) s"$value $singular" else s"$value $plural"
   }
 
+  private def bitsPlur(value: BigInt): String = pluralize(value, "bit", "bits")
+
   //////////////////////////////////////////////////////////////////////////////
   // The following check* methods all set the Tree 'tree' being processed to
   // have type TypeError if the check fails. 'okSoFar' can be used later to see
@@ -161,6 +163,8 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
   private def checkPacked(expr: Expr, subject: => String)(implicit tree: Tree): Unit =
     if (!expr.tpe.isPacked) {
       error(expr, s"$subject is of non-packed type")
+    } else if (expr.tpe.width == 0) {
+      error(expr, s"$subject has 0 width")
     }
 
   private def checkNumeric(expr: Expr, subject: => String)(implicit tree: Tree): Unit =
@@ -171,6 +175,8 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
   private def checkNumericOrPacked(expr: Expr, subject: => String)(implicit tree: Tree): Unit =
     if (!expr.tpe.underlying.isNumeric && !expr.tpe.isPacked) {
       error(expr, s"$subject is of neither numeric nor packed type")
+    } else if (expr.tpe.isPacked && expr.tpe.width == 0) {
+      error(expr, s"$subject has 0 width")
     }
 
   private def checkWidth(width: BigInt, expr: Expr, subject: String)(implicit tree: Tree): Unit = {
@@ -181,7 +187,7 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
     } else if (!expr.tpe.isPacked) {
       complain("is of non-packed type")
     } else if (expr.tpe.width != width) {
-      complain(s"yields ${pluralize(expr.tpe.width, "bit", "bits")}")
+      complain(s"yields ${bitsPlur(expr.tpe.width)}")
     }
   }
 
@@ -764,18 +770,40 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
       }
 
     case StmtCase(expr, cases) =>
-      checkNumericOrPacked(expr, "'case' expression")
-      if (okSoFar && expr.tpe.isPacked && expr.tpe.width == 0) {
-        error(expr, "'case' expression has width zero")
-      }
-      cases.foreach(kase => checkBlock(kase.stmts))
+      checkNumericOrPacked(expr, "'case' scrutinee expression")
       if (okSoFar) {
+        // Check expressions are compatible
+        val exprs = expr :: cases.flatMap {
+          case CaseRegular(cond, _) => cond
+          case _: CaseDefault       => Nil
+          case _: CaseSplice        => unreachable
+        }
+        val sizedExprs = exprs.collect { case e if e.tpe.isPacked => e }
+        if (sizedExprs.map(_.tpe.width).distinct.sizeIs > 1) {
+          error("'case' statement expressions have mismatched width")
+          if (expr.tpe.isPacked) {
+            error(s"'case' scrutinee expression is ${bitsPlur(expr.tpe.width)} wide")
+          }
+          sizedExprs foreach { expr =>
+            error(s"'case' item expression is ${bitsPlur(expr.tpe.width)} wide")
+          }
+        }
+        // check branches are compatible
         val allComb = cases forall { _.stmts forall { _.tpe.isCombStmt } }
         val allCtrl = cases forall { _.stmts exists { _.tpe.isCtrlStmt } }
         if (!allComb && !allCtrl) {
           error("Either all or no cases of a 'case' statement must be control statements")
         }
       }
+
+    case CaseRegular(cond, stmts) =>
+      cond foreach { checkNumericOrPacked(_, "'case' item expression") }
+      checkBlock(stmts)
+
+    case CaseDefault(stmts) =>
+      checkBlock(stmts)
+
+    case _: CaseSplice => unreachable
 
     ////////////////////////////////////////////////////////////////////////////
     // Loops
