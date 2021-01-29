@@ -1,0 +1,25 @@
+fsm stmt_unreachable_11 {
+  in bool i;
+  void main() {
+    if (~i) {
+      unreachable "Boom";
+    }
+    fence;
+  }
+}
+// @sim/test {{{
+//  reg [7:0] tick;
+//
+//  always @(posedge clk) begin
+//    if (rst) begin
+//      tick <= 0;
+//    end else begin
+//      tick <= tick + 1;
+//    end
+//  end
+//
+//  wire i = tick < 4;
+// }}}
+// @sim/expect {{{
+//  \[6000\] %Error: stmt_unreachable_11\.v:\d+: Assertion failed in TOP\.testbench\.dut: Boom
+// }}}

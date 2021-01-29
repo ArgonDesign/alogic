@@ -1,0 +1,13 @@
+fsm stmt_unreachable_09 {
+  in bool i;
+  void main() {
+    if (~i) {
+      unreachable;
+    }
+    fence;
+  }
+}
+// @sim/test {{{
+//  wire i = 1'd1;
+// }}}
+// @sim/expect: TIMEOUT at 100ns

@@ -283,6 +283,8 @@ trait TreePrintOps {
     case AssertionAssume(cond, None)      => s"assume ${v(cond)};"
     case AssertionStatic(cond, Some(msg)) => s"""static assert ${v(cond)}, "$msg";"""
     case AssertionStatic(cond, None)      => s"static assert ${v(cond)};"
+    case AssertionUnreachable(Some(msg))  => s"""unreachable "$msg";"""
+    case AssertionUnreachable(None)       => "unreachable;"
   }
 
   final private def v(tree: Pkg)(implicit indent: Int): String = tree match {

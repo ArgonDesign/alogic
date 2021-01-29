@@ -4,5 +4,7 @@ fsm stmt_assert_1 {
     fence;
   }
 }
-// @sim/test: // empty
+// @sim/test {{{
+//  wire _unused = &{1'd0, clk, rst};
+// }}}
 // @sim/expect: TIMEOUT at 100ns

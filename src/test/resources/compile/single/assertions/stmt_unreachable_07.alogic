@@ -1,0 +1,13 @@
+fsm stmt_unreachable_07 {
+  in bool i;
+  void f() {
+    if (i) {
+      unreachable "Boom";
+    }
+    fence;
+  }
+
+  void main() {
+    f();
+  }
+}

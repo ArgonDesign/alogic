@@ -1,0 +1,11 @@
+fsm stmt_unreachable_03 {
+  void unused() {
+    unreachable "Boom";
+    fence;
+  }
+
+  void main() {
+    fence;
+  }
+}
+// :2: WARNING: Function 'unused' is unused

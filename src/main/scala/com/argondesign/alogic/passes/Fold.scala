@@ -22,8 +22,6 @@ import scala.annotation.tailrec
 
 final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer {
 
-  private val zero = BigInt(0)
-
   private def empty(stmts: List[Stmt]): Boolean = stmts forall {
     case _: StmtComment => true
     case _              => false
@@ -143,14 +141,16 @@ final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer 
     case _ => None
   }
 
-  private def alwaysFalseError(tree: Tree, msgOpt: Option[String]): tree.type = {
-    val suffix = msgOpt match {
-      case Some(msg) => ": " + msg;
-      case None      => ""
+  private def transformAssertion(cond: Expr, msgOpt: Option[String], assertion: Tree): Tree =
+    cond.valueOption match {
+      case Some(v) =>
+        if (v == 0) {
+          val suffix = msgOpt.map(": " + _).getOrElse("")
+          cc.error(assertion.loc, s"Assertion is always false$suffix")
+        }
+        Stump
+      case None => assertion
     }
-    cc.error(tree.loc, s"Assertion is always false$suffix")
-    tree
-  }
 
   override def transform(tree: Tree): Tree = tree match {
     // Remove all blocks (this will also remove empty blocks)
@@ -183,11 +183,9 @@ final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer 
     case EntCombProcess(stmts) if empty(stmts)          => Stump
     case EntClockedProcess(_, _, stmts) if empty(stmts) => Stump
 
-    // Fail on known false assertions
-    case AssertionAssert(cond, msgOpt) if cond.valueOption contains zero =>
-      alwaysFalseError(tree, msgOpt)
-    case AssertionAssume(cond, msgOpt) if cond.valueOption contains zero =>
-      alwaysFalseError(tree, msgOpt)
+    // Fail on known false assertions and drop ones that always hold
+    case AssertionAssert(cond, msgOpt) => transformAssertion(cond, msgOpt, tree)
+    case AssertionAssume(cond, msgOpt) => transformAssertion(cond, msgOpt, tree)
 
     //
     case _ => tree

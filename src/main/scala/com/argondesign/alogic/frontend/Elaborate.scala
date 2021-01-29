@@ -1208,22 +1208,28 @@ object Elaborate {
       implicit
       cc: CompilerContext,
       fe: Frontend
-    ): Result[Tree] = elaborate(assertion.cond, symtab) map { cond =>
-    assertion.cpy(cond = cond) withLocOf assertion
-  } proceed {
-    case a: AssertionAssert => Finished(a)
-    case _: AssertionAssume => unreachable // Only used in back-end
+    ): Result[Tree] = assertion pipe {
+    case a: AssertionAssert =>
+      elaborate(a.cond, symtab) map { cond =>
+        a.copy(cond = cond) withLocOf assertion
+      }
     case a: AssertionStatic =>
-      fe.typeCheck(a) flatMap { _ =>
-        fe.evaluate(a.cond, "Condition of static assertion") flatMap {
-          case v if v != 0 => Complete(Stump)
-          case _ =>
-            val suffix = a.msgOpt map {
-              ": " + _
-            } getOrElse ""
-            Failure(a.cond, s"Static assertion failure$suffix")
+      elaborate(a.cond, symtab) map { cond =>
+        a.copy(cond = cond) withLocOf assertion
+      } proceed { a =>
+        fe.typeCheck(a) flatMap { _ =>
+          fe.evaluate(a.cond, "Condition of static assertion") flatMap {
+            case v if v != 0 => Complete(Stump)
+            case _ =>
+              val suffix = a.msgOpt map {
+                ": " + _
+              } getOrElse ""
+              Failure(a.cond, s"Static assertion failure$suffix")
+          }
         }
       }
+    case a: AssertionUnreachable => Finished(a)
+    case _: AssertionAssume      => unreachable // Only used in back-end
   } tap assertProgressIsReal(assertion)
 
   private def elaborate(

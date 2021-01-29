@@ -143,6 +143,7 @@ from
 assertion
   : 'assert' expr (',' STRING)? ';'             # AssertionAssert
   | 'static' 'assert' expr (',' STRING)? ';'    # AssertionStatic
+  | 'unreachable' (STRING)? ';'                 # AssertionUnreachable
   ;
 
 ////////////////////////////////////////////////////////////////////////////////

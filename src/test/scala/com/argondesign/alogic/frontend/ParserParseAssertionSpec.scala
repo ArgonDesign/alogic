@@ -44,5 +44,17 @@ final class ParserParseAssertionSpec extends AnyFreeSpec with AlogicTest {
         AssertionStatic(ExprInt(false, 2, 2), Some("msg"))
       }
     }
+
+    "unreachable with no message" in {
+      "unreachable;".asTree[Assertion]() shouldBe {
+        AssertionUnreachable(None)
+      }
+    }
+
+    "unreachable with message" in {
+      """unreachable "msg";""".asTree[Assertion]() shouldBe {
+        AssertionUnreachable(Some("msg"))
+      }
+    }
   }
 }

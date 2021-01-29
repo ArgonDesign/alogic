@@ -52,6 +52,9 @@ class SymbolAttributes {
   // This is the reset signal of the enclosing entity
   val rst = new Attribute[Boolean]()
 
+  // This is the fsm state variable
+  val stateVariable = new Attribute[Boolean]()
+
   // Back link to port this signal was created from
   val payloadOfPort = new Attribute[Symbol]()
   val validOfPort = new Attribute[Symbol]()
@@ -139,6 +142,7 @@ class SymbolAttributes {
     go,
     clk,
     rst,
+    stateVariable,
     payloadOfPort,
     validOfPort,
     readyOfPort,
@@ -179,6 +183,7 @@ class SymbolAttributes {
     "go",
     "clk",
     "rst",
+    "stateVariable",
     "payloadOfPort",
     "validOfPort",
     "readyOfPort",

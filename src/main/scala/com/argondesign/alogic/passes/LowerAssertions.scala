@@ -17,16 +17,15 @@
 package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.StatefulTreeTransformer
-import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.enums.ResetStyle
-import com.argondesign.alogic.util.SequenceNumbers
 import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
@@ -34,9 +33,9 @@ import scala.collection.mutable.ListBuffer
 
 final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTransformer {
 
-  // List of emitted assertion (enable signal, condition, condition symbols, message, comment)
+  // List of emitted assertions (enable signal, condition, condition symbols, message, comment)
   private val assertions =
-    mutable.ListBuffer[(Symbol, Expr, List[Symbol], Option[String], String)]()
+    mutable.ListBuffer[(Symbol, Option[Expr], List[Symbol], Option[String], String)]()
 
   // Assertion enable symbol for the whole entity, used to gate assertions with
   // go and reset. Separate signal otherwise Verilator complains SYNCASYNCNET
@@ -44,7 +43,13 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
   // it. Also helps readability.
   private var aEnSymbolOpt: Option[Symbol] = None
 
-  private val assertSeqNum = new SequenceNumbers
+  // Sequence numbers for name disambiguation
+  private val assertSeqNum = LazyList.from(0).iterator
+  private val unreachableSeqNum = LazyList.from(0).iterator
+
+  // How deep are within a conditional (does not inclde the state dispatch
+  // statement)
+  private var condLvl = 0
 
   // Predicate indicating what kind of symbols need to be copied for assertions
   // as their values might change.
@@ -75,12 +80,58 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
       unreachable
   }
 
-  override protected def skip(tree: Tree): Boolean = tree match {
-    case _: Expr => true
-    case _       => false
+  private def isStateVariable(expr: Expr): Boolean = expr match {
+    case ExprSym(symbol) => symbol.attr.stateVariable.isSet
+    case _               => false
+  }
+
+  override def enter(tree: Tree): Option[Tree] = tree match {
+    ////////////////////////////////////////////////////////////////////////////
+    // Keep track of condition level, but ignore the state dispatch
+    ////////////////////////////////////////////////////////////////////////////
+
+    case stmt: StmtIf =>
+      if (!isStateVariable(stmt.cond)) {
+        condLvl += 1
+      }
+      None
+
+    case stmt: StmtCase =>
+      if (!isStateVariable(stmt.expr)) {
+        condLvl += 1
+      }
+      None
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Skip Expr nodes
+    ////////////////////////////////////////////////////////////////////////////
+
+    case _: Expr => Some(tree)
+
+    //
+    case _ => None
   }
 
   override def transform(tree: Tree): Tree = tree match {
+    ////////////////////////////////////////////////////////////////////////////
+    // Keep track of condition level, but ignore the state dispatch
+    ////////////////////////////////////////////////////////////////////////////
+
+    case stmt: StmtIf =>
+      if (!isStateVariable(stmt.cond)) {
+        condLvl -= 1
+      }
+      tree
+
+    case stmt: StmtCase =>
+      if (!isStateVariable(stmt.expr)) {
+        condLvl -= 1
+      }
+      tree
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Convert 'assert'
+    ////////////////////////////////////////////////////////////////////////////
 
     // If assertions are not enabled, just convert them to assumptions if the
     // condition is pure, otherwise drop them
@@ -95,16 +146,16 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
     // leave in the original as an assume to be used by folding. The assume
     // will be removed by the RemoveAssume pass.
     case StmtSplice(AssertionAssert(cond, msgOpt)) =>
-      val prefix = s"_assert_${assertSeqNum.next}"
+      val prefix = s"_assert_${assertSeqNum.next()}"
       val comment = s"'assert' on line ${tree.loc.line}"
       val enSymbol = cc.newSymbol(s"${prefix}_en", tree.loc)
       enSymbol.kind = TypeUInt(1)
       enSymbol.attr.combSignal set true
       val deps = List from {
-        val seqNum = new SequenceNumbers
+        val seqNum = LazyList.from(0).iterator
         cond collect {
           case expr @ ExprSym(symbol) if modifiable(symbol) =>
-            val newSymbol = cc.newSymbol(s"${prefix}_c${seqNum.next}", expr.loc)
+            val newSymbol = cc.newSymbol(s"${prefix}_c${seqNum.next()}", expr.loc)
             newSymbol.kind = symbol.kind.underlying
             newSymbol.attr.combSignal set true
             symbol -> newSymbol
@@ -116,7 +167,9 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
             symbol -> TypeAssigner(ExprSym(newSymbol) withLoc newSymbol.loc)
         }
       }
-      assertions.append((enSymbol, cond substitute bindings, deps map { _._2 }, msgOpt, comment))
+      assertions.append(
+        (enSymbol, Some(cond substitute bindings), deps map { _._2 }, msgOpt, comment)
+      )
       val lb = new ListBuffer[Stmt]
       lb.append(StmtAssign(ExprSym(enSymbol), ExprInt(false, 1, 1)) regularize tree.loc)
       deps foreach {
@@ -127,6 +180,34 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
         lb.append(StmtSplice(AssertionAssume(cond, msgOpt)) regularize cond.loc)
       }
       Thicket(lb.toList)
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Convert 'unreachable'
+    ////////////////////////////////////////////////////////////////////////////
+
+    // 'unreachable' is not under a conditional, i.e.: it is reachable
+    case StmtSplice(AssertionUnreachable(msgOpt)) if condLvl == 0 =>
+      val suffix = msgOpt.map(": " + _).getOrElse("")
+      cc.error(tree, s"'unreachable' statement is always reached$suffix")
+      Stump
+
+    // If assertions are disabled, just drop them
+    case StmtSplice(_: AssertionUnreachable) if !cc.settings.assertions =>
+      Stump
+
+    // If assertions are enabled, convert to deferred assertions.
+    case StmtSplice(AssertionUnreachable(msgOpt)) =>
+      val prefix = s"_unreachable_${unreachableSeqNum.next()}"
+      val comment = s"'unreachable' on line ${tree.loc.line}"
+      val enSymbol = cc.newSymbol(s"${prefix}_en", tree.loc)
+      enSymbol.kind = TypeUInt(1)
+      enSymbol.attr.combSignal set true
+      assertions.append((enSymbol, None, Nil, msgOpt, comment))
+      StmtAssign(ExprSym(enSymbol), ExprInt(false, 1, 1)) regularize tree.loc
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Add implementations of assertions to the entity
+    ////////////////////////////////////////////////////////////////////////////
 
     case defn: DefnEntity if assertions.nonEmpty =>
       val aEnSymbol = cc.newSymbol(s"_assertions_en", tree.loc)
@@ -161,15 +242,20 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
           Iterator single {
             val asserts = List from {
               assertions.iterator flatMap {
-                case (enSymbol, cond, _, msgOpt, comment) =>
+                case (enSymbol, Some(cond), _, msgOpt, comment) =>
                   Iterator(
                     StmtComment(comment),
                     StmtIf(
                       ExprSym(enSymbol),
                       StmtSplice(AssertionAssert(cond, msgOpt)) :: Nil,
                       Nil
-                    ) regularize enSymbol.loc
-                  )
+                    )
+                  ) tapEach { _ regularize enSymbol.loc }
+                case (enSymbol, None, _, msgOpt, comment) =>
+                  Iterator(
+                    StmtComment(comment),
+                    StmtSplice(AssertionAssert(~ExprSym(enSymbol), msgOpt))
+                  ) tapEach { _ regularize enSymbol.loc }
               }
             }
             TypeAssigner(
@@ -206,6 +292,11 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
 
     //
     case _ => tree
+  }
+
+  override protected def finalCheck(tree: Tree): Unit = {
+    assert(condLvl == 0)
+
   }
 
 }

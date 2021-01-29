@@ -1,0 +1,11 @@
+fsm stmt_unreachable_05 {
+  void f() {
+    unreachable "Boom";
+    fence;
+  }
+
+  void main() {
+    f();
+  }
+}
+// :3: ERROR: 'unreachable' statement is always reached: Boom

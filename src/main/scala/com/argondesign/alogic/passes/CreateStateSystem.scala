@@ -161,6 +161,7 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends StatefulTree
       if (nStates > 1) {
         stateVarSymbol = cc.newSymbol("state", defn.symbol.loc) tap { s =>
           s.kind = TypeUInt(stateWidth)
+          s.attr.stateVariable set true
         }
       }
 

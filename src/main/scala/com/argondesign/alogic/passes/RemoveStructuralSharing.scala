@@ -122,9 +122,10 @@ final class RemoveStructuralSharing(implicit cc: CompilerContext) extends Statef
         case node: FromOne => node.copy()
         case node: FromAll => node.copy()
 
-        case node: AssertionAssert => node.copy()
-        case node: AssertionAssume => node.copy()
-        case node: AssertionStatic => node.copy()
+        case node: AssertionAssert      => node.copy()
+        case node: AssertionAssume      => node.copy()
+        case node: AssertionStatic      => node.copy()
+        case node: AssertionUnreachable => node.copy()
 
         case node: PkgSplice  => node.copy()
         case node: PkgCompile => node.copy()

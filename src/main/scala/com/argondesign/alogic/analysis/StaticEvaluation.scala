@@ -419,9 +419,10 @@ object StaticEvaluation {
         case StmtSplice(_: DefnFunc) => Some(curr)
 
         // TODO: This could be improved by indicating this branch does not join
-        // hence shouldn't constrain subsequent statements.
-        case _: StmtReturn => Some(curr)
-        case _: StmtGoto   => Some(curr)
+        //       hence shouldn't constrain subsequent statements.
+        case _: StmtReturn                       => Some(curr)
+        case _: StmtGoto                         => Some(curr)
+        case StmtSplice(_: AssertionUnreachable) => Some(curr)
 
         case _ => unreachable
       }
