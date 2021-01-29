@@ -153,25 +153,21 @@ final class TypeCheckerStmtSpec extends AnyFreeSpec with AlogicTest {
     "assignments" - {
       for {
         (assignment, err) <- List(
+          // format: off
           ("a = 2", Nil),
           ("a = 8'd2", Nil),
-          (
-            "a = bool",
-            "Right hand side of assignment is of non-packed type, a 8 bit value is expected" :: Nil
-          ),
+          ("a = bool", "Right hand side of assignment is of non-packed type, a 8 bit value is expected" :: Nil),
           ("a += 8'd2", Nil),
-          (
-            "a += bool",
-            "Right hand side of assignment is of non-packed type, a 8 bit value is expected" :: Nil
-          ),
-          (
-            "a = 9'd2",
-            "Right hand side of assignment yields 9 bits, a 8 bit value is expected" :: Nil
-          ),
-          (
-            "a = 7'd2",
-            "Right hand side of assignment yields 7 bits, a 8 bit value is expected" :: Nil
-          )
+          ("a += bool", "Right hand side of '+=' assignment is of non-packed type, a 8 bit value is expected" :: Nil),
+          ("a = 9'd2", "Right hand side of assignment yields 9 bits, a 8 bit value is expected" :: Nil),
+          ("a = 7'd2", "Right hand side of assignment yields 7 bits, a 8 bit value is expected" :: Nil),
+          ("a += 9'd2", "Right hand side of '+=' assignment yields 9 bits, a 8 bit value is expected" :: Nil),
+          ("a += 7'd2", "Right hand side of '+=' assignment yields 7 bits, a 8 bit value is expected" :: Nil),
+          ("a <<=  2'd1", Nil),
+          ("a <<<= 2'd1", Nil),
+          ("a >>=  2'd1", Nil),
+          ("a >>>= 2'd1", Nil)
+          // format: on
         )
       } {
         assignment in {

@@ -278,7 +278,7 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
     WrittenSyms(expr) foreach {
       case ref @ ExprSym(symbol) =>
         symbol.kind match {
-          case _: TypeParam => unreachable // Removed by elaboration
+          case _: TypeParam => error(ref, "Parameter cannot be modified")
           case _: TypeConst => error(ref, "Constant cannot be modified")
           case _: TypeIn    => error(ref, "Input port cannot be modified")
           case _: TypeArray => error(ref, "Memory can only be modified using .write()")
@@ -565,22 +565,29 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
     // Type check the lhs up front
     case StmtAssign(lhs, _) =>
       typeCheckUpFront(lhs) {
-        if (!(lhs.tpe.isGen && lhs.tpe.underlying.isNum)) {
-          checkPacked(lhs, "Left hand side of assignment")
+        if (lhs.tpe.isGen && lhs.tpe.underlying.isNum) {
+          // Assignment to unsized gen var is ok
+        } else {
           checkModifiable(lhs)
+          checkPacked(lhs, "Left hand side of assignment")
+          if (okSoFar) {
+            UnaryTickContext.pushType(tree, lhs.tpe)
+          }
         }
-        UnaryTickContext.pushType(tree, lhs.tpe)
       }
 
     // Type check the lhs up front
     case StmtUpdate(lhs, _, _) =>
       typeCheckUpFront(lhs) {
-        if (!(lhs.tpe.isGen && lhs.tpe.underlying.isNum)) {
-          checkPacked(lhs, "Left hand side of assignment")
+        if (lhs.tpe.isGen && lhs.tpe.underlying.isNum) {
+          // Assignment to unsized gen var is ok
+        } else {
           checkModifiable(lhs)
+          checkPacked(lhs, "Left hand side of assignment")
+          if (okSoFar) {
+            UnaryTickContext.pushType(tree, lhs.tpe)
+          }
         }
-        // TODO: this is not quite right for shift and compare etc
-        UnaryTickContext.pushType(tree, lhs.tpe)
       }
 
     case _: StmtReturn =>
@@ -831,33 +838,34 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
 
     case StmtAssign(lhs, rhs) =>
       if (rhs.tpe.underlying.isNum) {
-        // TODO: Check it fits in lhs.tpe.width
+        // Ok
       } else if (lhs.tpe.underlying.isNum && rhs.tpe.isPacked) {
-        error("Unsized integer variable assigned a packed value")
+        error(s"Unsized '${lhs.tpe.underlying.toSource}' variable assigned a packed value")
       } else {
         // lhs have already been checked in enter
         checkWidth(lhs.tpe.width, rhs, "Right hand side of assignment")
       }
 
-    // TODO: this is not right for shifts which can have any right hand side
-    case StmtUpdate(lhs, _, rhs) =>
-      if (rhs.tpe.underlying.isNum) {
-        // TODO: Check it fits in lhs.tpe.width
-      } else if (lhs.tpe.underlying.isNum && rhs.tpe.isPacked) {
-        error("Unsized integer variable assigned a packed value")
-      } else {
-        // lhs have already been checked in enter
-        checkWidth(lhs.tpe.width, rhs, "Right hand side of assignment")
+    case StmtUpdate(lhs, op, rhs) =>
+      op match {
+        case ">>" | "<<" | ">>>" | "<<<" => // OK
+        case _ =>
+          if (rhs.tpe.underlying.isNum) {
+            // Ok
+          } else if (lhs.tpe.underlying.isNum && rhs.tpe.isPacked) {
+            error(s"Unsized '${lhs.tpe.underlying.toSource}' variable assigned a packed value")
+          } else {
+            // lhs have already been checked in enter
+            checkWidth(lhs.tpe.width, rhs, s"Right hand side of '$op=' assignment")
+          }
       }
 
     case StmtPost(expr, op) =>
       if (expr.tpe.isGen && expr.tpe.underlying.isNum) {
-        // It's ok to apply a post op to a Gen variable that is a num
+        // Post op on unsized gen var is ok
       } else {
+        checkModifiable(expr)
         checkPacked(expr, s"Target of postfix '$op'")
-        if (okSoFar) {
-          checkModifiable(expr)
-        }
       }
 
     ////////////////////////////////////////////////////////////////////////////
