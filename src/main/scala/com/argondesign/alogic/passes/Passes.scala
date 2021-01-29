@@ -95,6 +95,7 @@ object Passes extends ChainingSyntax {
         OptimizeClearOnStall andThen
         LowerWait andThen
         RemoveAssume andThen
+        CreateTemporaries andThen
         DefaultAssignments andThen
         TieOffInputs andThen
         InlineKnownVars(combOnly = false) andThen
@@ -102,7 +103,6 @@ object Passes extends ChainingSyntax {
         RemoveUnused andThen
         Fold andThen
         InterconnectCheck andThen
-        CreateTemporaries andThen
         SignOffUnused andThen
         RenameSymbols(last = true) andThen
         WriteAux andThen

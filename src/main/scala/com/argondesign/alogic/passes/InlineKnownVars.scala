@@ -154,8 +154,8 @@ final class InlineKnownVars(
   }
 
   override def transform(tree: Tree): Tree = tree match {
-    // Substitute known constants of scalar types
-    case ExprSym(symbol) if symbol.kind.underlying.isNumeric =>
+    // Substitute known constants of scalar types. Ignore temporaries too
+    case ExprSym(symbol) if symbol.kind.underlying.isNumeric && !symbol.name.startsWith("_tmp") =>
       // Drop bindings which contain non-numeric symbols, as operators change
       // their meaning over them during lowering. This is only relevant prior
       // to SplitStructs and LowerVectors.
