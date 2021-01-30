@@ -967,6 +967,16 @@ object TreeCopier {
     }
   }
 
+  def apply(tree: ImportPending)(ident: Tree): ImportPending = {
+    if (ident eq tree.ident) {
+      tree
+    } else {
+      tree.copy(
+        ident = ident.asInstanceOf[Ident]
+      ) withLoc tree.loc
+    }
+  }
+
   //////////////////////////////////////////////////////////////////////////////
   // Using
   //////////////////////////////////////////////////////////////////////////////

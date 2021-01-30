@@ -30,6 +30,8 @@ import com.argondesign.alogic.util.BigIntOps._
 import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 import scala.util.chaining.scalaUtilChainingOps
 
 abstract class ListElaborable[T <: Tree] {
@@ -1089,16 +1091,26 @@ object Elaborate {
       implicit
       cc: CompilerContext,
       fe: Frontend
-    ): Result[Tree] =
+    ): Result[Tree] = {
+
+    def finishImport(symbol: Symbol, ident: Ident): Result[Tree] = {
+      val expr = ExprSym(symbol) withLocOf imprt
+      val alias = DescAlias(ident, Nil, expr, exprt = false) withLocOf imprt
+      // Type parameter is unused as DescAlias doesn't have a body...
+      elaborate[Desc](alias, symtab, None)
+    }
+
     imprt pipe {
       case ImportOne(path, ident) =>
-        fe.imprt(path, imprt.loc) map { symbol =>
-          DescAlias(ident, Nil, ExprSym(symbol) withLocOf imprt, exprt = false) withLocOf imprt
-        } proceed {
-          // Type parameter is unused as DescAlias doesn't have a body...
-          elaborate[Desc](_, symtab, None)
+        fe.imprt(path, imprt.loc) match {
+          case Left(result) => result flatMap { finishImport(_, ident) }
+          case Right(future) =>
+            Partial(ImportPending(future, ident) withLocOf imprt, Seq(ReasonImportPending(imprt)))
         }
+      case ImportPending(future, ident) =>
+        Await.result(future, Duration.Inf) flatMap { finishImport(_, ident) }
     } tap assertProgressIsReal(imprt)
+  }
 
   private def reExport(symbol: Symbol): Boolean = symbol.desc match {
     // Don't re-export aliases that should not be exported ..

@@ -9,8 +9,7 @@
 
 package com.argondesign.alogic.frontend
 
-import com.argondesign.alogic.ast.Trees.ExprIdent
-import com.argondesign.alogic.ast.Trees.Tree
+import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Locatable
 import com.argondesign.alogic.core.Messages.Error
@@ -90,6 +89,7 @@ case class ReasonNeedsParamValue(symbol: Symbol, loc: Loc) // No actual paramete
     extends Reason
 case class ReasonEarlierTypeError(tree: Tree) // Encountered type error during earlier type check
     extends Reason
+case class ReasonImportPending(imprt: Import) extends Reason
 
 trait ResultOps[+T] { self: Result[T] =>
 
@@ -218,6 +218,7 @@ trait FinalResultOps[+T] { self: FinalResult[T] =>
           // $COVERAGE-OFF$ ICEs should not be hit..
           case ReasonUnelaborated(t)     => Iterator.single(Ice(t, s"Not elaborated"))
           case ReasonEarlierTypeError(t) => Iterator.single(Ice(t, s"Earlier type error"))
+          case ReasonImportPending(t)    => Iterator.single(Ice(t, s"Import pending"))
           // $COVERAGE-ON$
         }
       }

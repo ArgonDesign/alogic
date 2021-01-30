@@ -19,8 +19,11 @@ import com.argondesign.alogic.core.StorageTypes.StorageType
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.enums.EntityVariant
+import com.argondesign.alogic.frontend.FinalResult
 import com.argondesign.alogic.frontend.SymbolTable
 import com.argondesign.alogic.util.SequenceNumbers
+
+import scala.concurrent.Future
 
 object Trees {
 
@@ -185,6 +188,7 @@ object Trees {
   sealed trait Import extends Tree with Spliceable
 
   case class ImportOne(path: String, ident: Ident) extends Import
+  case class ImportPending(future: Future[FinalResult[Symbol]], ident: Ident) extends Import
 
   //////////////////////////////////////////////////////////////////////////////
   // Using

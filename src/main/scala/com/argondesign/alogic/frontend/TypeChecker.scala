@@ -31,6 +31,7 @@ import com.argondesign.alogic.util.BigIntOps._
 import scala.collection.immutable.Set
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
+import scala.concurrent.blocking
 
 final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe: Frontend)
     extends StatefulTreeTransformer {
@@ -1278,25 +1279,29 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
 private[frontend] object TypeChecker {
 
   def apply(tree: Tree)(implicit cc: CompilerContext, fe: Frontend): FinalResult[Type] =
-    if (tree.hasTpe) {
-      // Tree already has it's type assigned, which means it has already been type checked
-      if (tree.tpe.isError) {
-        Unknown(ReasonEarlierTypeError(tree))
-      } else {
-        Complete(tree.tpe)
-      }
-    } else {
-      // Run the checker
-      val checker = new TypeChecker(tree)
-      // If there are errors, the tree should have TypeError and vice versa
-      assert(checker.mAcc.nonEmpty == (tree.hasTpe && tree.tpe.isError))
-      if (checker.mAcc.nonEmpty) {
-        Failure(checker.mAcc.toList)
-      } else if (checker.rAcc.nonEmpty) {
-        assert(!tree.hasTpe)
-        Unknown(checker.rAcc.toList)
-      } else {
-        Complete(tree.tpe)
+    blocking {
+      synchronized {
+        if (tree.hasTpe) {
+          // Tree already has it's type assigned, which means it has already been type checked
+          if (tree.tpe.isError) {
+            Unknown(ReasonEarlierTypeError(tree))
+          } else {
+            Complete(tree.tpe)
+          }
+        } else {
+          // Run the checker
+          val checker = new TypeChecker(tree)
+          // If there are errors, the tree should have TypeError and vice versa
+          assert(checker.mAcc.nonEmpty == (tree.hasTpe && tree.tpe.isError))
+          if (checker.mAcc.nonEmpty) {
+            Failure(checker.mAcc.toList)
+          } else if (checker.rAcc.nonEmpty) {
+            assert(!tree.hasTpe)
+            Unknown(checker.rAcc.toList)
+          } else {
+            Complete(tree.tpe)
+          }
+        }
       }
     }
 

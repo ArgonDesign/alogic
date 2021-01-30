@@ -113,7 +113,8 @@ final class RemoveStructuralSharing(implicit cc: CompilerContext) extends Statef
         case node: DefnFunc      => node.copy()
         case node: DefnState     => node.copy()
 
-        case node: ImportOne => node.copy()
+        case node: ImportOne     => node.copy()
+        case node: ImportPending => node.copy()
 
         case node: UsingOne         => node.copy()
         case node: UsingAll         => node.copy()

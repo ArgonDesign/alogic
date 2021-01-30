@@ -24,38 +24,47 @@ import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.Types.Type
 import com.argondesign.alogic.util.unreachable
 
-import java.nio.file.Path
+import java.io.File
 import java.nio.file.Paths
 import scala.annotation.tailrec
+import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
-import scala.collection.parallel.CollectionConverters.IterableIsParallelizable
+import scala.collection.parallel.ParIterable
+import scala.concurrent.Await
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
+import scala.concurrent.duration.Duration
 import scala.util.chaining._
 
-class Frontend(implicit cc: CompilerContext) {
+sealed trait PendingFrontendOp
+case class PendingTypeOf(symbol: Symbol) extends PendingFrontendOp
+case class PendingEvaluate(symbol: Symbol) extends PendingFrontendOp
+case class PendingSpecialzie(symbol: Symbol, params: List[Arg]) extends PendingFrontendOp
+case class PendingImport(path: String) extends PendingFrontendOp
+
+final class Frontend private (
+    private val importCache: TrieMap[String, () => Either[FinalResult[Symbol], Future[
+      FinalResult[Symbol]
+    ]]],
+    private val pendingSet: mutable.Set[PendingFrontendOp],
+    private val pendingStack: mutable.Stack[(PendingFrontendOp, Loc)]
+  )(
+    implicit
+    cc: CompilerContext) {
+
+  def this()(implicit cc: CompilerContext) = this(TrieMap(), mutable.Set(), mutable.Stack())
+
+  def fork: Frontend = new Frontend(importCache, pendingSet.clone(), pendingStack.clone())
 
   implicit private val fe: Frontend = this
 
-  private var d = 0
-
-  private def withLog[T](msg: String)(f: => T): T = {
-    d += 1
-//    println("|" * d + " " + msg)
-    val r = f
-    d -= 1
-    r
-  }
-
-  sealed trait PendingFrontendOp
-  case class PendingTypeOf(symbol: Symbol) extends PendingFrontendOp
-  case class PendingEvaluate(symbol: Symbol) extends PendingFrontendOp
-  case class PendingSpecialzie(symbol: Symbol, params: List[Arg]) extends PendingFrontendOp
-  case class PendingImport(path: String) extends PendingFrontendOp
-
-  private val pendingSet = mutable.Set[PendingFrontendOp]()
-  private val pendingStack = mutable.Stack[(PendingFrontendOp, Loc)]()
-
-  def guardCircular[T](op: PendingFrontendOp, loc: Loc)(f: => FinalResult[T]): FinalResult[T] = {
+  private def guardCircularFuture[T](
+      op: PendingFrontendOp,
+      loc: Loc
+    )(
+      f: => Either[FinalResult[T], Future[FinalResult[T]]]
+    ): Either[FinalResult[T], Future[FinalResult[T]]] = {
     if (pendingSet contains op) {
       val ms = new ListBuffer[Message]()
       def addNote(op: PendingFrontendOp, loc: Loc, initial: Boolean): Unit = {
@@ -100,7 +109,7 @@ class Frontend(implicit cc: CompilerContext) {
         .reverse
         .foreach { case (op, loc) => addNote(op, loc, false) }
       addNote(op, loc, false)
-      Failure(ms.toSeq)
+      Left(Failure(ms.toSeq))
     } else {
       pendingSet.add(op)
       pendingStack.push((op, loc))
@@ -111,105 +120,113 @@ class Frontend(implicit cc: CompilerContext) {
     }
   }
 
-  private val importCache = mutable.Map[String, FinalResult[Symbol]]()
+  private def guardCircular[T](
+      op: PendingFrontendOp,
+      loc: Loc
+    )(
+      f: => FinalResult[T]
+    ): FinalResult[T] =
+    guardCircularFuture(op, loc)(Left(f)).fold(identity, _ => unreachable)
 
-  private def imprt(
-      searchPaths: List[Path],
-      path: String,
-      loc: Loc,
-      absolute: Boolean
-    ): FinalResult[Symbol] =
-    searchPaths.iterator
-      .flatMap { searchPath =>
-        val asIs = searchPath.resolve(path).toFile
-        Option.when(asIs.isFile)(asIs) orElse {
-          val withSuffix = searchPath.resolve(path + ".alogic").toFile
-          Option.when(withSuffix.isFile)(withSuffix)
-        }
-      }
-      .nextOption() match {
-      case None =>
-        Failure {
-          if (absolute) {
-            Error(loc, s"""Cannot find absolute import target "$path"""") :: {
-              searchPaths map { path => Note(loc, s"Looked in: $path") }
+  private def doImport(loc: Loc, file: File): FinalResult[Symbol] =
+    cc.readFile(file) match {
+      case Left(error) => Failure(loc, error)
+      case Right(content) =>
+        file.getName.dropWhile(_ != '.') match {
+          case ".alogic" =>
+            fe.elaborate(Source(file, content)) pipe {
+              case Left(ms)    => Failure(ms)
+              case Right(desc) => Complete(desc)
+            } flatMap { desc =>
+              fe.typeCheck(desc) map { _ => desc.symbol }
             }
-          } else {
-            Error(loc, s"""Cannot find relative import target "$path"""") :: {
-              val expected = searchPaths.head.resolve(path).toFile.getCanonicalPath
-              val msg = s"Path does not exist or is not a regular file: $expected" :: {
-                if (path endsWith ".alogic") Nil else List(s"or: $expected.alogic")
-              }
-              Note(loc, msg) :: Nil
-            }
-          }
-        }
-      case Some(file) =>
-        importCache.getOrElseUpdate(
-          file.getCanonicalPath,
-          cc.readFile(file) match {
-            case Left(error) => Failure(loc, error)
-            case Right(content) =>
-              guardCircular(PendingImport(file.getCanonicalPath), loc) {
-                file.getName.dropWhile(_ != '.') match {
-                  case ".alogic" =>
-                    fe.elaborate(Source(file, content)) pipe {
-                      case Left(ms)    => Failure(ms)
-                      case Right(desc) => Complete(desc)
-                    } flatMap { desc =>
-                      fe.typeCheck(desc) map { _ => desc.symbol }
-                    }
-                  case _ =>
-                    Failure(
-                      loc,
-                      s"Unable to import file ${file.getCanonicalPath}",
-                      "unknown filename extension"
-                    )
-                }
-              }
-          }
-        ) flatMap { symbol =>
-          Complete(symbol)
+          case _ =>
+            Failure(
+              loc,
+              s"Unable to import file ${file.getCanonicalPath}",
+              "unknown filename extension"
+            )
         }
     }
 
-  def imprt(path: String, loc: Loc): FinalResult[Symbol] =
-    withLog(s"""Importing "$path"""") {
-      path.trim pipe { path =>
-        if (path.isEmpty) {
-          Failure(loc, "Empty import path")
-        } else if (path.startsWith("/")) {
-          Failure(loc, "Import path cannot start with a leading '/'")
+  def imprt(path: String, loc: Loc): Either[FinalResult[Symbol], Future[FinalResult[Symbol]]] =
+    path.trim pipe { path =>
+      if (path.isEmpty) {
+        Left(Failure(loc, "Empty import path"))
+      } else if (path.startsWith("/")) {
+        Left(Failure(loc, "Import path cannot start with a leading '/'"))
+      } else {
+        val absolute = path.head != '.'
+        val searchPaths = if (absolute) {
+          // Absolute import
+          cc.settings.importSearchDirs
         } else {
-          val absolute = path.head != '.'
-          val searchPaths = if (absolute) {
-            // Absolute import
-            cc.settings.importSearchDirs
-          } else {
-            // Relative import
-            List(Paths.get(loc.trueFileOpt.get).toAbsolutePath.getParent)
+          // Relative import
+          List(Paths.get(loc.trueFileOpt.get).toAbsolutePath.getParent)
+        }
+        // Find the referenced file
+        val sourceFileOpt = searchPaths.iterator
+          .flatMap { searchPath =>
+            val asIs = searchPath.resolve(path).toFile
+            Option.when(asIs.isFile)(asIs) orElse {
+              val withSuffix = searchPath.resolve(path + ".alogic").toFile
+              Option.when(withSuffix.isFile)(withSuffix)
+            }
           }
-          imprt(searchPaths, path, loc, absolute)
+          .nextOption()
+        //
+        sourceFileOpt match {
+          case None =>
+            // No such file on the filesystem
+            Left {
+              Failure {
+                if (absolute) {
+                  Error(loc, s"""Cannot find absolute import target "$path"""") :: {
+                    searchPaths map { path => Note(loc, s"Looked in: $path") }
+                  }
+                } else {
+                  Error(loc, s"""Cannot find relative import target "$path"""") :: {
+                    val expected = searchPaths.head.resolve(path).toFile.getCanonicalPath
+                    val msg = s"Path does not exist or is not a regular file: $expected" :: {
+                      if (path endsWith ".alogic") Nil else List(s"or: $expected.alogic")
+                    }
+                    Note(loc, msg) :: Nil
+                  }
+                }
+              }
+            }
+          case Some(file) =>
+            // Found file. Go ahead and import it
+            guardCircularFuture(PendingImport(file.getCanonicalPath), loc) {
+              if (cc.settings.parallel) {
+                val frontend = fork
+                lazy val theFuture = Future(frontend.doImport(loc, file))
+                importCache.putIfAbsent(file.getCanonicalPath, () => Right(theFuture)) match {
+                  case Some(f) => f()
+                  case None    => Right(theFuture)
+                }
+              } else {
+                lazy val theResult = this.doImport(loc, file)
+                importCache.putIfAbsent(file.getCanonicalPath, () => Left(theResult)) match {
+                  case Some(f) => f()
+                  case None    => Left(theResult)
+                }
+              }
+            }
         }
       }
     }
 
   def typeCheck(tree: Tree): FinalResult[Type] =
-    withLog(s"Type checking $tree") {
-      TypeChecker(tree)
-    }
+    TypeChecker(tree)
 
   def typeOf(symbol: Symbol, loc: Loc, refresh: Boolean = false): FinalResult[Type] =
-    withLog(s"Computing type of '$symbol'") {
-      guardCircular(PendingTypeOf(symbol), loc) {
-        TypeOf(symbol, refresh)
-      }
+    guardCircular(PendingTypeOf(symbol), loc) {
+      TypeOf(symbol, refresh)
     }
 
   def evaluate(expr: Expr, hint: => String): FinalResult[BigInt] =
-    withLog(s"Computing value of $expr") {
-      Evaluate(expr, hint)
-    }
+    Evaluate(expr, hint)
 
   def evaluate(
       symbol: Symbol,
@@ -218,10 +235,8 @@ class Frontend(implicit cc: CompilerContext) {
       markUsed: Boolean = true,
       paramCheck: Boolean = false
     ): FinalResult[Expr] =
-    withLog(s"Computing value of '$symbol'") {
-      guardCircular(PendingEvaluate(symbol), loc) {
-        Evaluate(symbol, loc, hint, markUsed, paramCheck)
-      }
+    guardCircular(PendingEvaluate(symbol), loc) {
+      Evaluate(symbol, loc, hint, markUsed, paramCheck)
     }
 
   def nameFor(base: String, idxs: List[Expr]): FinalResult[String] =
@@ -235,10 +250,8 @@ class Frontend(implicit cc: CompilerContext) {
     }
 
   def specialize(symbol: Symbol, params: List[Arg], loc: Loc): FinalResult[Symbol] =
-    withLog(s"Specializing '${symbol.name}' with $params") {
-      guardCircular(PendingSpecialzie(symbol, params), loc) {
-        Specialize(symbol, params, loc)
-      }
+    guardCircular(PendingSpecialzie(symbol, params), loc) {
+      Specialize(symbol, params, loc)
     }
 
   def elaborate[T <: Tree: ListElaborable](
@@ -298,11 +311,13 @@ class Frontend(implicit cc: CompilerContext) {
     // Apply Finalize
     val finalized @ (input, dependencies) = Finalize(desc)
     //
-    val iterable = (Iterable(input) concat dependencies.iterator).par
+    val iterable = ParIterable(input) ++ dependencies.iterator
     // Apply a secondary SyntaxCheck to ensure 'gen' yielded well formed trees
-    iterable foreach { SyntaxCheck(_) }
+    val future = Future(iterable foreach { SyntaxCheck(_) })
     // Apply UnusedCheck
     iterable foreach UnusedCheck.apply
+    // Wait for them to complete
+    Await.result(future, Duration.Inf)
     //
     Some(finalized)
   }
@@ -340,12 +355,14 @@ class Frontend(implicit cc: CompilerContext) {
         if (params.isEmpty) {
           Some(desc)
         } else {
-          val msg = s"Package defined in input file '${source.path}' does not take any parameters."
-          params foreach { cc.error(_, msg) }
+          val msg =
+            s"Package defined in input file '${source.path}' does not take any parameters."
+          params foreach {
+            cc.error(_, msg)
+          }
           None
         }
       case _ => unreachable
-
     } flatMap finalize
 
 }

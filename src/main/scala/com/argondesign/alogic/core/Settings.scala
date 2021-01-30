@@ -58,6 +58,8 @@ case class Settings(
     // For debugging only, trace the progress of elaboration
     traceElaborate: Boolean = false,
     // Sandbox path for file accesses, if any
-    sandboxPathOpt: Option[Path] = None) {
+    sandboxPathOpt: Option[Path] = None,
+    //
+    parallel: Boolean = false) {
   require(sandboxPathOpt.forall(path => path.toFile.getCanonicalFile.toPath == path))
 }

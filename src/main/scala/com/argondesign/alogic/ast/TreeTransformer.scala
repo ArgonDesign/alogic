@@ -448,6 +448,9 @@ abstract class TreeTransformer extends (Tree => Tree) with ChainingSyntax {
     case node: ImportOne =>
       val ident = walk(node.ident)
       TreeCopier(node)(ident)
+    case node: ImportPending =>
+      val ident = walk(node.ident)
+      TreeCopier(node)(ident)
   }
 
   final private def walkChildrenUsing(tree: Using): Tree = tree match {

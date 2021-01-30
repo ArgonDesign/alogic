@@ -22,21 +22,21 @@ import scala.collection.mutable
 trait Profiling { this: CompilerContext =>
 
   private val measurements = mutable.Map[List[String], Double]()
-  private var trace: List[String] = Nil
+  private val trace: ThreadLocal[List[String]] = ThreadLocal.withInitial[List[String]](() => Nil)
 
   def timeit[T](key: String)(block: => T): T = {
     if (!settings.profile) {
       block
     } else {
-      trace = key :: trace
+      trace.set(key :: trace.get())
       val t0 = System.nanoTime()
       val result = block
       val elapsed = (System.nanoTime() - t0).toDouble / 1E9
-      measurements.updateWith(trace.reverse) {
+      measurements.updateWith(trace.get()) {
         case None        => Some(elapsed)
         case Some(value) => Some(value + elapsed)
       }
-      trace = trace.tail
+      trace.set(trace.get().tail)
       result
     }
   }
@@ -50,19 +50,48 @@ trait Profiling { this: CompilerContext =>
       case (a :: as, b :: bs)   => if (a < b) true else if (a > b) false else lt(as, bs)
     }
 
-    val width = 60
-    val total = (measurements filter { _._1.lengthIs == 1 }).valuesIterator.sum
+    val width = 100
+    val extra = 17
+
+    writer.println("=== tree profile:")
+
+    val total = measurements.filter(_._1.lengthIs == 1).valuesIterator.sum
     measurements.toSeq sortWith {
-      case ((as, _), (bs, _)) => lt(as, bs)
+      case ((as, _), (bs, _)) => lt(as.reverse, bs.reverse)
     } foreach {
       case (key, value) =>
-        val level = key.init.length
+        val level = key.tail.length
         writer println {
-          f"${"  " * level}${key.last.padTo(width, ' ')} $value%8.2f ${value / total * 100}%6.2f%%"
+          f"${"  " * level}${key.head.padTo(width, ' ')} $value%8.2f ${value / total * 100}%6.2f%%"
         }
     }
+    writer.println("-" * (width + extra))
     writer.println(f"${"TOTAL".padTo(width, ' ')} $total%8.2f 100.00%%")
+
+    val selfTimes = measurements.clone()
+    measurements foreach {
+      case (trace, t) =>
+        trace.tail match {
+          case Nil   =>
+          case trace => selfTimes(trace) -= t
+        }
+    }
+
+    val total2 = selfTimes.valuesIterator.sum
+    assert(total - total2 < 1E-6)
+    writer.println()
+    writer.println("=== flat profile:")
+    selfTimes.groupMapReduce(_._1.head)(_._2)(_ + _).toSeq.sortBy(pair => -pair._2) foreach {
+      case (key, value) =>
+        writer println {
+          f"  ${key.padTo(width, ' ')} $value%8.2f ${value / total2 * 100}%6.2f%%"
+        }
+    }
+    writer.println("-" * (width + extra))
+    writer.println(f"${"TOTAL".padTo(width, ' ')} $total2%8.2f 100.00%%")
+
     writer.flush()
+
   }
 
 }

@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
@@ -17,9 +17,14 @@ import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.unreachable
 
+import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
 import scala.collection.parallel.CollectionConverters.ImmutableIterableIsParallelizable
+import scala.concurrent.Await
+import scala.concurrent.Future
 import scala.util.chaining.scalaUtilChainingOps
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.Duration
 
 private[frontend] object Finalize {
 
@@ -31,9 +36,10 @@ private[frontend] object Finalize {
       fe: Frontend
     ): (DescPackage, Iterable[DescPackage]) = {
 
-    // Filter used to process all packages only once
+    // Map used to ensure each package is processed only once once
     // (think of diamonds in the dependency DAG)
-    val processed = mutable.Set[Symbol]()
+    val processedParallel = TrieMap[Symbol, () => Future[Set[DescPackage]]]()
+    val processedSerial = TrieMap[Symbol, Unit]()
 
     def process(
         desc: DescPackage
@@ -43,38 +49,61 @@ private[frontend] object Finalize {
         fe: Frontend
       ): (DescPackage, Set[DescPackage]) = {
 
-      // Finalize the definitions of all referenced packages
-      val dependencies = Set from {
-        // Gather referenced packages
-        desc collectAll {
-          case expr @ ExprSym(symbol) if expr.hasTpe => symbol
-        } flatMap { symbol =>
-          symbol.desc match {
-            case _: DescPackage =>
-              // Non parametrized package
-              Iterator.single(symbol)
-            case DescParametrized(_, _, _: DescPackage, _) =>
-              // Pick up all specializations of the referenced package
-              symbol.attr.specializations.getOrElse(Map.empty).valuesIterator
-            case _ =>
-              // Not a package
-              Iterator.empty
-          }
+      // Gather referenced packages
+      val referencedPackageSymbols = Set from {
+        def gatherReferencePackages(tree: Tree): Iterator[Symbol] = tree flatCollect {
+          case DescParametrized(_, attr, _, _) => // The desc was not type checked
+            attr.iterator.flatMap(gatherReferencePackages)
+          case ExprCall(expr, _) if expr.tpe.isParametrized => // Arguments are not type checked
+            gatherReferencePackages(expr)
+          case expr @ ExprSym(symbol) =>
+            assert(expr.hasTpe) // Must have been type checked
+            symbol.desc match {
+              case _: DescPackage =>
+                // Non parametrized package
+                Iterator.single(symbol)
+              case DescParametrized(_, _, _: DescPackage, _) =>
+                // Pick up all specializations of the referenced package
+                symbol.attr.specializations.getOrElse(Map.empty).valuesIterator
+              case _ =>
+                // Not a package
+                Iterator.empty
+            }
         }
-      } flatMap { symbol =>
-        // We check the 'processed' set in loop rather than filter prior to
-        // 'flatMap' as 'processed' is updated in loop (think triangles in
-        // the dependency DAG)
-        if (processed(symbol)) {
-          Set.empty
-        } else {
-          val (self, transitiveDependencies) = process(symbol.desc.asInstanceOf[DescPackage])
-          transitiveDependencies + self
-        }
+        gatherReferencePackages(desc)
       }
 
-      // Mark this definition as processed
-      processed add desc.symbol
+      // Finalize the definitions of all referenced packages
+      val dependencies = if (cc.settings.parallel) {
+        // Launch recursion in parallel
+        val futures = referencedPackageSymbols map { symbol =>
+          val frontend = fe.fork
+          lazy val recursiveResult = Future {
+            val (self, transitiveDependencies) =
+              process(symbol.desc.asInstanceOf[DescPackage])(cc, frontend)
+            transitiveDependencies + self
+          }
+          processedParallel.putIfAbsent(symbol, () => recursiveResult) match {
+            case Some(f) => f() map { _ => Set.empty }
+            case None    => recursiveResult
+          }
+        }
+        // wait for all recursive calls to complete
+        futures flatMap { future => Await.result(future, Duration.Inf) }
+      } else {
+        // Work in serial
+        referencedPackageSymbols flatMap { symbol =>
+          lazy val recursiveResult = {
+            val (self, transitiveDependencies) =
+              process(symbol.desc.asInstanceOf[DescPackage])(cc, fe)
+            transitiveDependencies + self
+          }
+          processedSerial.putIfAbsent(symbol, ()) match {
+            case Some(()) => Set.empty
+            case None     => recursiveResult
+          }
+        }
+      }
 
       // Finalize this definition
       val self = Clarify(desc) rewrite new StatelessTreeTransformer {
@@ -355,20 +384,20 @@ private[frontend] object Finalize {
       (self, dependencies)
     }
 
-    process(desc) pipe {
-      // ExprSymSel -> ExprSel
-      case (desc, dependencies) =>
-        object Transform extends StatelessTreeTransformer {
-          override protected def skip(tree: Tree): Boolean = tree match {
-            case _: DescParametrized => true
-            case _                   => false
-          }
-          override def transform(tree: Tree): Tree = tree match {
-            case ExprSymSel(expr, symbol) => TypeAssigner(ExprSel(expr, symbol.name) withLocOf tree)
-            case _                        => tree
-          }
-        }
+    // ExprSymSel -> ExprSel
+    object Transform extends StatelessTreeTransformer {
+      override protected def skip(tree: Tree): Boolean = tree match {
+        case _: DescParametrized => true
+        case _                   => false
+      }
+      override def transform(tree: Tree): Tree = tree match {
+        case ExprSymSel(expr, symbol) => TypeAssigner(ExprSel(expr, symbol.name) withLocOf tree)
+        case _                        => tree
+      }
+    }
 
+    process(desc) pipe {
+      case (desc, dependencies) =>
         (desc rewrite Transform, dependencies.par.map(_ rewrite Transform).seq)
     }
   }
