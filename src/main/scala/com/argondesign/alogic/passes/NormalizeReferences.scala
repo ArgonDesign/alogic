@@ -274,7 +274,7 @@ final class NormalizeReferencesA(
 }
 
 final class NormalizeReferencesB(
-    globalReplacements: mutable.Map[Symbol, Symbol],
+    globalReplacements: TrieMap[Symbol, Symbol],
     propagatedSymbols: Set[Symbol]
   )(
     implicit
@@ -387,7 +387,7 @@ object NormalizeReferences {
     val globalReplacements = TrieMap[Symbol, Symbol]()
     val requiredSymbolMaps = TrieMap[Symbol, Map[Symbol, Set[Symbol]]]()
 
-    new EntityTransformerPass(declFirst = true) {
+    new EntityTransformerPass(declFirst = true, parallel = true) {
       val name = "normalize-references-a"
 
       def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer = {
@@ -400,7 +400,7 @@ object NormalizeReferences {
         //
         new NormalizeReferencesA(requiredSymbols)
       }
-    } andThen new EntityTransformerPass(declFirst = true) {
+    } andThen new EntityTransformerPass(declFirst = true, parallel = true) {
       val name = "normalize-references-b"
 
       lazy val propagatedSymbols = Set from {
@@ -409,7 +409,7 @@ object NormalizeReferences {
 
       def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
         new NormalizeReferencesB(globalReplacements, propagatedSymbols)
-    } andThen new EntityTransformerPass(declFirst = true) {
+    } andThen new EntityTransformerPass(declFirst = true, parallel = true) {
       val name = "normalize-references-c"
 
       def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =

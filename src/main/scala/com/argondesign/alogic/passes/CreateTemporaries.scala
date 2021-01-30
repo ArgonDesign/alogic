@@ -96,7 +96,7 @@ final class CreateTemporaries(implicit cc: CompilerContext) extends StatelessTre
 
 }
 
-object CreateTemporaries extends EntityTransformerPass(declFirst = false) {
+object CreateTemporaries extends EntityTransformerPass(declFirst = false, parallel = true) {
   val name = "create-temporaries"
 
   def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer = new CreateTemporaries

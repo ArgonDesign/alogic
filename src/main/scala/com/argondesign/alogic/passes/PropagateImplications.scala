@@ -25,7 +25,7 @@ import com.argondesign.alogic.core.Symbols._
 
 import scala.collection.mutable
 
-final class PropagateImplications extends StatelessTreeTransformer {
+object PropagateImplicationsTransform extends StatelessTreeTransformer {
 
   override def start(tree: Tree): Unit = tree match {
     case defn: DefnEntity =>
@@ -67,5 +67,5 @@ final class PropagateImplications extends StatelessTreeTransformer {
 object PropagateImplications extends EntityTransformerPass(declFirst = true) {
   val name = "propagate-implications"
   def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
-    cc.propagateImplications
+    PropagateImplicationsTransform
 }

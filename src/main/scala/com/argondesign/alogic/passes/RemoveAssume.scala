@@ -21,7 +21,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols.Symbol
 
-final class RemoveAssume extends StatelessTreeTransformer {
+object RemoveAssumeTransform extends StatelessTreeTransformer {
 
   override protected def enter(tree: Tree): Option[Tree] = tree match {
     case _: Expr | _: EntAssign | _: Decl => Some(tree)
@@ -35,8 +35,8 @@ final class RemoveAssume extends StatelessTreeTransformer {
 
 }
 
-object RemoveAssume extends EntityTransformerPass(declFirst = false) {
+object RemoveAssume extends EntityTransformerPass(declFirst = false, parallel = true) {
   val name = "remove-assume"
   override def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
-    cc.removeAssume
+    RemoveAssumeTransform
 }

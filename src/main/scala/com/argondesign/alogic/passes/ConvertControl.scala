@@ -528,7 +528,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
 
 }
 
-object ConvertControl extends PairTransformerPass {
+object ConvertControl extends PairTransformerPass(parallel = true) {
   val name = "convert-control"
 
   def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {

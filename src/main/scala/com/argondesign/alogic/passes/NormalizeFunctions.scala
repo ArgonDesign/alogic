@@ -284,7 +284,7 @@ final class NormalizeFunctions(implicit cc: CompilerContext) extends StatelessTr
 
 }
 
-object NormalizeFunctions extends PairTransformerPass {
+object NormalizeFunctions extends PairTransformerPass(parallel = true) {
   val name = "normalize-functions"
 
   final protected def transform(

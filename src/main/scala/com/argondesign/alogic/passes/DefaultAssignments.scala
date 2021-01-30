@@ -28,7 +28,7 @@ import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
 
-object DefaultAssignments extends PairTransformerPass {
+object DefaultAssignments extends PairTransformerPass(parallel = true) {
   val name = "default-assignments"
 
   override def skip(decl: Decl, defn: Defn)(implicit cc: CompilerContext): Boolean = defn match {

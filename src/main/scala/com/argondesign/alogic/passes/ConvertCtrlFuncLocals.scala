@@ -242,7 +242,7 @@ final class ConvertCtrlFuncLocals(implicit cc: CompilerContext) extends Stateful
 
 }
 
-object ConvertCtrlFuncLocals extends PairTransformerPass {
+object ConvertCtrlFuncLocals extends PairTransformerPass(parallel = true) {
   val name = "convert-ctrl-func-locals"
 
   protected def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {

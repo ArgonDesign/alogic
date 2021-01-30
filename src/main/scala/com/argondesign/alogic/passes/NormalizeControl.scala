@@ -28,7 +28,7 @@ import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.enums.EntityVariant
 import com.argondesign.alogic.util.unreachable
 
-final class NormalizeControl extends StatelessTreeTransformer {
+object NormalizeControlTransform extends StatelessTreeTransformer {
 
   private def convertBreak(stmts: List[Stmt]): List[Stmt] = stmts map convertBreak
 
@@ -149,11 +149,12 @@ final class NormalizeControl extends StatelessTreeTransformer {
 
 }
 
-object NormalizeControl extends EntityTransformerPass(declFirst = true) {
+object NormalizeControl extends EntityTransformerPass(declFirst = true, parallel = true) {
   val name = "normalize-control"
 
   override protected def skip(decl: Decl, defn: Defn)(implicit cc: CompilerContext): Boolean =
     super.skip(decl, defn) || defn.asInstanceOf[DefnEntity].variant != EntityVariant.Fsm
 
-  def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer = new NormalizeControl
+  def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
+    NormalizeControlTransform
 }

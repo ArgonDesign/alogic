@@ -301,7 +301,7 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTr
 
 }
 
-object LowerAssertions extends EntityTransformerPass(declFirst = false) {
+object LowerAssertions extends EntityTransformerPass(declFirst = false, parallel = true) {
   val name = "lower-assertions"
 
   override def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =

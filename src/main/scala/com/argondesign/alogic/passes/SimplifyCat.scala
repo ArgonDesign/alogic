@@ -18,23 +18,21 @@
 package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.StatelessTreeTransformer
-import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Loc
-import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.util.BigIntOps._
 import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
 
-final class SimplifyCat extends StatelessTreeTransformer {
+object SimplifyCatTransform extends StatelessTreeTransformer {
 
   // Return a list of pairwise equal-length sub-lists that can be assigned to each other
   private[this] def pairUp(
-      loc: Loc,
       as: List[Expr],
       bs: List[Expr]
     ): List[(List[Expr], List[Expr])] = {
@@ -96,7 +94,7 @@ final class SimplifyCat extends StatelessTreeTransformer {
       // as in this case the rhs must be read atomically
       val lSymbols = (oLhss collect { case ExprSym(symbol) => symbol }).toSet
       val rSymbols = (oRhss collect { case ExprSym(symbol) => symbol }).toSet
-      lazy val pairs = pairUp(tree.loc, oLhss, oRhss)
+      lazy val pairs = pairUp(oLhss, oRhss)
       if ((lSymbols intersect rSymbols).nonEmpty || pairs.lengthIs == 1) {
         tree
       } else {
@@ -120,7 +118,7 @@ final class SimplifyCat extends StatelessTreeTransformer {
       }
 
     case EntAssign(ExprCat(oLhss), ExprCat(oRhss)) =>
-      val pairs = pairUp(tree.loc, oLhss, oRhss)
+      val pairs = pairUp(oLhss, oRhss)
       if (pairs.lengthIs == 1) {
         tree
       } else {
@@ -148,7 +146,7 @@ final class SimplifyCat extends StatelessTreeTransformer {
 
 }
 
-object SimplifyCat extends EntityTransformerPass(declFirst = true) {
+object SimplifyCat extends EntityTransformerPass(declFirst = true, parallel = true) {
   val name = "simplify-cat"
-  def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer = cc.simplifyCat
+  def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer = SimplifyCatTransform
 }

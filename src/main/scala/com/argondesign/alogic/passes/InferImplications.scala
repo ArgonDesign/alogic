@@ -25,7 +25,7 @@ import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
 
-final class InferImplications extends StatelessTreeTransformer {
+object InferImplicationsTransform extends StatelessTreeTransformer {
 
   override protected def enter(tree: Tree): Option[Tree] = tree match {
     case _: DefnEntity                                     => None
@@ -76,7 +76,8 @@ final class InferImplications extends StatelessTreeTransformer {
 
 }
 
-object InferImplications extends EntityTransformerPass(declFirst = true) {
+object InferImplications extends EntityTransformerPass(declFirst = true, parallel = true) {
   val name = "infer-implications"
-  def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer = cc.inferImplications
+  def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
+    InferImplicationsTransform
 }

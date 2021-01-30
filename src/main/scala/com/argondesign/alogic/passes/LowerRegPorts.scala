@@ -91,7 +91,7 @@ final class LowerRegPorts(implicit cc: CompilerContext) extends StatefulTreeTran
 
 }
 
-object LowerRegPorts extends EntityTransformerPass(declFirst = true) {
+object LowerRegPorts extends EntityTransformerPass(declFirst = true, parallel = true) {
   val name = "lower-reg-ports"
 
   override protected def skip(decl: Decl, defn: Defn)(implicit cc: CompilerContext): Boolean =

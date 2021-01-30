@@ -74,7 +74,7 @@ final class Replace1Stacks(implicit cc: CompilerContext) extends StatefulTreeTra
 
 }
 
-object Replace1Stacks extends EntityTransformerPass(declFirst = true) {
+object Replace1Stacks extends EntityTransformerPass(declFirst = true, parallel = true) {
   val name = "replace-1-stacks"
 
   override protected def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =

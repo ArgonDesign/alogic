@@ -157,7 +157,7 @@ final class LowerArrays(implicit cc: CompilerContext) extends StatefulTreeTransf
 
 }
 
-object LowerArrays extends EntityTransformerPass(declFirst = true) {
+object LowerArrays extends EntityTransformerPass(declFirst = true, parallel = true) {
   val name = "lower-arrays"
 
   override protected def skip(decl: Decl, defn: Defn)(implicit cc: CompilerContext): Boolean =

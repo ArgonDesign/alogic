@@ -387,7 +387,7 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatefulTreeTran
 
 }
 
-object InlineMethods extends PairTransformerPass {
+object InlineMethods extends PairTransformerPass(parallel = true) {
   val name = "inline-methods"
 
   final protected def transform(

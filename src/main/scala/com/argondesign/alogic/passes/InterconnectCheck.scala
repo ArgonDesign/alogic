@@ -23,7 +23,7 @@ import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
 
-object InterconnectCheck extends PairTransformerPass {
+object InterconnectCheck extends PairTransformerPass(parallel = true) {
   val name = "interconnect-check"
 
   private def check(assigns: List[EntAssign])(implicit cc: CompilerContext): Unit = {

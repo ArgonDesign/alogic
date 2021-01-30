@@ -239,7 +239,7 @@ final class ConvertCtrlFuncArgret(implicit cc: CompilerContext) extends Stateful
 
 }
 
-object ConvertCtrlFuncArgret extends PairTransformerPass {
+object ConvertCtrlFuncArgret extends PairTransformerPass(parallel = true) {
   val name = "convert-ctrl-func-argret"
 
   protected def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {

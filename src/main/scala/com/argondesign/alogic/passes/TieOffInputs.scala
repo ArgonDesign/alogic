@@ -23,7 +23,7 @@ import com.argondesign.alogic.core.Symbols._
 
 import scala.collection.mutable
 
-object TieOffInputs extends PairTransformerPass {
+object TieOffInputs extends PairTransformerPass(parallel = true) {
   val name = "tie-off-inputs"
 
   override def skip(decl: Decl, defn: Defn)(implicit cc: CompilerContext): Boolean = defn match {

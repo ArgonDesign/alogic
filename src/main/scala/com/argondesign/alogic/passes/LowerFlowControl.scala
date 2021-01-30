@@ -38,7 +38,7 @@ import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 final class LowerFlowControlA(
-    globalReplacements: mutable.Map[Symbol, Symbol],
+    globalReplacements: TrieMap[Symbol, Symbol],
     portMap: mutable.Map[Symbol, LoweredSymbols]
   )(
     implicit
@@ -622,7 +622,7 @@ object LowerFlowControl {
     val globalReplacements = TrieMap[Symbol, Symbol]()
     val portMaps = TrieMap[Symbol, mutable.Map[Symbol, LoweredSymbols]]()
 
-    new EntityTransformerPass(declFirst = true) {
+    new EntityTransformerPass(declFirst = true, parallel = true) {
       val name = "lower-flow-control-a"
 
       def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer = {
@@ -630,7 +630,7 @@ object LowerFlowControl {
         portMaps(symbol) = portMap
         new LowerFlowControlA(globalReplacements, portMap)
       }
-    } andThen new EntityTransformerPass(declFirst = true) {
+    } andThen new EntityTransformerPass(declFirst = true, parallel = true) {
       val name = "lower-flow-control-b"
 
       // Remap the keys to their replacements

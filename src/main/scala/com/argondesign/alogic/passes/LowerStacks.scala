@@ -191,7 +191,7 @@ final class LowerStacks(implicit cc: CompilerContext) extends StatefulTreeTransf
 
 }
 
-object LowerStacks extends PairTransformerPass {
+object LowerStacks extends PairTransformerPass(parallel = true) {
   val name = "lower-stacks"
 
   def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {

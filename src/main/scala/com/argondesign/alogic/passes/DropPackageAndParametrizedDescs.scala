@@ -18,7 +18,7 @@ import com.argondesign.alogic.util.unreachable
 
 import scala.collection.parallel.CollectionConverters.IterableIsParallelizable
 
-class DropPackageAndParametrizedDescs extends StatelessTreeTransformer {
+object DropPackageAndParametrizedDescsTransform extends StatelessTreeTransformer {
 
   override protected def enter(tree: Tree): Option[Tree] = tree match {
     case _: DescParametrized => Some(Stump) // Drop (there are no references at this point)
@@ -64,7 +64,7 @@ object DropPackageAndParametrizedDescs
         case DescPackage(_, _, body) =>
           body.flatMap {
             case PkgSplice(d: Desc) =>
-              cc.dropPackages(d) match {
+              DropPackageAndParametrizedDescsTransform(d) match {
                 case Stump   => None
                 case d: Desc => Some(d)
                 case _       => unreachable

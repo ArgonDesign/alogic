@@ -91,7 +91,7 @@ final class LowerWait(implicit cc: CompilerContext) extends StatefulTreeTransfor
 
 }
 
-object LowerWait extends EntityTransformerPass(declFirst = true) {
+object LowerWait extends EntityTransformerPass(declFirst = true, parallel = true) {
   val name = "lower-wait"
 
   override def skip(decl: Decl, defn: Defn)(implicit cc: CompilerContext): Boolean =

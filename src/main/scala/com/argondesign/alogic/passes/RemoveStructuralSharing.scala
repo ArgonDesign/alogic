@@ -207,7 +207,7 @@ final class RemoveStructuralSharing(implicit cc: CompilerContext) extends Statef
 
 }
 
-object RemoveStructuralSharing extends PairTransformerPass {
+object RemoveStructuralSharing extends PairTransformerPass(parallel = true) {
   val name = "remove-structural-sharing"
 
   def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {

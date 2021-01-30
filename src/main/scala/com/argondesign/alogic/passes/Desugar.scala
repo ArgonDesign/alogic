@@ -87,7 +87,7 @@ final class Desugar(implicit cc: CompilerContext) extends StatelessTreeTransform
 
 }
 
-object Desugar extends PairTransformerPass {
+object Desugar extends PairTransformerPass(parallel = true) {
   val name = "desugar"
   def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) =
     (cc.desugar(decl), cc.desugar(defn))

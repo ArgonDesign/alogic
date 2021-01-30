@@ -16,20 +16,19 @@
 package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.StatefulTreeTransformer
-import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Loc
-import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.FlowControlTypes._
+import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Symbols._
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Types._
 
 import scala.collection.concurrent.TrieMap
-import scala.collection.mutable
 
 final class AddClockAndResetA(
-    globalReplacements: mutable.Map[Symbol, Symbol]
+    globalReplacements: TrieMap[Symbol, Symbol]
   )(
     implicit
     cc: CompilerContext)
@@ -144,12 +143,12 @@ object AddClockAndReset {
 
     val globalReplacements = TrieMap[Symbol, Symbol]()
 
-    new EntityTransformerPass(declFirst = true) {
+    new EntityTransformerPass(declFirst = true, parallel = true) {
       val name = "add-clock-and-reset-a"
 
       def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
         new AddClockAndResetA(globalReplacements)
-    } andThen new EntityTransformerPass(declFirst = true) {
+    } andThen new EntityTransformerPass(declFirst = true, parallel = true) {
       val name = "add-clock-and-reset-b"
 
       override protected def skip(decl: Decl, defn: Defn)(implicit cc: CompilerContext): Boolean =

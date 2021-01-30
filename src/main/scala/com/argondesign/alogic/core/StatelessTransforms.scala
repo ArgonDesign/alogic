@@ -13,13 +13,6 @@ package com.argondesign.alogic.core
 import com.argondesign.alogic.passes._
 
 trait StatelessTransforms { this: CompilerContext =>
-  val dropPackages = new DropPackageAndParametrizedDescs
-  val descToDeclDefn = new DescToDeclDefn
   val desugar = new Desugar()(cc = this)
-  val combineStatements = new CombineStatements
   val portCheck = new PortCheck()(cc = this)
-  val simplifyCat = new SimplifyCat
-  val inferImplications = new InferImplications
-  val propagateImplications = new PropagateImplications
-  val removeAssume = new RemoveAssume
 }

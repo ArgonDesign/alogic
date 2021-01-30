@@ -20,11 +20,11 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.StatefulTreeTransformer
+import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.enums.EntityVariant
 import com.argondesign.alogic.lib.Matrix
@@ -33,7 +33,7 @@ import com.argondesign.alogic.util.unreachable
 import scala.annotation.tailrec
 import scala.collection.mutable
 
-final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatefulTreeTransformer {
+final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatelessTreeTransformer {
 
   //////////////////////////////////////////////////////////////////////////
   // State for collecting information in the enter section
@@ -499,7 +499,7 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatefulTreeT
 
 }
 
-object AnalyseCallGraph extends EntityTransformerPass(declFirst = false) {
+object AnalyseCallGraph extends EntityTransformerPass(declFirst = false, parallel = true) {
   val name = "analyse-call-graph"
 
   def create(symbol: Symbol)(implicit cc: CompilerContext) = new AnalyseCallGraph

@@ -30,7 +30,7 @@ import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
 
 final class SplitStructsA(
-    globalReplacements: mutable.Map[Symbol, Symbol],
+    globalReplacements: TrieMap[Symbol, Symbol],
     fieldMap: mutable.Map[Symbol, List[Symbol]]
   )(
     implicit
@@ -321,7 +321,7 @@ object SplitStructs {
     val globalReplacements = TrieMap[Symbol, Symbol]()
     val fieldMaps = TrieMap[Symbol, mutable.Map[Symbol, List[Symbol]]]()
 
-    new EntityTransformerPass(declFirst = true) {
+    new EntityTransformerPass(declFirst = true, parallel = true) {
       val name = "split-structs-a"
 
       def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer = {
@@ -329,7 +329,7 @@ object SplitStructs {
         fieldMaps(symbol) = fieldMap
         new SplitStructsA(globalReplacements, fieldMap)
       }
-    } andThen new EntityTransformerPass(declFirst = true) {
+    } andThen new EntityTransformerPass(declFirst = true, parallel = true) {
       val name = "split-structs-b"
 
       // Remap the keys to their replacements

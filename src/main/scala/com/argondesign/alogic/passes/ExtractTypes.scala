@@ -10,7 +10,7 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.StatefulTreeTransformer
+import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols._
@@ -18,7 +18,7 @@ import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
 
-final class ExtractTypes(implicit cc: CompilerContext) extends StatefulTreeTransformer {
+final class ExtractTypes extends StatelessTreeTransformer {
 
   private val decls = mutable.ListBuffer[Decl]()
   private val defns = mutable.Map[Symbol, Defn]()
@@ -55,7 +55,7 @@ final class ExtractTypes(implicit cc: CompilerContext) extends StatefulTreeTrans
 
 }
 
-object ExtractTypes extends PairTransformerPass {
+object ExtractTypes extends PairTransformerPass(parallel = true) {
   val name = "extract-types"
 
   protected def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {

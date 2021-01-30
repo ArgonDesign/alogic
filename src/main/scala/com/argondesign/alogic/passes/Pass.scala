@@ -62,6 +62,7 @@ trait SimplePass[T, R] extends Pass[T, R] { self =>
   // Abstract members
   //////////////////////////////////////////////////////////////////////////////
 
+  val parallel: Boolean = false
   // Name of pass for debugging
   val name: String
   // The implementation of the pass transformation
@@ -78,7 +79,9 @@ trait SimplePass[T, R] extends Pass[T, R] { self =>
     Iterator single {
       case (input, passNumber, cc) =>
         // Process the inputs
-        val output = cc.timeit(f"pass $passNumber%02d $name")(process(input.asInstanceOf[T])(cc))
+        val output = cc.timeit(f"pass $passNumber%02d $name%-40s parallel=$parallel") {
+          process(input.asInstanceOf[T])(cc)
+        }
         // Dump result if requested
         if (cc.settings.dumpTrees) dump(output, f"$passNumber%02d.$name")(cc)
         // Yield output, if there were no errors
@@ -108,7 +111,7 @@ trait PairsTransformerPass extends SimplePass[Iterable[(Decl, Defn)], Iterable[(
 
 }
 
-abstract class PairTransformerPass(parallel: Boolean = false)
+abstract class PairTransformerPass(override val parallel: Boolean = false)
     extends PairsTransformerPass
     with ChainingSyntax {
 

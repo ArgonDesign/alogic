@@ -18,7 +18,7 @@ import com.argondesign.alogic.util.unreachable
 
 import scala.collection.parallel.CollectionConverters.IterableIsParallelizable
 
-class DescToDeclDefn extends StatelessTreeTransformer {
+object DescToDeclDefnTransform extends StatelessTreeTransformer {
 
   def convert(desc: Desc): (Decl, Defn) = walk(desc) match {
     case Thicket(List(decl: Decl, defn: Defn)) => (decl, defn)
@@ -134,6 +134,6 @@ object DescToDeclDefn extends SimplePass[Iterable[Desc], Iterable[(Decl, Defn)]]
     )(
       implicit
       cc: CompilerContext
-    ): Iterable[(Decl, Defn)] = input.par.map(cc.descToDeclDefn.convert).seq
+    ): Iterable[(Decl, Defn)] = input.par.map(DescToDeclDefnTransform.convert).seq
 
 }

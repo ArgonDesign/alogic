@@ -25,7 +25,7 @@ import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
 
 final class LowerVectorsA(
-    globalReplacements: mutable.Map[Symbol, Symbol]
+    globalReplacements: TrieMap[Symbol, Symbol]
   )(
     implicit
     cc: CompilerContext)
@@ -220,7 +220,7 @@ final class LowerVectorsA(
 }
 
 final class LowerVectorsB(
-    globalReplacements: mutable.Map[Symbol, Symbol]
+    globalReplacements: scala.collection.Map[Symbol, Symbol]
   )(
     implicit
     cc: CompilerContext)
@@ -275,12 +275,12 @@ object LowerVectors {
   def apply(): Pass[Iterable[(Decl, Defn)], Iterable[(Decl, Defn)]] = {
     val globalReplacements = TrieMap[Symbol, Symbol]()
 
-    new EntityTransformerPass(declFirst = true) {
+    new EntityTransformerPass(declFirst = true, parallel = true) {
       val name = "lower-vectors-a"
 
       def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
         new LowerVectorsA(globalReplacements)
-    } andThen new EntityTransformerPass(declFirst = true) {
+    } andThen new EntityTransformerPass(declFirst = true, parallel = true) {
       val name = "lower-vectors-b"
 
       def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =

@@ -383,7 +383,7 @@ final class LowerSrams(
 
 object LowerSrams {
 
-  class LowerSramsPass extends PairTransformerPass {
+  class LowerSramsPass extends PairTransformerPass(parallel = true) {
     val name = "lower-srams"
 
     val sramBuilder = new SramBuilder
