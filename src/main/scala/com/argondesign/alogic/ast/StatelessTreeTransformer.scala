@@ -21,24 +21,20 @@ abstract class StatelessTreeTransformer extends TreeTransformer {
 
   // Walk single node
   final def walkTree(tree: Tree): Tree =
-    if (skip(tree)) {
-      tree
-    } else {
-      // Call enter in pre order
-      enter(tree) match {
-        // 'enter' provided replacement, use it
-        case Some(replacement) => replacement
-        // 'enter' did not provide replacement, traverse the tree.
-        case None =>
-          // Walk children
-          val walked = walkChildren(tree)
-          // Apply transform
-          walked match {
-            case Thicket(ts) => Thicket(transform(ts))
-            case Stump       => Stump
-            case other       => transform(other)
-          }
-      }
+    // Call enter in pre order
+    enter(tree) match {
+      // 'enter' provided replacement, use it
+      case Some(replacement) => replacement
+      // 'enter' did not provide replacement, traverse the tree.
+      case None =>
+        // Walk children
+        val walked = walkChildren(tree)
+        // Apply transform
+        walked match {
+          case Thicket(ts) => Thicket(transform(ts))
+          case Stump       => Stump
+          case other       => transform(other)
+        }
     }
 
 }

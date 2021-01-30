@@ -180,16 +180,7 @@ private[frontend] object Finalize {
           Some(Thicket(walk(scope.body)))
         }
 
-        override protected def skip(tree: Tree): Boolean = tree match {
-          case _: DescParametrized =>
-            // Mark the enclosing definition as modified as we added the
-            // specializations in the previous transform
-            modified(0) = true
-            true
-          case _ => false
-        }
-
-        override protected def enter(tree: Tree): Option[Tree] = tree tap {
+        override def enter(tree: Tree): Option[Tree] = tree tap {
           case DescPackage(Sym(symbol), _, _)          => hierarcy.push(symbol)
           case Splice(DescGenScope(Sym(symbol), _, _)) => hierarcy.push(symbol)
           case _: DescGenScope                         => unreachable // See below why
@@ -216,6 +207,8 @@ private[frontend] object Finalize {
             hierarcy.push(symbol)
           case _ =>
         } pipe {
+          case _: DescParametrized => Some(tree)
+
           //////////////////////////////////////////////////////////////////////
           // Inline all scopes
           //////////////////////////////////////////////////////////////////////
@@ -338,14 +331,10 @@ private[frontend] object Finalize {
           assert(hierarcy.isEmpty)
         }
       } rewrite new StatelessTreeTransformer {
-
-        override protected def skip(tree: Tree): Boolean = tree match {
-          case _: DescParametrized => true // retained for later error reporting but can be ignored
-          case _: DescAlias        => unreachable // removed in previous transform
-          case _                   => false
-        }
-
         override protected def enter(tree: Tree): Option[Tree] = tree match {
+          case _: DescParametrized =>
+            Some(tree) // retained for later error reporting but can be ignored
+          case _: DescAlias => unreachable // removed in previous transform
 
           //////////////////////////////////////////////////////////////////////
           // Replace parameter calls with the specializations
@@ -386,9 +375,9 @@ private[frontend] object Finalize {
 
     // ExprSymSel -> ExprSel
     object Transform extends StatelessTreeTransformer {
-      override protected def skip(tree: Tree): Boolean = tree match {
-        case _: DescParametrized => true
-        case _                   => false
+      override def enter(tree: Tree): Option[Tree] = tree match {
+        case _: DescParametrized => Some(tree)
+        case _                   => None
       }
       override def transform(tree: Tree): Tree = tree match {
         case ExprSymSel(expr, symbol) => TypeAssigner(ExprSel(expr, symbol.name) withLocOf tree)

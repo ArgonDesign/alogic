@@ -508,13 +508,10 @@ final class LowerFlowControlB(
   // This contains all entities replaced in LowerFlowControlA
   private val replacedInPassA = Set.from(globalReplacements.valuesIterator)
 
-  override def skip(tree: Tree): Boolean = tree match {
-    case DeclEntity(symbol, _)    => !replacedInPassA(symbol)
-    case DefnEntity(symbol, _, _) => !replacedInPassA(symbol)
-    case _                        => false
-  }
-
   override def enter(tree: Tree): Option[Tree] = tree match {
+    case DeclEntity(symbol, _) if !replacedInPassA(symbol)    => Some(tree)
+    case DefnEntity(symbol, _, _) if !replacedInPassA(symbol) => Some(tree)
+
     // Select on instance
     case ExprSel(expr @ ExprSym(iSymbol), sel) if iSymbol.kind.isEntity =>
       Some {

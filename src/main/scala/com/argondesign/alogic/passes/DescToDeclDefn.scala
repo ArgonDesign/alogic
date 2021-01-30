@@ -25,11 +25,6 @@ class DescToDeclDefn extends StatelessTreeTransformer {
     case _                                     => unreachable
   }
 
-  override protected def skip(tree: Tree): Boolean = tree match {
-    case _: Expr => true
-    case _       => false
-  }
-
   private def partitionDeclsFromRest[T <: Tree](body: List[T]): (List[Decl], List[T]) =
     body partitionMap {
       case Splice(decl: Decl) => Left(decl)
@@ -48,6 +43,9 @@ class DescToDeclDefn extends StatelessTreeTransformer {
           walkSame(TypeAssigner(DefnFunc(symbol, argDefns, body) withLocOf tree))
         )
       }
+
+    // Skip
+    case _: Expr => Some(tree)
 
     case _ => None
   }

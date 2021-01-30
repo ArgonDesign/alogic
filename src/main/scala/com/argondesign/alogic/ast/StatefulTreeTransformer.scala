@@ -115,30 +115,26 @@ abstract class StatefulTreeTransformer(implicit cc: CompilerContext) extends Tre
 
   // Walk single node
   final def walkTree(tree: Tree): Tree =
-    if (skip(tree)) {
-      tree
-    } else {
-      tree match {
-        case sym @ Sym(symbol) if mustBeReplaced(symbol) =>
-          assert(typed)
-          descend {
-            TypeAssigner(sym.copy(symbol = replacementSymbol(symbol)) withLoc tree.loc)
-          }
-        case Decl(symbol) if mustBeReplaced(symbol) =>
-          assert(typed)
-          replacementDecl(symbol)
-        case defn @ Defn(symbol) if mustBeReplaced(symbol) =>
-          assert(typed)
-          descend {
-            TypeAssigner(defn.cpy(symbol = replacementSymbol(symbol)) withLoc tree.loc)
-          }
-        case ExprSym(symbol) if mustBeReplaced(symbol) =>
-          assert(typed)
-          descend {
-            TypeAssigner(ExprSym(replacementSymbol(symbol)) withLoc tree.loc)
-          }
-        case other => descend(other)
-      }
+    tree match {
+      case sym @ Sym(symbol) if mustBeReplaced(symbol) =>
+        assert(typed)
+        descend {
+          TypeAssigner(sym.copy(symbol = replacementSymbol(symbol)) withLoc tree.loc)
+        }
+      case Decl(symbol) if mustBeReplaced(symbol) =>
+        assert(typed)
+        replacementDecl(symbol)
+      case defn @ Defn(symbol) if mustBeReplaced(symbol) =>
+        assert(typed)
+        descend {
+          TypeAssigner(defn.cpy(symbol = replacementSymbol(symbol)) withLoc tree.loc)
+        }
+      case ExprSym(symbol) if mustBeReplaced(symbol) =>
+        assert(typed)
+        descend {
+          TypeAssigner(ExprSym(replacementSymbol(symbol)) withLoc tree.loc)
+        }
+      case other => descend(other)
     }
 
   final private def descend(tree: Tree): Tree =

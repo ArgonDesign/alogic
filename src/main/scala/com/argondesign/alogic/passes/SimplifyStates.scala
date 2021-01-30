@@ -22,12 +22,6 @@ import scala.collection.mutable
 
 final class SimplifyStates(implicit cc: CompilerContext) extends StatefulTreeTransformer {
 
-  override protected def skip(tree: Tree): Boolean = tree match {
-    case _: DeclEntity | _: DefnEntity     => false
-    case EntSplice(_: Defn) | _: DefnState => false
-    case _                                 => true
-  }
-
   // Pairs of states where the first can reach the second. Note this is not
   // complete, but is sufficient to check which states are unreachable.
   private val reachability = mutable.Set[(Symbol, Symbol)]()
@@ -35,6 +29,10 @@ final class SimplifyStates(implicit cc: CompilerContext) extends StatefulTreeTra
   private var reachable: Set[Symbol] = Set.empty
 
   override protected def enter(tree: Tree): Option[Tree] = tree match {
+    // Keep going
+    case _: DeclEntity | _: DefnEntity | EntSplice(_: Defn) => None
+
+    //
     case defn: DefnState =>
       Some {
         // Simplify bodies then gather reachability pairs
@@ -46,7 +44,9 @@ final class SimplifyStates(implicit cc: CompilerContext) extends StatefulTreeTra
           }
         }
       }
-    case _ => None
+
+    //
+    case _ => Some(tree)
   }
 
   override protected def transform(tree: Tree): Tree = tree match {

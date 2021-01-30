@@ -120,9 +120,9 @@ final class CombineStatements extends StatelessTreeTransformer {
     if (result.lengthIs < stmts.length) result.toList else stmts
   }
 
-  override protected def skip(tree: Tree): Boolean = tree match {
-    case _: Expr => true
-    case _       => false
+  override def enter(tree: Tree): Option[Tree] = tree match {
+    case _: Expr => Some(tree) // Skip
+    case _       => None
   }
 
   // Transform every List[Stmt]

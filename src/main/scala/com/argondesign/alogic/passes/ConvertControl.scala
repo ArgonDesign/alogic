@@ -109,12 +109,6 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
     }
   }
 
-  override def skip(tree: Tree): Boolean = tree match {
-    case DeclFunc(symbol, _, _, _) => !symbol.kind.isCtrlFunc
-    case DefnFunc(symbol, _, _)    => !symbol.kind.isCtrlFunc
-    case _                         => false
-  }
-
   override def enter(tree: Tree): Option[Tree] = {
     if (tree.tpe == TypeCtrlStmt) {
       // Either push the state that is allocated after this statement,
@@ -124,11 +118,15 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
     }
 
     tree match {
+      // Skip non control functions
+      case DeclFunc(symbol, _, _, _) if !symbol.kind.isCtrlFunc => Some(tree)
+      case DefnFunc(symbol, _, _) if !symbol.kind.isCtrlFunc    => Some(tree)
+
       //////////////////////////////////////////////////////////////////////////
       // Leave comb statements alone
       //////////////////////////////////////////////////////////////////////////
 
-      case stmt: Stmt if stmt.tpe == TypeCombStmt => ()
+      case stmt: Stmt if stmt.tpe == TypeCombStmt => None
 
       //////////////////////////////////////////////////////////////////////////
       // Entity
@@ -149,6 +147,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
             funcSymbol -> stateSymbol
           }
         }
+        None
 
       //////////////////////////////////////////////////////////////////////////
       // Keep hold of the return stack symbol (previously put at the beginning)
@@ -156,18 +155,22 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
 
       case Defn(symbol) if symbol.attr.returnStack.isSet =>
         rsSymbol = symbol
+        None
 
       //////////////////////////////////////////////////////////////////////////
       // Allocate states where any List[Stmt] is involved
       //////////////////////////////////////////////////////////////////////////
 
-      case StmtBlock(body) => allocateStates(body)
+      case StmtBlock(body) =>
+        allocateStates(body)
+        None
 
       case StmtIf(_, thenStmts, elseStmts) =>
         // Allocate in reverse order so the pendingStates stack is
         // the right way around when emitting the states
         allocateStates(elseStmts)
         allocateStates(thenStmts)
+        None
 
       case StmtCase(_, cases) =>
         // Allocate in reverse order so the pendingStates stack is
@@ -177,6 +180,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
           case CaseDefault(stmts)    => allocateStates(stmts)
           case _: CaseSplice         => unreachable
         }
+        None
 
       case StmtLoop(body) =>
         // Set up the break target
@@ -209,6 +213,8 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
         // Allocate states for body
         allocateStates(body)
 
+        None
+
       case DefnFunc(symbol, _, body) =>
         currentFunction = symbol
 
@@ -229,17 +235,19 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTra
         // Ensure the function entry state is emitted
         pendingStates.push(Some(stateSymbol))
 
+        None
+
       case StmtExpr(ExprCall(ExprSym(functionSymbol), args)) =>
         assert(args.isEmpty)
         stateFollowingCallOf(functionSymbol) = followingState.top
+        None
 
       //////////////////////////////////////////////////////////////////////////
       // Otherwise nothing interesting
       //////////////////////////////////////////////////////////////////////////
 
-      case _ =>
+      case _ => None
     }
-    None
   }
 
   // Split the list after every control statement

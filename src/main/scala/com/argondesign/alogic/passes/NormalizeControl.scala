@@ -30,11 +30,6 @@ import com.argondesign.alogic.util.unreachable
 
 final class NormalizeControl extends StatelessTreeTransformer {
 
-  override def skip(tree: Tree): Boolean = tree match {
-    case _: Expr => true
-    case _       => false
-  }
-
   private def convertBreak(stmts: List[Stmt]): List[Stmt] = stmts map convertBreak
 
   private def convertBreak(stmt: Stmt): Stmt = stmt match {
@@ -119,6 +114,11 @@ final class NormalizeControl extends StatelessTreeTransformer {
       // by earlier passes
       case _ => unreachable
     }
+  }
+
+  override def enter(tree: Tree): Option[Tree] = tree match {
+    case _: Expr => Some(tree)
+    case _       => None
   }
 
   override def transform(tree: Tree): Tree = tree match {

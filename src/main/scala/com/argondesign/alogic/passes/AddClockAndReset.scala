@@ -47,9 +47,9 @@ final class AddClockAndResetA(
     case _                       => false
   }
 
-  override protected def skip(tree: Tree): Boolean = tree match {
-    case _: DeclEntity | _: DefnEntity => false
-    case _                             => true
+  override def enter(tree: Tree): Option[Tree] = tree match {
+    case _: DeclEntity | _: DefnEntity => None
+    case _                             => Some(tree)
   }
 
   override protected def transform(tree: Tree): Tree = tree match {
@@ -83,10 +83,6 @@ final class AddClockAndResetB(
   override def replace(symbol: Symbol): Boolean = symbol.kind match {
     case TypeEntity(eSymbol, _) => globalReplacements contains eSymbol
     case _                      => false
-  }
-
-  override protected def skip(tree: Tree): Boolean = tree match {
-    case _ => false
   }
 
   override protected def transform(tree: Tree): Tree = tree match {

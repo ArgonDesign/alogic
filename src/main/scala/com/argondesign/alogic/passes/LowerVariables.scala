@@ -31,12 +31,6 @@ import scala.collection.mutable.ListBuffer
 
 final class LowerVariables(implicit cc: CompilerContext) extends StatefulTreeTransformer {
 
-  override def skip(tree: Tree): Boolean = tree match {
-    // We do not replace _q with _d in connects, connects always use the _q
-    case _: EntAssign => true
-    case _            => false
-  }
-
   private val resetFlops = new ListBuffer[(Symbol, Symbol, Expr)]()
   private val nonResetFlops = new ListBuffer[(Symbol, Symbol)]()
 
@@ -113,6 +107,9 @@ final class LowerVariables(implicit cc: CompilerContext) extends StatefulTreeTra
         case _ =>
       }
       None
+
+    // We do not replace _q with _d in connects, connects always use the _q
+    case _: EntAssign => Some(tree)
 
     // Do not replace _q with _d below ExprOld
     case ExprOld(expr) =>

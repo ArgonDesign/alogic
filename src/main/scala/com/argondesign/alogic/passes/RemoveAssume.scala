@@ -23,11 +23,9 @@ import com.argondesign.alogic.core.Symbols.Symbol
 
 final class RemoveAssume extends StatelessTreeTransformer {
 
-  override protected def skip(tree: Tree): Boolean = tree match {
-    case _: Expr      => true
-    case _: EntAssign => true
-    case _: Decl      => true
-    case _            => false
+  override protected def enter(tree: Tree): Option[Tree] = tree match {
+    case _: Expr | _: EntAssign | _: Decl => Some(tree)
+    case _                                => None
   }
 
   override def transform(tree: Tree): Tree = tree match {

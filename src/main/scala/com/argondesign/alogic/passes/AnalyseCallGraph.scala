@@ -336,18 +336,21 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatefulTreeT
     }
   }
 
-  override protected def skip(tree: Tree): Boolean = tree match {
-    case decl: DeclEntity                                               => decl.functions.isEmpty
+  override def enter(tree: Tree): Option[Tree] = tree match {
+
+    //////////////////////////////////////////////////////////////////////////
+    // Skip some special cases
+    //////////////////////////////////////////////////////////////////////////
+
+    case decl: DeclEntity => Option.when(decl.functions.isEmpty)(tree)
+
     case DefnEntity(symbol, variant, _) if variant != EntityVariant.Fsm =>
       // Warn early if there are no functions at all, as
       // we will not have an opportunity to do it later
       warnIgnoredStacklimitAttribute(symbol)
-      true
-    case _: Decl | _: DefnRecord => true
-    case _                       => false
-  }
+      Some(tree)
 
-  override def enter(tree: Tree): Option[Tree] = tree match {
+    case _: Decl | _: DefnRecord => Some(tree)
 
     //////////////////////////////////////////////////////////////////////////
     // Gather all function symbols defined in the

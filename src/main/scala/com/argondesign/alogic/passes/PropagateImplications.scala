@@ -27,48 +27,41 @@ import scala.collection.mutable
 
 final class PropagateImplications extends StatelessTreeTransformer {
 
-  override def skip(tree: Tree): Boolean = tree match {
-    case _: DefnEntity => false
-    case _             => true
+  override def start(tree: Tree): Unit = tree match {
+    case defn: DefnEntity =>
+      // Create empty instance -> port -> local maps
+      val maps = Map from {
+        defn.instances.iterator collect {
+          case Defn(iSymbol) => iSymbol -> mutable.Map[Symbol, Symbol]()
+        }
+      }
+
+      // populate them
+      defn.assigns foreach {
+        case EntAssign(ExprSym(nSymbol), InstancePortSel(iSymbol, pSymbol)) =>
+          maps(iSymbol)(pSymbol) = nSymbol
+        case EntAssign(InstancePortSel(iSymbol, pSymbol), ExprSym(nSymbol)) =>
+          maps(iSymbol)(pSymbol) = nSymbol
+        case _ =>
+      }
+
+      // Lift the implication relations
+      for {
+        map <- maps.values
+        (paSymbol, naSymbol) <- map
+        (a, b, pbSymbol) <- paSymbol.attr.implications.enumerate
+        nbSymbol <- map get pbSymbol
+        lifted = (a, b, nbSymbol)
+        if !(naSymbol.attr.implications.enumerate contains lifted)
+      } {
+        naSymbol.attr.implications append lifted
+      }
+
+    case _ =>
   }
 
-  override def enter(tree: Tree): Option[Tree] = {
-    tree match {
-
-      case defn: DefnEntity =>
-        // Create empty instance -> port -> local maps
-        val maps = Map from {
-          defn.instances.iterator collect {
-            case Defn(iSymbol) => iSymbol -> mutable.Map[Symbol, Symbol]()
-          }
-        }
-
-        // populate them
-        defn.assigns foreach {
-          case EntAssign(ExprSym(nSymbol), InstancePortSel(iSymbol, pSymbol)) =>
-            maps(iSymbol)(pSymbol) = nSymbol
-          case EntAssign(InstancePortSel(iSymbol, pSymbol), ExprSym(nSymbol)) =>
-            maps(iSymbol)(pSymbol) = nSymbol
-          case _ =>
-        }
-
-        // Lift the implication relations
-        for {
-          map <- maps.values
-          (paSymbol, naSymbol) <- map
-          (a, b, pbSymbol) <- paSymbol.attr.implications.enumerate
-          nbSymbol <- map get pbSymbol
-          lifted = (a, b, nbSymbol)
-          if !(naSymbol.attr.implications.enumerate contains lifted)
-        } {
-          naSymbol.attr.implications append lifted
-        }
-
-      case _ =>
-    }
-    None
-  }
-
+  // Skip all
+  override def enter(tree: Tree): Option[Tree] = Some(tree)
 }
 
 object PropagateImplications extends EntityTransformerPass(declFirst = true) {

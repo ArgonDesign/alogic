@@ -39,10 +39,9 @@ private[frontend] object Evaluate {
             case unknown: Unknown => bad = Some(unknown); None
           }
 
-        override def skip(tree: Tree): Boolean = bad.isDefined // Bail quickly, on issue
-
         override protected def enter(tree: Tree): Option[Tree] = tree match {
-          case ExprSym(symbol) => evaluate(symbol, tree.loc) orElse Some(tree)
+          case _ if bad.isDefined => Some(tree) // Bail quickly, on issue
+          case ExprSym(symbol)    => evaluate(symbol, tree.loc) orElse Some(tree)
           case ExprSymSel(_, tSymbol) =>
             tSymbol.desc match {
               case _: DescVal | _: DescParam | _: DescConst | _: DescGenVar =>

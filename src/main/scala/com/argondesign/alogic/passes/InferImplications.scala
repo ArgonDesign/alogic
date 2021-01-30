@@ -27,10 +27,10 @@ import scala.annotation.tailrec
 
 final class InferImplications extends StatelessTreeTransformer {
 
-  override def skip(tree: Tree): Boolean = tree match {
-    case _: DefnEntity              => false
-    case EntAssign(ExprSym(lhs), _) => lhs.kind.width != 1
-    case _                          => true
+  override protected def enter(tree: Tree): Option[Tree] = tree match {
+    case _: DefnEntity                                     => None
+    case EntAssign(ExprSym(lhs), _) if lhs.kind.width == 1 => None
+    case _                                                 => Some(tree)
   }
 
   override def transform(tree: Tree): Tree = {

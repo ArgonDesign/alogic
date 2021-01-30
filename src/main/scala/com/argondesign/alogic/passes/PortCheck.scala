@@ -87,11 +87,6 @@ final class PortCheck(implicit cc: CompilerContext) extends StatelessTreeTransfo
     }
   }
 
-  override def skip(tree: Tree): Boolean = tree match {
-    case _: DeclEntity | _: DeclOut | _: DeclPipeOut => false
-    case _                                           => true
-  }
-
   override def enter(tree: Tree): Option[Tree] = tree match {
     //////////////////////////////////////////////////////////////////////////
     // Check output storage specifiers
@@ -116,7 +111,8 @@ final class PortCheck(implicit cc: CompilerContext) extends StatelessTreeTransfo
       // TODO: Add back bitwise multiple driver analysis for complex port expressions
       None
 
-    case _ => None
+    //
+    case _ => Some(tree)
   }
 
 }

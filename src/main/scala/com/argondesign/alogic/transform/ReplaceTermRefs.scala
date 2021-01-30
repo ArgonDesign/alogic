@@ -19,15 +19,8 @@ final class ReplaceTermRefs(
     override val typed: Boolean = true)
     extends StatelessTreeTransformer {
 
-  override def skip(tree: Tree): Boolean = tree match {
-    case _: ExprType => true
-    case _: ExprInt  => true
-    case _: ExprNum  => true
-    case _: ExprStr  => true
-    case _           => false
-  }
-
   override def enter(tree: Tree): Option[Tree] = tree match {
+    case _: ExprType | _: ExprInt | _: ExprNum | _: ExprStr => Some(tree)
     case ExprSym(symbol) =>
       bindings(symbol) match {
         case some @ Some(replacement) => replacement regularize tree.loc; some

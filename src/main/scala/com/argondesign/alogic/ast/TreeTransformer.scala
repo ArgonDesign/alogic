@@ -66,12 +66,6 @@ abstract class TreeTransformer extends (Tree => Tree) with ChainingSyntax {
   // using the same function.
   protected def transform(tree: Tree): Tree = tree
 
-  // 'skip' is a predicate that can be used to mark subtrees that should not be
-  // visited. If 'skip' returns true for a node, that node will not be visited,
-  // i.e.: enter and transform will not be called on that node, or any of their
-  // children, leaving the subtree unmodified
-  protected def skip(tree: Tree): Boolean = false
-
   // 'start' is called with the root of the input tree, at the beginning of the
   // walk.
   protected def start(tree: Tree): Unit = ()

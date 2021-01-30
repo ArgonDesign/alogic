@@ -27,45 +27,43 @@ import scala.collection.mutable
 
 final class LowerLoops(implicit cc: CompilerContext) extends StatefulTreeTransformer {
 
-  // TODO: Add back correct skip condition
-  override def skip(tree: Tree): Boolean = tree match {
-    case _: Decl      => true
-    case _: Expr      => true
-    case _: EntAssign => true
-    case _            => false
-
-  }
-
   // Stack of statements to replace continue statements with
   private[this] val continueRewrites = mutable.Stack[Option[() => Tree]]()
 
-  override def enter(tree: Tree): Option[Tree] = {
-    tree match {
-      case _: StmtLoop => continueRewrites.push(None)
+  override def enter(tree: Tree): Option[Tree] = tree match {
+    case _: StmtLoop =>
+      continueRewrites.push(None)
+      None
 
-      case StmtDo(cond, _) =>
-        continueRewrites.push(Some { () =>
-          StmtIf(cond, List(StmtContinue()), List(StmtBreak()))
-        })
+    case StmtDo(cond, _) =>
+      continueRewrites.push(Some { () =>
+        StmtIf(cond, List(StmtContinue()), List(StmtBreak()))
+      })
+      None
 
-      case StmtWhile(cond, _) =>
-        continueRewrites.push(Some { () =>
-          StmtIf(cond, List(StmtContinue()), List(StmtBreak()))
-        })
+    case StmtWhile(cond, _) =>
+      continueRewrites.push(Some { () =>
+        StmtIf(cond, List(StmtContinue()), List(StmtBreak()))
+      })
+      None
 
-      case StmtFor(_, Some(cond), step, _) =>
-        continueRewrites.push(Some { () =>
-          Thicket(step :+ StmtIf(cond, List(StmtContinue()), List(StmtBreak())))
-        })
+    case StmtFor(_, Some(cond), step, _) =>
+      continueRewrites.push(Some { () =>
+        Thicket(step :+ StmtIf(cond, List(StmtContinue()), List(StmtBreak())))
+      })
+      None
 
-      case StmtFor(_, None, step, _) =>
-        continueRewrites.push(Some { () =>
-          Thicket(step :+ StmtContinue())
-        })
+    case StmtFor(_, None, step, _) =>
+      continueRewrites.push(Some { () =>
+        Thicket(step :+ StmtContinue())
+      })
+      None
 
-      case _ =>
-    }
-    None
+    // Skip
+    case _: Decl | _: Expr | _: EntAssign => Some(tree)
+
+    //
+    case _ => None
   }
 
   override def transform(tree: Tree): Tree = tree match {

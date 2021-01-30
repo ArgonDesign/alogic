@@ -315,18 +315,14 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatefulTreeTran
     extraStmts.pop()
   }
 
-  override def skip(tree: Tree): Boolean = tree match {
-    case _: Stmt =>
-      // Do not descend into statements inside a record
-      enclosingSymbols.exists(symbol =>
-        symbol.kind match {
-          case TypeType(_: TypeRecord) => true
-          case _: TypeCombFunc         => true
-          case _                       => false
-        }
-      )
-    case _ => false
-  }
+  private def inRecordOrCombFunc: Boolean =
+    enclosingSymbols.exists(symbol =>
+      symbol.kind match {
+        case TypeType(_: TypeRecord) => true
+        case _: TypeCombFunc         => true
+        case _                       => false
+      }
+    )
 
   private def mustInline(kind: Type): Boolean = kind match {
     case _: TypeNormalMethod | _: TypeStaticMethod => true
@@ -336,6 +332,9 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatefulTreeTran
   }
 
   override def enter(tree: Tree): Option[Tree] = tree match {
+    // Do not descend into statements inside a record or combinational functoin
+    case _: Stmt if inRecordOrCombFunc => Some(tree)
+
     // Calls in statement position are replaced straight as they might not
     // have a return value, and even if they do it is not needed
     case StmtExpr(call: ExprCall) if mustInline(call.expr.tpe) =>

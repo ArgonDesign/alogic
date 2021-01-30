@@ -123,13 +123,12 @@ object SimplifyExpr extends StatelessTreeTransformer {
     case _       => throw Ice(tree, "Cannot invoke SimplifyExpr on non Expr tree.")
   }
 
-  override def skip(tree: Tree): Boolean = tree match {
-    case _: ExprInt => true
-    case _: ExprNum => true
-    case _          => false
-  }
-
   override def enter(tree: Tree): Option[Tree] = tree pipe {
+    ////////////////////////////////////////////////////////////////////////////
+    // Skip terms already constant
+    ////////////////////////////////////////////////////////////////////////////
+    case _: ExprInt | _: ExprNum => Some(tree)
+
     //////////////////////////////////////////////////////////////////////////
     // Only substitute in index/slice target if the indices are known
     // constants, in which case fold them as well. This is to avoid creating

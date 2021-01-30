@@ -120,11 +120,6 @@ final class NormalizeFunctions(implicit cc: CompilerContext) extends StatelessTr
     }
   }
 
-  override def skip(tree: Tree): Boolean = tree match {
-    case _: EntCombProcess => true
-    case _                 => false
-  }
-
   override def enter(tree: Tree): Option[Tree] = tree match {
     case defn: DefnRecord =>
       if (selfSymbols.nonEmpty)
@@ -136,6 +131,8 @@ final class NormalizeFunctions(implicit cc: CompilerContext) extends StatelessTr
       assert(!inStaticMethod)
       inStaticMethod = defn.symbol.kind.isStaticMethod
       None
+
+    case _: EntCombProcess => Some(tree)
 
     case _ => None
   }

@@ -84,12 +84,12 @@ final class ConvertCtrlFuncArgret(implicit cc: CompilerContext) extends Stateful
     case _ =>
   }
 
-  override def skip(tree: Tree): Boolean = argsMap.isEmpty && retMap.isEmpty
-
   override def replace(symbol: Symbols.Symbol): Boolean =
     (argsMap contains symbol) || (retMap contains symbol)
 
   override def enter(tree: Tree): Option[Tree] = tree match {
+    case _ if argsMap.isEmpty && retMap.isEmpty => Some(tree)
+
     case DefnFunc(symbol, args, _) if symbol.kind.isCtrlFunc =>
       arguments = Set from { args.iterator map { _.symbol } }
       None

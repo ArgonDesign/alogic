@@ -368,12 +368,12 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
     }
   }
 
-  // Skip already typed sub-trees
-  override def skip(tree: Tree): Boolean = tree.hasTpe
-
   override def enter(tree: Tree): Option[Tree] = {
     implicit val theTree: Tree = tree
     tree pipe {
+      // Skip already typed sub-trees
+      case _ if tree.hasTpe => Some(tree)
+
       case e: ExprIdent =>
         rAcc addOne ReasonUnresolved(e)
         Some(tree)

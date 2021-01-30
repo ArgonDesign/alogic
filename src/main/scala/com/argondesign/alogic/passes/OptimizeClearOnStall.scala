@@ -29,11 +29,6 @@ private object OptimizeClearOnSallTransform extends StatelessTreeTransformer {
   // assumes stall conditions and clearOnStall assignment sources are read-only
   // signals.
 
-  override def skip(tree: Tree): Boolean = tree match {
-    case defn: DefnEntity => defn.combProcesses.isEmpty
-    case _                => true
-  }
-
   // Given a list of statements, return a list of all linear paths through
   // these statements, without any branches or blocks
   private def enumeratePaths(stmts: List[Stmt]): List[List[Stmt]] = {
@@ -59,7 +54,9 @@ private object OptimizeClearOnSallTransform extends StatelessTreeTransformer {
           case _ => unreachable
         }
 
-        val inits = (branches map { init ::: _ }).distinct
+        val inits = (branches map {
+          init ::: _
+        }).distinct
 
         val tails = enumeratePaths(tail).distinct
 
@@ -72,8 +69,8 @@ private object OptimizeClearOnSallTransform extends StatelessTreeTransformer {
     }
   }
 
-  override def enter(tree: Tree): Option[Tree] = tree match {
-    case defn: DefnEntity =>
+  override def start(tree: Tree): Unit = tree match {
+    case defn: DefnEntity if defn.combProcesses.nonEmpty =>
       // Candidates for having clearOnStall removed
       val candidateSymbols = mutable.Set from {
         defn.defns collect {
@@ -93,6 +90,7 @@ private object OptimizeClearOnSallTransform extends StatelessTreeTransformer {
             case _: Case => false
             case _       => true
           }
+
           StatementFilter {
             case _: StmtWait                    => true
             case StmtAssign(ExprSym(symbol), _) => symbol.attr.clearOnStall contains true
@@ -151,11 +149,12 @@ private object OptimizeClearOnSallTransform extends StatelessTreeTransformer {
           symbol.attr.clearOnStall.clear()
         }
       }
-      None
 
-    case _ => unreachable // Due to skip
+    case _ =>
   }
 
+  // Skip all
+  override def enter(tree: Tree): Option[Tree] = Some(tree)
 }
 
 object OptimizeClearOnStall extends EntityTransformerPass(declFirst = true) {

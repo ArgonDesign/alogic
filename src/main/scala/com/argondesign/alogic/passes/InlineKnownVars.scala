@@ -60,9 +60,9 @@ final class InlineKnownVars(
     case _ =>
   }
 
-  override def skip(tree: Tree): Boolean = bindings.isEmpty
-
   override def enter(tree: Tree): Option[Tree] = tree match {
+    case _ if bindings.isEmpty => Some(tree) // TODO: is this useful? empty bindigns should be rare
+
     // Don't fold constants on the lhs of assignment TODO: fold the read ones...
     case stmt @ StmtAssign(_, rhs) =>
       Some {

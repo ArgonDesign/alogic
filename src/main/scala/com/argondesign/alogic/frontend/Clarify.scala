@@ -68,12 +68,11 @@ object Clarify {
         expr cast TypeInt(expr.tpe.isSigned, kind.width)
       }
 
-      override protected def skip(tree: Tree): Boolean = tree match {
-        case _: DescParametrized => true
-        case _                   => false
-      }
-
       override protected def enter(tree: Tree): Option[Tree] = tree pipe {
+
+        // SKip
+        case _: DescParametrized => Some(tree)
+
         ////////////////////////////////////////////////////////////////////////
         // Descend Function definitions with appropriate context
         ////////////////////////////////////////////////////////////////////////
