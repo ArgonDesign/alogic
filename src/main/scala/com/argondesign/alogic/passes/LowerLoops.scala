@@ -15,7 +15,7 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.StatefulTreeTransformer
+import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Messages.Ice
@@ -25,7 +25,7 @@ import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
 
-final class LowerLoops(implicit cc: CompilerContext) extends StatefulTreeTransformer {
+final class LowerLoops extends StatelessTreeTransformer {
 
   // Stack of statements to replace continue statements with
   private[this] val continueRewrites = mutable.Stack[Option[() => Tree]]()
@@ -68,10 +68,9 @@ final class LowerLoops(implicit cc: CompilerContext) extends StatefulTreeTransfo
 
   override def transform(tree: Tree): Tree = tree match {
 
-    case _: StmtContinue if continueRewrites.top.isDefined => {
+    case _: StmtContinue if continueRewrites.top.isDefined =>
       val create = continueRewrites.top.get
       create() regularize tree.loc
-    }
 
     case _: StmtLoop => {
         tree

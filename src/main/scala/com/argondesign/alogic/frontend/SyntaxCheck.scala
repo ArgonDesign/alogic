@@ -18,12 +18,12 @@
 
 package com.argondesign.alogic.frontend
 
-import com.argondesign.alogic.ast.StatefulTreeTransformer
+import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeReady
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeValid
-import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FuncVariant
 import com.argondesign.alogic.core.StorageTypes.StorageTypeDefault
 import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
@@ -34,7 +34,7 @@ import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
 
-final class SyntaxCheck(implicit cc: CompilerContext) extends StatefulTreeTransformer {
+final class SyntaxCheck(implicit cc: CompilerContext) extends StatelessTreeTransformer {
 
   // TODO: Error for param in Singleton
 

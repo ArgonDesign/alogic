@@ -13,6 +13,7 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.analysis.ReadSymbols
 import com.argondesign.alogic.analysis.WrittenSymbols
 import com.argondesign.alogic.ast.StatefulTreeTransformer
+import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.ast.Trees.Expr.InstancePortSel
 import com.argondesign.alogic.core.CompilerContext
@@ -29,10 +30,7 @@ import scala.collection.immutable.HashSet
 final private class RemoveSymbols(
     retainedInternal: Symbol => Boolean, // Used to check local symbols
     retainedExternal: Map[Symbol, Symbol => Boolean] // used ot check assignment to instance ports
-  )(
-    implicit
-    cc: CompilerContext)
-    extends StatefulTreeTransformer {
+  ) extends StatelessTreeTransformer {
 
   private def emptyStmt(stmt: Stmt): Boolean = stmt match {
     case StmtBlock(body)         => body forall emptyStmt

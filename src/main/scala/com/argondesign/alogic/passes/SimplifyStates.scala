@@ -10,17 +10,17 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.StatefulTreeTransformer
-import com.argondesign.alogic.ast.TreeTransformer
+import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.TypeAssigner
 
 import scala.annotation.tailrec
 import scala.collection.mutable
 
-final class SimplifyStates(implicit cc: CompilerContext) extends StatefulTreeTransformer {
+final class SimplifyStates(implicit cc: CompilerContext) extends StatelessTreeTransformer {
 
   // Pairs of states where the first can reach the second. Note this is not
   // complete, but is sufficient to check which states are unreachable.

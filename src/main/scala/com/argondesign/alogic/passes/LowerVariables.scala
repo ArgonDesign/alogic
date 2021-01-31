@@ -18,18 +18,18 @@
 package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.analysis.WrittenSymbols
-import com.argondesign.alogic.ast.StatefulTreeTransformer
+import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.enums.EntityVariant
 import com.argondesign.alogic.core.enums.ResetStyle
 
 import scala.collection.mutable.ListBuffer
 
-final class LowerVariables(implicit cc: CompilerContext) extends StatefulTreeTransformer {
+final class LowerVariables(implicit cc: CompilerContext) extends StatelessTreeTransformer {
 
   private val resetFlops = new ListBuffer[(Symbol, Symbol, Expr)]()
   private val nonResetFlops = new ListBuffer[(Symbol, Symbol)]()

@@ -16,7 +16,7 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.StatefulTreeTransformer
+import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.core.Bindings
@@ -31,7 +31,7 @@ import com.argondesign.alogic.util.unreachable
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-final class LowerAssertions(implicit cc: CompilerContext) extends StatefulTreeTransformer {
+final class LowerAssertions(implicit cc: CompilerContext) extends StatelessTreeTransformer {
 
   // List of emitted assertions (enable signal, condition, condition symbols, message, comment)
   private val assertions =

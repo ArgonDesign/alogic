@@ -17,13 +17,13 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.StatefulTreeTransformer
+import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.transform.ReplaceTermRefs
 import com.argondesign.alogic.util.unreachable
@@ -32,7 +32,7 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-final class ConvertControl(implicit cc: CompilerContext) extends StatefulTreeTransformer {
+final class ConvertControl(implicit cc: CompilerContext) extends StatelessTreeTransformer {
 
   // The return stack symbol
   private[this] var rsSymbol: Symbol = _

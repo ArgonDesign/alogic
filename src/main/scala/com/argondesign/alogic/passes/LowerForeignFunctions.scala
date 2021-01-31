@@ -16,12 +16,12 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.StatefulTreeTransformer
+import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FuncVariant
-import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.SequenceNumbers
 
@@ -35,7 +35,7 @@ final class LowerForeignFunctions(
   )(
     implicit
     cc: CompilerContext)
-    extends StatefulTreeTransformer {
+    extends StatelessTreeTransformer {
 
   // TODO: change signatures to remove Record/Vector
   private val extraStmts = mutable.Stack[ListBuffer[Stmt]]()

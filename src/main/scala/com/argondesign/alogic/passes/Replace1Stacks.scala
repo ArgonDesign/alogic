@@ -10,16 +10,16 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.StatefulTreeTransformer
-import com.argondesign.alogic.ast.TreeTransformer
+import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Symbols._
+import com.argondesign.alogic.core.TypeAssigner
 
 import scala.collection.mutable
 
-final class Replace1Stacks(implicit cc: CompilerContext) extends StatefulTreeTransformer {
+final class Replace1Stacks(implicit cc: CompilerContext) extends StatelessTreeTransformer {
 
   // Map from original stack variable symbol to the corresponding replacement,
   private[this] val stackMap = mutable.LinkedHashMap[Symbol, Symbol]()

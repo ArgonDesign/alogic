@@ -10,7 +10,7 @@
 
 package com.argondesign.alogic.frontend
 
-import com.argondesign.alogic.ast.StatefulTreeTransformer
+import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FuncVariant
@@ -20,7 +20,7 @@ import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
 
-final class UnusedCheck(implicit cc: CompilerContext) extends StatefulTreeTransformer {
+final class UnusedCheck(implicit cc: CompilerContext) extends StatelessTreeTransformer {
 
   // Set of declared symbols, keyed by entity containing the definition
   private val declared =

@@ -15,11 +15,11 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.StatefulTreeTransformer
+import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.StackFactory
 import com.argondesign.alogic.core.Messages.Ice
+import com.argondesign.alogic.core.StackFactory
 import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types.TypeStack
 import com.argondesign.alogic.core.enums.EntityVariant
@@ -28,7 +28,7 @@ import com.argondesign.alogic.util.unreachable
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-final class LowerStacks(implicit cc: CompilerContext) extends StatefulTreeTransformer {
+final class LowerStacks(implicit cc: CompilerContext) extends StatelessTreeTransformer {
 
   // Map from original stack variable symbol to the
   // corresponding stack entity and instance symbols
@@ -36,6 +36,14 @@ final class LowerStacks(implicit cc: CompilerContext) extends StatefulTreeTransf
 
   // Stack of extra statements to emit when finished with a statement
   private[this] val extraStmts = mutable.Stack[mutable.ListBuffer[Stmt]]()
+
+  private var entitySymbol: Symbol = _
+
+  override def start(tree: Tree): Unit = tree match {
+    case DeclEntity(symbol, _) => entitySymbol = symbol
+    case _: DefnEntity         => assert(entitySymbol != null)
+    case _                     => unreachable
+  }
 
   override def enter(tree: Tree): Option[Tree] = {
     tree match {

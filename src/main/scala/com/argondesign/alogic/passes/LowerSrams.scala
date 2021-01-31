@@ -19,12 +19,12 @@ import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
-import com.argondesign.alogic.core.SramFactory
-import com.argondesign.alogic.core.SyncRegFactory
 import com.argondesign.alogic.core.Messages.Ice
+import com.argondesign.alogic.core.SramFactory
 import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
 import com.argondesign.alogic.core.StorageTypes.StorageTypeWire
 import com.argondesign.alogic.core.Symbols._
+import com.argondesign.alogic.core.SyncRegFactory
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.enums.EntityVariant
 import com.argondesign.alogic.util.unreachable

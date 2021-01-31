@@ -10,7 +10,7 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.StatefulTreeTransformer
+import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Messages.Ice
@@ -26,7 +26,7 @@ import com.argondesign.alogic.util.unreachable
 import scala.collection.mutable.ListBuffer
 import scala.util.Random
 
-final class ConvertCtrlFuncLocals(implicit cc: CompilerContext) extends StatefulTreeTransformer {
+final class ConvertCtrlFuncLocals(implicit cc: CompilerContext) extends StatelessTreeTransformer {
 
   private val extraTypeSymbols = ListBuffer[Symbol]()
 

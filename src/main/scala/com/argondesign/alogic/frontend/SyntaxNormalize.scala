@@ -10,14 +10,15 @@
 
 package com.argondesign.alogic.frontend
 
-import com.argondesign.alogic.ast.StatefulTreeTransformer
+import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.util.unreachable
+
 import scala.util.chaining._
 
-final class SyntaxNormalize(implicit cc: CompilerContext) extends StatefulTreeTransformer {
+final class SyntaxNormalize(implicit cc: CompilerContext) extends StatelessTreeTransformer {
   override val typed: Boolean = false
 
   private val tmpNames: Iterator[String] = LazyList.from(0).iterator.map(n => s"`tmp_$n")
