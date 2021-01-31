@@ -21,7 +21,7 @@ import com.argondesign.alogic.util.unreachable
 trait Locationed {
 
   // Can only be set once, and cannot be observed as null
-  private[this] var _loc: Loc = _ // scalastyle:ignore var.field
+  private var _loc: Loc = _ // scalastyle:ignore var.field
 
   def hasLoc: Boolean = _loc != null
 

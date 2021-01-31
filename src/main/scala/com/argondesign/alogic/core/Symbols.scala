@@ -65,16 +65,16 @@ object Symbols {
     ////////////////////////////////////////////////////////////////////////////
 
     // The Desc node of this symbol
-    private[this] var _desc: Desc = _
+    private var _desc: Desc = _
 
     // The Decl node of this symbol
-    private[this] var _decl: Decl = _
+    private var _decl: Decl = _
 
     // The Defn node of this symbol
-    private[this] var _defn: Defn = _
+    private var _defn: Defn = _
 
     // The type of this symbol
-    private[this] var _kind: Type = _
+    private var _kind: Type = _
 
     // Setting the desc is only possibly before Decl/Defn have been set
     def desc_=(desc: Desc): Unit = {

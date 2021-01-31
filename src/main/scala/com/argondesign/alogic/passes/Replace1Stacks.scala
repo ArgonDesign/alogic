@@ -22,7 +22,7 @@ import scala.collection.mutable
 final class Replace1Stacks(implicit cc: CompilerContext) extends StatelessTreeTransformer {
 
   // Map from original stack variable symbol to the corresponding replacement,
-  private[this] val stackMap = mutable.LinkedHashMap[Symbol, Symbol]()
+  private val stackMap = mutable.LinkedHashMap[Symbol, Symbol]()
 
   override def transform(tree: Tree): Tree = {
     val result: Tree = tree match {

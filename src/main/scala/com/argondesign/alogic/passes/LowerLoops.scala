@@ -30,7 +30,7 @@ import scala.collection.mutable
 final class LowerLoops extends StatelessTreeTransformer {
 
   // Stack of statements to replace continue statements with
-  private[this] val continueRewrites = mutable.Stack[Option[() => Tree]]()
+  private val continueRewrites = mutable.Stack[Option[() => Tree]]()
 
   override def enter(tree: Tree): Option[Tree] = tree match {
     case _: StmtLoop =>

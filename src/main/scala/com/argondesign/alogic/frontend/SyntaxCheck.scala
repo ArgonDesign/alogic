@@ -40,11 +40,11 @@ final class SyntaxCheck(implicit cc: CompilerContext) extends StatelessTreeTrans
 
   override val typed: Boolean = false
 
-  private[this] val variantStack = mutable.Stack[EntityVariant.Type]()
+  private val variantStack = mutable.Stack[EntityVariant.Type]()
 
-  private[this] val singletonStack = mutable.Stack[Boolean]()
+  private val singletonStack = mutable.Stack[Boolean]()
 
-  private[this] var loopLevel: Int = 0
+  private var loopLevel: Int = 0
 
   override def enter(tree: Tree): Option[Tree] = {
     tree match {

@@ -35,7 +35,7 @@ trait TreeOps extends TreePrintOps { this: Tree =>
   // Trees nodes have a type 'tpe' which can be set once
   //////////////////////////////////////////////////////////////////////////////
 
-  final private[this] var _tpe: Type = null
+  final private var _tpe: Type = null
 
   final def hasTpe: Boolean = _tpe != null
 

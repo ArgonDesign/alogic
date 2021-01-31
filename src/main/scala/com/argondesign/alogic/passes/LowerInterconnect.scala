@@ -42,20 +42,20 @@ final class LowerInterconnect(implicit cc: CompilerContext)
     with PartialMatch {
 
   // Map from (instance symbol, selector) to the new interconnect symbol
-  private[this] val newSymbols = mutable.LinkedHashMap[(Symbol, String), Symbol]()
+  private val newSymbols = mutable.LinkedHashMap[(Symbol, String), Symbol]()
 
   // List of new Connect instances to emit
-  private[this] val newAssigns = new ListBuffer[EntAssign]()
+  private val newAssigns = new ListBuffer[EntAssign]()
 
   // Keep a stack of booleans indicating that we should
   // be allocating interconnect symbols in a connect expression
-  private[this] val enableStack = mutable.Stack[Boolean]()
+  private val enableStack = mutable.Stack[Boolean]()
 
   // Keep track of whether we are in a connect expression
-  private[this] var inAssign = false
+  private var inAssign = false
 
   // Convert interconnectClearOnStall attribute to a set
-  private[this] lazy val interconnectClearOnStall = {
+  private lazy val interconnectClearOnStall = {
     entitySymbol.attr.interconnectClearOnStall.getOrElse(Nil).toSet
   }
 
@@ -292,5 +292,6 @@ final class LowerInterconnect(implicit cc: CompilerContext)
 
 object LowerInterconnect extends EntityTransformerPass(declFirst = false, parallel = true) {
   val name = "lower-interconnect"
+
   def create(symbol: Symbol)(implicit cc: CompilerContext) = new LowerInterconnect
 }

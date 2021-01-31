@@ -26,7 +26,7 @@ case class Matrix[T: Numeric](elements: List[List[T]]) {
   require(elements.nonEmpty)
   require(elements.head.nonEmpty)
 
-  private[this] val numeric = implicitly[Numeric[T]]
+  private val numeric = implicitly[Numeric[T]]
   import numeric._
 
   val size = (elements.length, elements.head.length) // (row count, column count)

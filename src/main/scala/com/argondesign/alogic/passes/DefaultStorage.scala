@@ -31,11 +31,11 @@ import scala.collection.mutable
 final class DefaultStorage extends StatelessTreeTransformer {
 
   // Set of output ports connected with '->'
-  private[this] val connectedSet = mutable.Set[Symbol]()
+  private val connectedSet = mutable.Set[Symbol]()
 
-  private[this] var inAssign = false
+  private var inAssign = false
 
-  private[this] var entityVariant: EntityVariant.Type = _
+  private var entityVariant: EntityVariant.Type = _
 
   override def enter(tree: Tree): Option[Tree] = {
     tree match {

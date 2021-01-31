@@ -52,16 +52,16 @@ final class LowerFlowControlA(
   private val oStorage = mutable.Map[Symbol, ((DeclEntity, DefnEntity), Symbol, Boolean)]()
 
   // Stack of extra statements to emit when finished with a statement
-  private[this] val extraStmts = mutable.Stack[mutable.ListBuffer[Stmt]]()
+  private val extraStmts = mutable.Stack[mutable.ListBuffer[Stmt]]()
 
-  private[this] val fctn = FlowControlTypeNone
-  private[this] val stw = StorageTypeWire
+  private val fctn = FlowControlTypeNone
+  private val stw = StorageTypeWire
 
   // Some statements can be completely removed, this flag marks them
-  private[this] var removeStmt = false
+  private var removeStmt = false
 
   // New entities created in this pass
-  private[this] val extraEntities = new ListBuffer[(DeclEntity, DefnEntity)]
+  private val extraEntities = new ListBuffer[(DeclEntity, DefnEntity)]
 
   private var first = true
 
@@ -256,7 +256,7 @@ final class LowerFlowControlA(
     None
   }
 
-  private[this] def assignTrue(expr: Expr) = StmtAssign(expr, ExprInt(false, 1, 1))
+  private def assignTrue(expr: Expr) = StmtAssign(expr, ExprInt(false, 1, 1))
 
   override def transform(tree: Tree): Tree = {
     val result: Tree = tree match {
@@ -470,13 +470,13 @@ final class LowerFlowControlB(
   type Extractor = LoweredSymbols => Option[Symbol]
 
   // Given a symbol, return the corresponding payload symbol, if any
-  private[this] val payloadSymbol: Extractor = _._1
+  private val payloadSymbol: Extractor = _._1
 
   // Given a symbol, return the corresponding valid symbol, if any
-  private[this] val validSymbol: Extractor = _._2
+  private val validSymbol: Extractor = _._2
 
   // Given a symbol, return the corresponding ready symbol, if any
-  private[this] val readySymbol: Extractor = _._3
+  private val readySymbol: Extractor = _._3
 
   // Extractor function to use during current tree walk
   private var extractor: Extractor = payloadSymbol

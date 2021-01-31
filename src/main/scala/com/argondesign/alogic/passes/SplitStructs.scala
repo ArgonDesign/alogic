@@ -37,7 +37,7 @@ final class SplitStructsA(
     cc: CompilerContext)
     extends StatefulTreeTransformer {
 
-  private[this] def flattenStruct(prefix: String, kind: TypeRecord): List[(String, TypeFund)] = {
+  private def flattenStruct(prefix: String, kind: TypeRecord): List[(String, TypeFund)] = {
     kind.dataMembers flatMap { symbol =>
       symbol.kind match {
         case k: TypeRecord => flattenStruct(s"$prefix${cc.sep}${symbol.name}", k)

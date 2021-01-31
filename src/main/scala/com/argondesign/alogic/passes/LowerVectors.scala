@@ -31,11 +31,11 @@ final class LowerVectorsA(
     cc: CompilerContext)
     extends StatefulTreeTransformer {
 
-  private[this] val tgtTpe = mutable.Stack[Type]()
+  private val tgtTpe = mutable.Stack[Type]()
 
-  private[this] var lvalueLevel = 0
+  private var lvalueLevel = 0
 
-  private[this] var catLevel = 0
+  private var catLevel = 0
 
   override def replace(symbol: Symbol): Boolean =
     enclosingSymbols.isEmpty || symbol.kind.underlying.isVector

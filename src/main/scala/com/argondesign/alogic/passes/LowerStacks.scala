@@ -33,10 +33,10 @@ final class LowerStacks(implicit cc: CompilerContext) extends StatelessTreeTrans
 
   // Map from original stack variable symbol to the
   // corresponding stack entity and instance symbols
-  private[this] val stackMap = mutable.LinkedHashMap[Symbol, ((DeclEntity, DefnEntity), Symbol)]()
+  private val stackMap = mutable.LinkedHashMap[Symbol, ((DeclEntity, DefnEntity), Symbol)]()
 
   // Stack of extra statements to emit when finished with a statement
-  private[this] val extraStmts = mutable.Stack[mutable.ListBuffer[Stmt]]()
+  private val extraStmts = mutable.Stack[mutable.ListBuffer[Stmt]]()
 
   private var entitySymbol: Symbol = _
 
@@ -79,8 +79,9 @@ final class LowerStacks(implicit cc: CompilerContext) extends StatelessTreeTrans
     None
   }
 
-  private[this] def assignTrue(expr: Expr) = StmtAssign(expr, ExprInt(false, 1, 1))
-  private[this] def assignFalse(expr: Expr) = StmtAssign(expr, ExprInt(false, 1, 0))
+  private def assignTrue(expr: Expr) = StmtAssign(expr, ExprInt(false, 1, 1))
+
+  private def assignFalse(expr: Expr) = StmtAssign(expr, ExprInt(false, 1, 0))
 
   override def transform(tree: Tree): Tree = {
     val result: Tree = tree match {

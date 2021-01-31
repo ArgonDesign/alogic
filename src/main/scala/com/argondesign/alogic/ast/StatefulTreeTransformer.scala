@@ -44,11 +44,11 @@ abstract class StatefulTreeTransformer(implicit cc: CompilerContext) extends Tre
   // Enclosing context tracker
   //////////////////////////////////////////////////////////////////////////////
 
-  final private[this] val _enclosingSymbols = mutable.Stack[Symbol]()
+  final private val _enclosingSymbols = mutable.Stack[Symbol]()
 
-  final protected[this] def enclosingSymbols: collection.Seq[Symbol] = _enclosingSymbols
+  final protected def enclosingSymbols: collection.Seq[Symbol] = _enclosingSymbols
 
-  final protected[this] def withEnclosingSymbol[R](symbol: Symbol)(f: => R): R = {
+  final protected def withEnclosingSymbol[R](symbol: Symbol)(f: => R): R = {
     _enclosingSymbols.push(symbol)
     f
   } tap { _ =>
@@ -56,7 +56,7 @@ abstract class StatefulTreeTransformer(implicit cc: CompilerContext) extends Tre
   }
 
   // The Symbol of the closest enclosing entity
-  final protected[this] def entitySymbol: Symbol =
+  final protected def entitySymbol: Symbol =
     (_enclosingSymbols find {
       _.kind match {
         case TypeType(_: TypeEntity) => true
@@ -79,7 +79,7 @@ abstract class StatefulTreeTransformer(implicit cc: CompilerContext) extends Tre
   // Map from replacement symbol to its declaration
   final private val _replacementDecl: mutable.Map[Symbol, Decl] = mutable.Map()
 
-  final private[this] def replacementDecl(symbol: Symbol): Decl = {
+  final private def replacementDecl(symbol: Symbol): Decl = {
     // First time we encounter a symbol that is replaced, we create a new
     // symbol and process it's declaration so it's type is known.
     _replacementDecl.getOrElseUpdate(
@@ -103,9 +103,9 @@ abstract class StatefulTreeTransformer(implicit cc: CompilerContext) extends Tre
     )
   }
 
-  final private[this] def replacementSymbol(symbol: Symbol): Symbol = replacementDecl(symbol).symbol
+  final private def replacementSymbol(symbol: Symbol): Symbol = replacementDecl(symbol).symbol
 
-  final private[this] def mustBeReplaced(symbol: Symbol): Boolean = {
+  final private def mustBeReplaced(symbol: Symbol): Boolean = {
     !(orig contains symbol) && ((_replacementDecl contains symbol) || replace(symbol))
   }
 

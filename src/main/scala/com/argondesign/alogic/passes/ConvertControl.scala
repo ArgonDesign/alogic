@@ -36,42 +36,42 @@ import scala.collection.mutable.ListBuffer
 final class ConvertControl(implicit cc: CompilerContext) extends StatelessTreeTransformer {
 
   // The return stack symbol
-  private[this] var rsSymbol: Symbol = _
+  private var rsSymbol: Symbol = _
 
   //////////////////////////////////////////////////////////////////////////
   // State for control conversion
   //////////////////////////////////////////////////////////////////////////
 
   // Current function we are in
-  private[this] var currentFunction: Symbol = _
+  private var currentFunction: Symbol = _
 
   // Map from function symbols to the entry state symbol of that function
-  private[this] var func2state: Map[Symbol, Symbol] = _
+  private var func2state: Map[Symbol, Symbol] = _
 
   // Map from stmt.id to state symbol that is allocated after this statement
-  private[this] val allocStmts = mutable.Map[Int, Symbol]()
+  private val allocStmts = mutable.Map[Int, Symbol]()
 
   // Map from stmt.id to state symbol if this is the first stmt in that statement
-  private[this] val entryStmts = mutable.Map[Int, Symbol]()
+  private val entryStmts = mutable.Map[Int, Symbol]()
 
   // Stack of state symbols to go to when finished with this state
-  private[this] val followingState = mutable.Stack[Symbol]()
+  private val followingState = mutable.Stack[Symbol]()
 
   // Stack of break statement target state symbols
-  private[this] val breakTargets = mutable.Stack[Symbol]()
+  private val breakTargets = mutable.Stack[Symbol]()
 
   // Stack of continue statement target state symbols
-  private[this] val continueTargets = mutable.Stack[Symbol]()
+  private val continueTargets = mutable.Stack[Symbol]()
 
   // Stack of states symbols in the order they are emitted. We keep these
   // as Options. A None indicates that the state does not actually needs
   // to be emitted, as it will be emitted by an enclosing list (which is empty),
   // in part, this is used to avoid emitting empty states for loop entry points.
-  private[this] val pendingStates = mutable.Stack[Option[Symbol]]()
+  private val pendingStates = mutable.Stack[Option[Symbol]]()
 
   // Map from function symbols to the state symbol following the function call.
   // Only valid when function is only called once.
-  private[this] val stateFollowingCallOf = mutable.Map[Symbol, Symbol]()
+  private val stateFollowingCallOf = mutable.Map[Symbol, Symbol]()
 
   // Map from state symbol alias to the function call to which it corresponds.
   // State aliases are created when resolving return statements with static return points
@@ -79,11 +79,11 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatelessTreeTr
   // We cannot replace such a return statement with the correct goto statement since the
   // state may not yet have been allocated. So we create aliases which are resolved when
   // we finish transforming the entity.
-  private[this] val functionCallReturningTo = mutable.Map[Symbol, Symbol]()
+  private val functionCallReturningTo = mutable.Map[Symbol, Symbol]()
 
   // Allocate all intermediate states that are introduced
   // by a list of statements
-  private[this] def allocateStates(stmts: List[Stmt]): Unit = if (stmts.nonEmpty) {
+  private def allocateStates(stmts: List[Stmt]): Unit = if (stmts.nonEmpty) {
     assert(stmts.last.tpe == TypeCtrlStmt)
 
     // Collect all but the last control statements, together with
@@ -252,7 +252,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatelessTreeTr
   }
 
   // Split the list after every control statement
-  private[this] def splitControlUnits(stmts: List[Stmt]): List[List[Stmt]] = {
+  private def splitControlUnits(stmts: List[Stmt]): List[List[Stmt]] = {
     assert(stmts.last.tpe == TypeCtrlStmt)
 
     @tailrec
@@ -275,7 +275,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatelessTreeTr
     loop(stmts, ListBuffer(), ListBuffer())
   }
 
-  private[this] def convertControlUnits(stmts: List[Stmt]): List[Stmt] =
+  private def convertControlUnits(stmts: List[Stmt]): List[Stmt] =
     stmts match {
       case Nil => unreachable
       case stmts =>
@@ -288,12 +288,12 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatelessTreeTr
     }
 
   // List of emitted states
-  private[this] val emittedStates = ListBuffer[EntSplice]()
+  private val emittedStates = ListBuffer[EntSplice]()
 
-  private[this] lazy val finishedStates = emittedStates.toList sortBy { _.loc.start }
+  private lazy val finishedStates = emittedStates.toList.sortBy(_.loc.start)
 
   // Emit current state with given body, returns symbol that was emitted
-  private[this] def emitState(body: List[Stmt]): Option[Symbol] = {
+  private def emitState(body: List[Stmt]): Option[Symbol] = {
     assert(body.last.tpe == TypeCtrlStmt)
     assert(body.init forall { _.tpe == TypeCombStmt })
 

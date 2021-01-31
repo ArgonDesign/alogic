@@ -32,7 +32,7 @@ import scala.collection.mutable.ListBuffer
 object SimplifyCatTransform extends StatelessTreeTransformer {
 
   // Return a list of pairwise equal-length sub-lists that can be assigned to each other
-  private[this] def pairUp(
+  private def pairUp(
       as: List[Expr],
       bs: List[Expr]
     ): List[(List[Expr], List[Expr])] = {
@@ -148,5 +148,6 @@ object SimplifyCatTransform extends StatelessTreeTransformer {
 
 object SimplifyCat extends EntityTransformerPass(declFirst = true, parallel = true) {
   val name = "simplify-cat"
+
   def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer = SimplifyCatTransform
 }
