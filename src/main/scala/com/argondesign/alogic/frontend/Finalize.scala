@@ -12,19 +12,21 @@ package com.argondesign.alogic.frontend
 import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.ParOrSeqIterable
+import com.argondesign.alogic.core.ParOrSeqIterable.ImmutableIterableToParOrSeqIterable
 import com.argondesign.alogic.core.Symbols.Symbol
 import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.unreachable
 
 import scala.collection.concurrent.TrieMap
+import scala.collection.immutable.Set
 import scala.collection.mutable
-import scala.collection.parallel.CollectionConverters.ImmutableIterableIsParallelizable
 import scala.concurrent.Await
-import scala.concurrent.Future
-import scala.util.chaining.scalaUtilChainingOps
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.concurrent.duration.Duration
+import scala.util.chaining.scalaUtilChainingOps
 
 private[frontend] object Finalize {
 
@@ -34,7 +36,7 @@ private[frontend] object Finalize {
       implicit
       cc: CompilerContext,
       fe: Frontend
-    ): (DescPackage, Iterable[DescPackage]) = {
+    ): (DescPackage, ParOrSeqIterable[DescPackage]) = {
 
     // Map used to ensure each package is processed only once once
     // (think of diamonds in the dependency DAG)
@@ -84,14 +86,16 @@ private[frontend] object Finalize {
             transitiveDependencies + self
           }
           processedParallel.putIfAbsent(symbol, () => recursiveResult) match {
-            case Some(f) => f() map { _ => Set.empty }
+            case Some(f) => f() map { _ => Set.empty[DescPackage] }
             case None    => recursiveResult
           }
         }
-        // wait for all recursive calls to complete
-        futures flatMap { future => Await.result(future, Duration.Inf) }
+        // Reduce the results
+        val result = Future.foldLeft(futures)(Set.empty[DescPackage])(_ union _)
+        // Wait for the computation to complete
+        Await.result(result, Duration.Inf)
       } else {
-        // Work in serial
+        // Work sequentially
         referencedPackageSymbols flatMap { symbol =>
           lazy val recursiveResult = {
             val (self, transitiveDependencies) =
@@ -387,7 +391,7 @@ private[frontend] object Finalize {
 
     process(desc) pipe {
       case (desc, dependencies) =>
-        (desc rewrite Transform, dependencies.par.map(_ rewrite Transform).seq)
+        (desc rewrite Transform, dependencies.asPar.map(_ rewrite Transform))
     }
   }
 

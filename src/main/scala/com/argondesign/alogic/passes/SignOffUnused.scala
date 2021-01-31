@@ -24,7 +24,6 @@ import com.argondesign.alogic.util.BitSetOps._
 import com.argondesign.alogic.util.IteratorOps._
 
 import scala.collection.immutable.BitSet
-import scala.collection.parallel.CollectionConverters.IterableIsParallelizable
 
 object SignOffUnused extends PairsTransformerPass {
   val name = "sign-off-unused"
@@ -92,14 +91,9 @@ object SignOffUnused extends PairsTransformerPass {
     }
   }
 
-  def process(
-      pairs: Iterable[(Decl, Defn)]
-    )(
-      implicit
-      cc: CompilerContext
-    ): Iterable[(Decl, Defn)] = {
+  def process(pairs: Pairs)(implicit cc: CompilerContext): Pairs = {
     // We can do a lot in parallel
-    val parPairs = pairs.par
+    val parPairs = pairs.asPar
 
     // Gather all used symbol bits. This is similar to the gathering in
     // RemoveUnused, but with bitwise precision and slight differences.
@@ -150,7 +144,7 @@ object SignOffUnused extends PairsTransformerPass {
       case (decl: DeclEntity, defn: DefnEntity) =>
         signOffUnused(decl, defn, usedLocalSymbolBits(decl.symbol))
       case other => other
-    }.seq
+    }
   }
 
 }

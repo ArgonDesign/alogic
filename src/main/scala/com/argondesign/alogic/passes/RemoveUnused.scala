@@ -24,8 +24,6 @@ import com.argondesign.alogic.util.IteratorOps._
 
 import scala.annotation.tailrec
 import scala.collection.immutable.HashSet
-import scala.collection.parallel.CollectionConverters.IterableIsParallelizable
-import scala.collection.parallel.ParIterable
 
 // The transform that removes all symbols for which the given predicate fails
 final private class RemoveSymbols(
@@ -118,18 +116,13 @@ final private class RemoveSymbols(
 object RemoveUnused extends PairsTransformerPass {
   val name = "remove-unused"
 
-  def process(
-      pairs: Iterable[(Decl, Defn)]
-    )(
-      implicit
-      cc: CompilerContext
-    ): Iterable[(Decl, Defn)] = {
+  def process(pairs: Pairs)(implicit cc: CompilerContext): Pairs = {
     // TODO: Could prune every entity completely that has only inputs left
     //       unless it has non-pure contents like foreign function calls,
     //       assumption is that this is very rare, so don't bother for now.
 
     // We can do a lot in parallel
-    val parPairs = pairs.par
+    val parPairs = pairs.asPar
 
     // Gather (by entity) all symbols that must be kept, even if they are
     // unused.
@@ -163,7 +156,7 @@ object RemoveUnused extends PairsTransformerPass {
     }
 
     @tailrec
-    def loop(parPairs: ParIterable[(Decl, Defn)]): Iterable[(Decl, Defn)] = {
+    def loop(parPairs: Pairs): Pairs = {
       // Gather (by entity) all used symbols (excluding symbols not defined in
       // the entity). A symbol is used if it's value is consumed. This can happen
       // when it is read in an rvalue, read in an lvalue, or is a top level
@@ -227,23 +220,22 @@ object RemoveUnused extends PairsTransformerPass {
         usedExternalSymbols(symbol) || symbol.attr.topLevel.isSet
       }
 
-      // First drop all entities not marked for retention, then apply the pruning
+      // Drop all entities not marked for retention, then apply the pruning
       // transform to the rest.
-      val processedPairs =
-        parPairs
-          .withFilter(pair => externallyUsed(pair._1.symbol)) // Keep only used entities
-          .map {
-            case (decl, defn) =>
-              val usedInternal = usedInternalSymbols(decl.symbol)
-              val keptInternal = keptSymbols(decl.symbol)
-              // Predicate for symbols retained in this entity on this iteration
-              val retained: Symbol => Boolean = { symbol =>
-                usedInternal(symbol) || keptInternal(symbol) || externallyUsed(symbol)
-              }
-              // Apply the pruning transform
-              val transform = new RemoveSymbols(retained, usedInternalSymbols)
-              (decl rewrite transform, defn rewrite transform)
+      val processedPairs = parPairs.flatMap {
+        case (decl, defn) =>
+          Iterator.when(externallyUsed(decl.symbol)) thenSingle {
+            val usedInternal = usedInternalSymbols(decl.symbol)
+            val keptInternal = keptSymbols(decl.symbol)
+            // Predicate for symbols retained in this entity on this iteration
+            val retained: Symbol => Boolean = { symbol =>
+              usedInternal(symbol) || keptInternal(symbol) || externallyUsed(symbol)
+            }
+            // Apply the pruning transform
+            val transform = new RemoveSymbols(retained, usedInternalSymbols)
+            (decl rewrite transform, defn rewrite transform)
           }
+      }
 
       if ( // Check if we removed any symbol at all
         (processedPairs.iterator zip parPairs.iterator).exists {
@@ -264,7 +256,7 @@ object RemoveUnused extends PairsTransformerPass {
           }
         }
         // This we need to do sequentially as it's a global mapping of symbols
-        processedPairs.seq.map {
+        processedPairs.asSeq.map {
           case (decl, defn) => (decl rewrite UpdateTypes, defn rewrite UpdateTypes)
         }
       }

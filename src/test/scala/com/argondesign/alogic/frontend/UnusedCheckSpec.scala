@@ -26,7 +26,7 @@ final class UnusedCheckSpec extends AnyFlatSpec with AlogicTest {
     val source = Source("UnusedCheckSpec", text)
     val fe = new Frontend
     val result = fe(source, Loc.synthetic, Nil).value
-    result._2 shouldBe empty
+    result._2.size shouldBe 0
     result._1
   }
 

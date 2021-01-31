@@ -272,7 +272,7 @@ final class LowerVectorsB(
 
 object LowerVectors {
 
-  def apply(): Pass[Iterable[(Decl, Defn)], Iterable[(Decl, Defn)]] = {
+  def apply(): Pass[Pairs, Pairs] = {
     val globalReplacements = TrieMap[Symbol, Symbol]()
 
     new EntityTransformerPass(declFirst = true, parallel = true) {

@@ -68,7 +68,7 @@ object Compiler {
         combRecLimit = options.combRecLimit(),
         assertions = !options.noAssertions(),
         stats = options.stats(),
-        traceElaborate = options.traceElaborate.toOption contains true
+        parallel = options.parallelism.toOption.exists(_ > 1)
       )
 
       // Add some defaults for convenience

@@ -55,8 +55,6 @@ case class Settings(
     assertions: Boolean = true,
     // Emit stats
     stats: Boolean = false,
-    // For debugging only, trace the progress of elaboration
-    traceElaborate: Boolean = false,
     // Sandbox path for file accesses, if any
     sandboxPathOpt: Option[Path] = None,
     //

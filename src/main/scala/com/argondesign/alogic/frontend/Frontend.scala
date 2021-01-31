@@ -18,6 +18,7 @@ import com.argondesign.alogic.core.MessageBuffer
 import com.argondesign.alogic.core.Messages.Error
 import com.argondesign.alogic.core.Messages.Message
 import com.argondesign.alogic.core.Messages.Note
+import com.argondesign.alogic.core.ParOrSeqIterable
 import com.argondesign.alogic.core.Source
 import com.argondesign.alogic.core.SourceContext
 import com.argondesign.alogic.core.Symbols.Symbol
@@ -30,11 +31,8 @@ import scala.annotation.tailrec
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
-import scala.collection.parallel.ParIterable
-import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.concurrent.duration.Duration
 import scala.util.chaining._
 
 sealed trait PendingFrontendOp
@@ -307,17 +305,15 @@ final class Frontend private (
     )(
       implicit
       cc: CompilerContext
-    ): Option[(DescPackage, Iterable[DescPackage])] = {
+    ): Option[(DescPackage, ParOrSeqIterable[DescPackage])] = {
     // Apply Finalize
     val finalized @ (input, dependencies) = Finalize(desc)
     //
-    val iterable = ParIterable(input) ++ dependencies.iterator
+    val iterable = (dependencies + input).asPar
     // Apply a secondary SyntaxCheck to ensure 'gen' yielded well formed trees
-    val future = Future(iterable foreach { SyntaxCheck(_) })
+    iterable foreach { SyntaxCheck(_) }
     // Apply UnusedCheck
     iterable foreach UnusedCheck.apply
-    // Wait for them to complete
-    Await.result(future, Duration.Inf)
     //
     Some(finalized)
   }
@@ -329,7 +325,7 @@ final class Frontend private (
     )(
       implicit
       cc: CompilerContext
-    ): Option[(DescPackage, Iterable[DescPackage])] =
+    ): Option[(DescPackage, ParOrSeqIterable[DescPackage])] =
     elaborate(source) flatMap { desc =>
       typeCheck(desc).toEither map { _ => desc }
     } pipe {

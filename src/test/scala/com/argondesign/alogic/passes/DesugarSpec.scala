@@ -29,7 +29,7 @@ final class DesugarSpec extends AnyFreeSpec with AlogicTest {
         Desugar,
       text
     ) map {
-      _.toList flatMap { case (decl, defn) => List(decl, defn) }
+      _.iterator.toList flatMap { case (decl, defn) => List(decl, defn) }
     } getOrElse Nil
   }
 

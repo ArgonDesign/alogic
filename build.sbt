@@ -96,12 +96,17 @@ testOptions in Test += Tests.Argument("-oD") // Add F for full stack traces
 
 addCommandAlias(
   "runUnitTests",
-  """testOnly -- -l "com.argondesign.alogic.tags.EndToEndTest""""
+  "testOnly -- -l EndToEnd -l EndToEndParallel"
 )
 
 addCommandAlias(
   "runEndToEndTests",
-  """testOnly -- -n "com.argondesign.alogic.tags.EndToEndTest""""
+  "testOnly -- -n EndToEnd"
+)
+
+addCommandAlias(
+  "runEndToEndParallelTests",
+  "testOnly -- -n EndToEndParallel"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -149,6 +154,20 @@ fi
 # Prepend '--' to the command line arguments. This in fact causes the wrapper
 # to not consume any arguments like -h or -v.
 set -- -- ${stderrisatty} "$@"
+
+# Set Scala global concurrent thread pool size
+setScalaParallelism() {
+  intRe='^-?[0-9]+$'
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -j|--parallelism)
+        ! [[ "$2" =~ $intRe ]] || echo "-Dscala.concurrent.context.maxThreads=$2"
+        shift ;;
+      *) shift ;;
+    esac
+  done
+}
+set -- $(setScalaParallelism "$@") "$@"
 
 # Add JVM options
 set -- -XX:+UseParallelGC "$@"

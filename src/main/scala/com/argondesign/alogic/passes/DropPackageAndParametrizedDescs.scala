@@ -12,11 +12,10 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.ParOrSeqIterable
 import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Types.TypePackage
 import com.argondesign.alogic.util.unreachable
-
-import scala.collection.parallel.CollectionConverters.IterableIsParallelizable
 
 object DropPackageAndParametrizedDescsTransform extends StatelessTreeTransformer {
 
@@ -37,29 +36,33 @@ object DropPackageAndParametrizedDescsTransform extends StatelessTreeTransformer
 }
 
 object DropPackageAndParametrizedDescs
-    extends SimplePass[Option[(DescPackage, Iterable[DescPackage])], Iterable[Desc]] {
+    extends SimplePass[
+      Option[(DescPackage, ParOrSeqIterable[DescPackage])],
+      ParOrSeqIterable[Desc]
+    ] {
   val name = "drop-package-and-parametrized-descs"
 
   override protected def dump(
-      result: Iterable[Desc],
+      result: ParOrSeqIterable[Desc],
       tag: String
     )(
       implicit
       cc: CompilerContext
     ): Unit =
-    result foreach { desc => cc.dump(desc, "." + tag) }
+    result.asPar foreach { desc => cc.dump(desc, "." + tag) }
 
   override protected def process(
-      input: Option[(DescPackage, Iterable[DescPackage])]
+      input: Option[(DescPackage, ParOrSeqIterable[DescPackage])]
     )(
       implicit
       cc: CompilerContext
-    ): Iterable[Desc] =
-    input.toIterable
-      .flatMap {
-        case (root, dependencies) => Iterable(root) concat dependencies
+    ): ParOrSeqIterable[Desc] =
+    input
+      .map {
+        case (root, dependencies) => dependencies + root
       }
-      .par
+      .getOrElse(ParOrSeqIterable.empty)
+      .asPar
       .flatMap {
         case DescPackage(_, _, body) =>
           body.flatMap {
@@ -72,6 +75,5 @@ object DropPackageAndParametrizedDescs
             case _ => None // Drop everything else
           }
       }
-      .seq
 
 }

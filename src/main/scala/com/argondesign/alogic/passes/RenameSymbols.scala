@@ -28,7 +28,6 @@ import java.security.MessageDigest
 import scala.annotation.tailrec
 import scala.collection.Iterable
 import scala.collection.concurrent.TrieMap
-import scala.collection.parallel.CollectionConverters._
 import scala.util.chaining.scalaUtilChainingOps
 
 object RenameSymbols {
@@ -175,12 +174,7 @@ object RenameSymbols {
     new PairsTransformerPass {
       val name = "rename-symbols"
 
-      override protected def process(
-          input: Iterable[(Decl, Defn)]
-        )(
-          implicit
-          cc: CompilerContext
-        ): Iterable[(Decl, Defn)] = {
+      override protected def process(input: Pairs)(implicit cc: CompilerContext): Pairs = {
 
         // Set of top level names to avoid collisions
         val topNames = TrieMap[String, Unit]()
@@ -189,7 +183,7 @@ object RenameSymbols {
         val publicNameMap = TrieMap[(Symbol, String), String]()
 
         // Process each Entity, grouped by name
-        input.par
+        input.asPar
           .collect {
             case (decl: DeclEntity, _) => decl
           }
@@ -198,7 +192,7 @@ object RenameSymbols {
             // Process entities with the same name in a defined order to ensure
             // deterministic output.
             val sequenceNumbers = LazyList.from(0).iterator
-            eDecls.toSeq.seq.sortBy(_.loc) foreach {
+            eDecls.iterator.toSeq.sortBy(_.loc) foreach {
               case DeclEntity(eSymbol, decls) =>
                 ////////////////////////////////////////////////////////////////////
                 // Rename the member symbols
@@ -310,7 +304,7 @@ object RenameSymbols {
             }
           }
 
-          (input.par map { case (decl, defn) => (decl, defn rewrite Transform) }).seq
+          input.asPar.map { case (decl, defn) => (decl, defn rewrite Transform) }
         }
       }
 

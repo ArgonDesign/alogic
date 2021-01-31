@@ -45,7 +45,7 @@ import scala.collection.mutable.ListBuffer
 import scala.io.AnsiColor
 import scala.sys.process._
 
-trait CompilationTest
+abstract class CompilationTest(val parallel: Boolean)
     extends FixtureAnyFreeSpec
     with AlogicTest
     with fixture.ConfigMapFixture
@@ -860,10 +860,17 @@ trait CompilationTest
       }
   }
 
-  private object EndToEndTest extends Tag("com.argondesign.alogic.tags.EndToEndTest")
+  private object EndToEnd extends Tag("EndToEnd")
+  private object EndToEndParallel extends Tag("EndToEndParallel")
+
+  private def tagged(name: String) = if (parallel) {
+    name.taggedAs(EndToEndParallel)
+  } else {
+    name.taggedAs(EndToEnd)
+  }
 
   def defineTest(testName: String, sourceFile: File): Unit =
-    testName taggedAs EndToEndTest in { (configMap: ConfigMap) =>
+    tagged(testName) in { (configMap: ConfigMap) =>
       // Parse the check file
       val (attr, dict, messageSpecs) = parseCheckFile(sourceFile)
 
@@ -883,6 +890,10 @@ trait CompilationTest
         // Create argument array
         val args = {
           val buf = new mutable.ListBuffer[String]
+
+          if (parallel) {
+            buf append "-j"
+          }
 
           // Arguments always required
           buf append "-o"

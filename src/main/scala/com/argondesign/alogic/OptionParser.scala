@@ -21,6 +21,7 @@ import org.rogach.scallop.ScallopOption
 import org.rogach.scallop.ValueConverter
 import org.rogach.scallop.flagConverter
 import org.rogach.scallop.intConverter
+import org.rogach.scallop.optDefault
 import org.rogach.scallop.singleArgConverter
 import org.rogach.scallop.stringConverter
 
@@ -368,15 +369,24 @@ class OptionParser(args: Seq[String], messageBuffer: MessageBuffer, sandboxPathO
                |""".stripMargin.replace('\n', ' ')
   )(singleStringListconverter)
 
+  // Note: Setting the thread count is implemented in the wrapper
+  val parallelism = opt[Int](
+    short = 'j',
+    argName = "N",
+    descr = """Compile in parallel, on up to N threads. If N is omitted,
+              |the number of available processor is used""".stripMargin
+  )(optDefault(Int.MaxValue))
+
+  validateOption(parallelism) {
+    case n if n <= 0 => "parallelism option must be >= 1"
+  }
+
   // There is no standard library call to check if the console is a terminal,
   // so we pass this hidden option from the wrapper script to help ourselves out
   val stderrisatty = toggle(noshort = true, hidden = true)
 
   // Dump entities after each pass
   val dumpTrees = toggle(name = "dump-trees", noshort = true, hidden = true)
-
-  // Dump entities after each pass
-  val traceElaborate = toggle(name = "trace-elaborate", noshort = true, hidden = true)
 
   // Measure and report inserted execution timing
   val profile = toggle(name = "profile", noshort = true, hidden = true)

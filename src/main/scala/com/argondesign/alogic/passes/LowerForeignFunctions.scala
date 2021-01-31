@@ -45,6 +45,7 @@ final class LowerForeignFunctions(
 
   override def enter(tree: Tree): Option[Tree] = tree match {
     case DeclFunc(symbol, FuncVariant.Xeno, _, args) =>
+      // TODO: TrieMap + putIfAbsent
       encountered synchronized {
         encountered.get(symbol.name) match {
           case None =>
@@ -145,7 +146,7 @@ final class LowerForeignFunctions(
 
 object LowerForeignFunctions {
 
-  def apply(): Pass[Iterable[(Decl, Defn)], Iterable[(Decl, Defn)]] = {
+  def apply(): PairsTransformerPass = {
 
     val encountered = mutable.Map[String, (TypeXenoFunc, List[String])]()
 
@@ -165,12 +166,7 @@ object LowerForeignFunctions {
         (newDecl, newDefn)
       }
 
-      override def finish(
-          pairs: Iterable[(Decl, Defn)]
-        )(
-          implicit
-          cc: CompilerContext
-        ): Iterable[(Decl, Defn)] = {
+      override def finish(pairs: Pairs)(implicit cc: CompilerContext): Pairs = {
 
         def desc(kind: Type) = Iterator(
           "width" -> kind.width.toInt,

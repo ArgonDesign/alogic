@@ -25,8 +25,6 @@ import com.argondesign.alogic.core.Symbols.Symbol
 
 import scala.annotation.nowarn
 import scala.annotation.tailrec
-import scala.collection.parallel.CollectionConverters.IterableIsParallelizable
-import scala.util.ChainingSyntax
 import scala.util.chaining.scalaUtilChainingOps
 
 // The compiler pass interface
@@ -62,13 +60,13 @@ trait SimplePass[T, R] extends Pass[T, R] { self =>
   // Abstract members
   //////////////////////////////////////////////////////////////////////////////
 
-  val parallel: Boolean = false
   // Name of pass for debugging
   val name: String
   // The implementation of the pass transformation
   protected def process(input: T)(implicit cc: CompilerContext): R
-  // Dump pass results // TODO: do with callback to factor out IO
-  protected def dump(result: R, tag: String)(implicit cc: CompilerContext): Unit
+  // Dump pass results
+  @nowarn("msg=parameter value cc .* is never used")
+  protected def dump(result: R, tag: String)(implicit cc: CompilerContext): Unit = {}
 
   //////////////////////////////////////////////////////////////////////////////
   // Concrete members
@@ -78,12 +76,15 @@ trait SimplePass[T, R] extends Pass[T, R] { self =>
   final def passTransformations: Iterator[(Any, Int, CompilerContext) => Option[R]] =
     Iterator single {
       case (input, passNumber, cc) =>
+        lazy val tag = f"$passNumber%02d.$name"
         // Process the inputs
-        val output = cc.timeit(f"pass $passNumber%02d $name%-40s parallel=$parallel") {
+        val output = cc.timeit(f"pass $tag") {
           process(input.asInstanceOf[T])(cc)
         }
         // Dump result if requested
-        if (cc.settings.dumpTrees) dump(output, f"$passNumber%02d.$name")(cc)
+        if (cc.settings.dumpTrees) {
+          dump(output, tag)(cc)
+        }
         // Yield output, if there were no errors
         Option.unless(cc.hasError)(output): Option[R]
     }
@@ -97,27 +98,18 @@ final private class CombinedPass[T, R, U](a: Pass[T, R], b: Pass[R, U]) extends 
     a.passTransformations concat b.passTransformations
 }
 
-trait PairsTransformerPass extends SimplePass[Iterable[(Decl, Defn)], Iterable[(Decl, Defn)]] {
+trait PairsTransformerPass extends SimplePass[Pairs, Pairs] {
 
-  final protected def dump(
-      result: Iterable[(Decl, Defn)],
-      tag: String
-    )(
-      implicit
-      cc: CompilerContext
-    ): Unit = {
-    result foreach { case (decl, defn) => cc.dump(decl, defn, "." + tag) }
-  }
+  final override def dump(result: Pairs, tag: String)(implicit cc: CompilerContext): Unit =
+    result.asPar foreach { case (decl, defn) => cc.dump(decl, defn, "." + tag) }
 
 }
 
-abstract class PairTransformerPass(override val parallel: Boolean = false)
-    extends PairsTransformerPass
-    with ChainingSyntax {
+abstract class PairTransformerPass(parallel: Boolean = false) extends PairsTransformerPass {
 
   // Called before any pair has been transformed with the input pairs
   @nowarn("msg=parameter value cc .* is never used")
-  protected def start(pairs: Iterable[(Decl, Defn)])(implicit cc: CompilerContext): Unit = {}
+  protected def start(pairs: Pairs)(implicit cc: CompilerContext): Unit = {}
 
   // Predicate to check whether this pair needs transforming
   @nowarn("msg=parameter value cc .* is never used")
@@ -128,20 +120,10 @@ abstract class PairTransformerPass(override val parallel: Boolean = false)
 
   // Called after all pairs have been transformed with the output pairs
   @nowarn("msg=parameter value cc .* is never used")
-  protected def finish(
-      pairs: Iterable[(Decl, Defn)]
-    )(
-      implicit
-      cc: CompilerContext
-    ): Iterable[(Decl, Defn)] = pairs
+  protected def finish(pairs: Pairs)(implicit cc: CompilerContext): Pairs = pairs
 
   // Implementation of the pass
-  final protected def process(
-      pairs: Iterable[(Decl, Defn)]
-    )(
-      implicit
-      cc: CompilerContext
-    ): Iterable[(Decl, Defn)] = {
+  final protected def process(pairs: Pairs)(implicit cc: CompilerContext): Pairs = {
     // Call start
     start(pairs)
 
@@ -163,9 +145,9 @@ abstract class PairTransformerPass(override val parallel: Boolean = false)
 
     // Apply the transformation
     val transformed = if (parallel) {
-      pairs.par.flatMap(transformation).seq
+      pairs.asPar.flatMap(transformation)
     } else {
-      pairs.flatMap(transformation)
+      pairs.asSeq.flatMap(transformation)
     }
 
     // Call finish

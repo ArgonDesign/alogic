@@ -9,4 +9,4 @@
 
 package com.argondesign.alogic
 
-final class CompileSingle extends CompileSingleBase(parallel = false)
+final class CompileSingleParallel extends CompileSingleBase(parallel = true)

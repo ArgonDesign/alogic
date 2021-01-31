@@ -14,13 +14,13 @@ jobs:
       matrix:
         java: [8, 11]
         os: [ubuntu-20.04]
-        suite: [UnitTests, EndToEndTests]
+        suite: [UnitTests, EndToEndTests, EndToEndParallelTests]
         scala: [2.13.4, 3.0.0-M3]
     name: ${{ matrix.suite }} Scala ${{ matrix.scala }} Java ${{ matrix.java }}
     runs-on: ${{ matrix.os }}
     steps:
       - name: Install APT dependencies
-        if: matrix.suite == 'EndToEndTests'
+        if: matrix.suite != 'UnitTests'
         run: |
           # ccache - Used by Verilator when running tests
           sudo apt-get install ccache
@@ -37,7 +37,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Cache testing tools
-        if: matrix.suite == 'EndToEndTests'
+        if: matrix.suite != 'UnitTests'
         uses: actions/cache@v2
         with:
           path: |
@@ -45,7 +45,7 @@ jobs:
             verilator
           key: ${{ matrix.os }}-testing-tools-${{ hashFiles('setup-*') }}
       - name: Build testing tools
-        if: matrix.suite == 'EndToEndTests'
+        if: matrix.suite != 'UnitTests'
         run: |
           bash -x ./setup-symbiyosys
           bash -x ./setup-verilator
@@ -64,7 +64,7 @@ jobs:
           key: build-${{ matrix.os }}-SBT-${{ matrix.java }}-${{ matrix.scala }}-${{ matrix.suite }}-${{ hashFiles('**/build.sbt') }}
           restore-keys: build-${{ matrix.os }}-SBT-${{ matrix.java }}-${{ matrix.scala }}-${{ matrix.suite }}-
       - name: Cache ccache
-        if: matrix.suite == 'EndToEndTests'
+        if: matrix.suite != 'UnitTests'
         uses: actions/cache@v2
         with:
           path: ~/.ccache

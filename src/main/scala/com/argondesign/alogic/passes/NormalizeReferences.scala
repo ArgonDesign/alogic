@@ -382,7 +382,7 @@ final class NormalizeReferencesC(
 
 object NormalizeReferences {
 
-  def apply(): Pass[Iterable[(Decl, Defn)], Iterable[(Decl, Defn)]] = {
+  def apply(): Pass[Pairs, Pairs] = {
 
     val globalReplacements = TrieMap[Symbol, Symbol]()
     val requiredSymbolMaps = TrieMap[Symbol, Map[Symbol, Set[Symbol]]]()
@@ -403,7 +403,7 @@ object NormalizeReferences {
     } andThen new EntityTransformerPass(declFirst = true, parallel = true) {
       val name = "normalize-references-b"
 
-      lazy val propagatedSymbols = Set from {
+      private lazy val propagatedSymbols = Set from {
         requiredSymbolMaps.valuesIterator flatMap { _.valuesIterator flatMap { _.iterator } }
       }
 

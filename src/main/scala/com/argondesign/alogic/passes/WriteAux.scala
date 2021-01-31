@@ -21,24 +21,18 @@ import com.argondesign.alogic.lib.Json
 import com.argondesign.alogic.util.unreachable
 
 import scala.collection.immutable.ListMap
-import scala.collection.parallel.CollectionConverters._
 
 object WriteAux extends PairsTransformerPass {
   val name = "write-aux"
 
-  def topLevelManifest(
-      pairs: Iterable[(Decl, Defn)]
-    )(
-      implicit
-      cc: CompilerContext
-    ): Map[String, Any] = {
+  def topLevelManifest(pairs: Pairs)(implicit cc: CompilerContext): Map[String, Any] = {
 
     ////////////////////////////////////////////////////////////////////////////
     // Build nested manifest as a Map (dictionary)
     ////////////////////////////////////////////////////////////////////////////
 
     val dict = for {
-      (decl @ Decl(eSymbol), defn: DefnEntity) <- pairs.par
+      (decl @ Decl(eSymbol), defn: DefnEntity) <- pairs.asPar.iterator
       if eSymbol.attr.topLevel.isSet
     } yield {
       // High level port symbols
@@ -169,15 +163,10 @@ object WriteAux extends PairsTransformerPass {
       )
     }
 
-    ListMap.from(dict.seq.toSeq.sortBy(_._1))
+    ListMap.from(dict.toSeq.sortBy(_._1))
   }
 
-  override def process(
-      input: Iterable[(Decl, Defn)]
-    )(
-      implicit
-      cc: CompilerContext
-    ): Iterable[(Decl, Defn)] = {
+  override def process(input: Pairs)(implicit cc: CompilerContext): Pairs = {
 
     // Add the module manifest
     cc.manifest("top-levels") = topLevelManifest(input)

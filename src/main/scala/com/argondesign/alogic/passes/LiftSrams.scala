@@ -33,7 +33,7 @@ import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
 
 final class LiftSramsFrom(
-    replacements: mutable.Map[Symbol, Symbol],
+    replacements: TrieMap[Symbol, Symbol],
     liftFromMap: Map[Symbol, List[Symbol]]
   )(
     implicit
@@ -191,16 +191,11 @@ final class LiftSramsTo(
 object LiftSrams extends PairsTransformerPass {
   val name = "lift-srams"
 
-  def process(
-      pairs: Iterable[(Decl, Defn)]
-    )(
-      implicit
-      cc: CompilerContext
-    ): Iterable[(Decl, Defn)] = {
+  def process(pairs: Pairs)(implicit cc: CompilerContext): Pairs = {
 
     // Lift entities by 1 level in each iteration
     @tailrec
-    def loop(pairs: Iterable[(Decl, Defn)], liftFromSet: Set[Symbol]): Iterable[(Decl, Defn)] = {
+    def loop(pairs: Pairs, liftFromSet: Set[Symbol]): Pairs = {
       // Gather the 'parent entity' -> 'List(instances to be lifted)' map
       val liftFromMap: Map[Symbol, List[Symbol]] = Map from {
         for {
@@ -248,13 +243,8 @@ object LiftSrams extends PairsTransformerPass {
             (newDecl, newDefn)
         }
 
-        // Go again, with a remapped the liftFromSet
-        loop(
-          liftedTo,
-          liftFromSet map { symbol =>
-            replacements.getOrElse(symbol, symbol)
-          }
-        )
+        // Go again, with a remapped liftFromSet
+        loop(liftedTo, liftFromSet map { symbol => replacements.getOrElse(symbol, symbol) })
       }
     }
 
@@ -262,7 +252,7 @@ object LiftSrams extends PairsTransformerPass {
     // and all other entities instantiated by them
     val liftFromSet: Set[Symbol] = {
       val seedSet = Set from {
-        pairs collect {
+        pairs.iterator collect {
           case (DeclEntity(symbol, _), _) if symbol.attr.liftSrams contains true => symbol
         }
       }

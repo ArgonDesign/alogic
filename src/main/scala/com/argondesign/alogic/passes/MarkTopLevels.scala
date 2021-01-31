@@ -11,15 +11,17 @@ package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.ParOrSeqIterable
 
 object MarkTopLevels
-    extends SimplePass[Option[(DescPackage, Iterable[DescPackage])], Option[
-      (DescPackage, Iterable[DescPackage])
-    ]] {
+    extends SimplePass[
+      Option[(DescPackage, ParOrSeqIterable[DescPackage])],
+      Option[(DescPackage, ParOrSeqIterable[DescPackage])]
+    ] {
   val name = "mark-top-levels"
 
   override protected def dump(
-      result: Option[(DescPackage, Iterable[DescPackage])],
+      result: Option[(DescPackage, ParOrSeqIterable[DescPackage])],
       tag: String
     )(
       implicit
@@ -27,15 +29,15 @@ object MarkTopLevels
     ): Unit = result foreach {
     case (input, dependencies) =>
       cc.dump(input, "." + tag)
-      dependencies.foreach(cc.dump(_, "." + tag))
+      dependencies.asPar.foreach(cc.dump(_, "." + tag))
   }
 
   override protected def process(
-      input: Option[(DescPackage, Iterable[DescPackage])]
+      input: Option[(DescPackage, ParOrSeqIterable[DescPackage])]
     )(
       implicit
       cc: CompilerContext
-    ): Option[(DescPackage, Iterable[DescPackage])] = input flatMap {
+    ): Option[(DescPackage, ParOrSeqIterable[DescPackage])] = input flatMap {
     case (desc, _) =>
       // First see if there are are any explicit 'compile' directives,
       // if so gather the target symbols

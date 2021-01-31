@@ -617,7 +617,7 @@ object LowerFlowControl {
   // Triple of 'payload', 'valid', 'ready' if any
   type LoweredSymbols = (Option[Symbol], Option[Symbol], Option[Symbol])
 
-  def apply(): Pass[Iterable[(Decl, Defn)], Iterable[(Decl, Defn)]] = {
+  def apply(): Pass[Pairs, Pairs] = {
 
     val globalReplacements = TrieMap[Symbol, Symbol]()
     val portMaps = TrieMap[Symbol, mutable.Map[Symbol, LoweredSymbols]]()

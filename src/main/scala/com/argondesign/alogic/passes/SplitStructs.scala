@@ -316,7 +316,7 @@ final class SplitStructsB(
 
 object SplitStructs {
 
-  def apply(): Pass[Iterable[(Decl, Defn)], Iterable[(Decl, Defn)]] = {
+  def apply(): Pass[Pairs, Pairs] = {
 
     val globalReplacements = TrieMap[Symbol, Symbol]()
     val fieldMaps = TrieMap[Symbol, mutable.Map[Symbol, List[Symbol]]]()
@@ -339,12 +339,7 @@ object SplitStructs {
       def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
         new SplitStructsB(globalReplacements, fMaps)
 
-      override def finish(
-          pairs: Iterable[(Decl, Defn)]
-        )(
-          implicit
-          cc: CompilerContext
-        ): Iterable[(Decl, Defn)] = {
+      override def finish(pairs: Pairs)(implicit cc: CompilerContext): Pairs = {
         // Drop record pairs
         pairs filter {
           case (_: DeclRecord, _) => false

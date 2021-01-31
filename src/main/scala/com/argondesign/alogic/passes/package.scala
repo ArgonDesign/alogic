@@ -5,8 +5,15 @@
 // See the LICENSE file for the precise wording of the license.
 //
 // DESCRIPTION:
+// Top level definitions for passes
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic
 
-final class CompileSingle extends CompileSingleBase(parallel = false)
+import com.argondesign.alogic.ast.Trees.Decl
+import com.argondesign.alogic.ast.Trees.Defn
+import com.argondesign.alogic.core.ParOrSeqIterable
+
+package object passes {
+  type Pairs = ParOrSeqIterable[(Decl, Defn)]
+}

@@ -139,7 +139,7 @@ final class AddClockAndResetB(
 
 object AddClockAndReset {
 
-  def apply(): Pass[Iterable[(Decl, Defn)], Iterable[(Decl, Defn)]] = {
+  def apply(): Pass[Pairs, Pairs] = {
 
     val globalReplacements = TrieMap[Symbol, Symbol]()
 

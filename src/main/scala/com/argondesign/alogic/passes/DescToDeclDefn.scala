@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Copyright (c) 2017-2020 Argon Design Ltd. All rights reserved.
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
 //
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
@@ -12,11 +12,10 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Messages.Ice
+import com.argondesign.alogic.core.ParOrSeqIterable
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.util.unreachable
-
-import scala.collection.parallel.CollectionConverters.IterableIsParallelizable
 
 object DescToDeclDefnTransform extends StatelessTreeTransformer {
 
@@ -118,22 +117,18 @@ object DescToDeclDefnTransform extends StatelessTreeTransformer {
 
 }
 
-object DescToDeclDefn extends SimplePass[Iterable[Desc], Iterable[(Decl, Defn)]] {
+object DescToDeclDefn extends SimplePass[ParOrSeqIterable[Desc], Pairs] {
   val name = "desc-to-decl-defn"
 
-  override protected def dump(
-      result: Iterable[(Decl, Defn)],
-      tag: String
-    )(
-      implicit
-      cc: CompilerContext
-    ): Unit = result foreach { case (decl, defn) => cc.dump(decl, defn, "." + tag) }
+  override protected def dump(result: Pairs, tag: String)(implicit cc: CompilerContext): Unit =
+    result.asPar foreach { case (decl, defn) => cc.dump(decl, defn, "." + tag) }
 
   override protected def process(
-      input: Iterable[Desc]
+      input: ParOrSeqIterable[Desc]
     )(
       implicit
       cc: CompilerContext
-    ): Iterable[(Decl, Defn)] = input.par.map(DescToDeclDefnTransform.convert).seq
+    ): Pairs =
+    input.asPar.map(DescToDeclDefnTransform.convert)
 
 }
