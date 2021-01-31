@@ -160,9 +160,8 @@ final class LowerArrays(implicit cc: CompilerContext) extends StatelessTreeTrans
 object LowerArrays extends EntityTransformerPass(declFirst = true, parallel = true) {
   val name = "lower-arrays"
 
-  override protected def skip(decl: Decl, defn: Defn)(implicit cc: CompilerContext): Boolean =
-    super.skip(decl, defn) || defn.asInstanceOf[DefnEntity].variant != EntityVariant.Fsm
+  override def skip(decl: DeclEntity, defn: DefnEntity): Boolean = defn.variant != EntityVariant.Fsm
 
-  protected def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
+  def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
     new LowerArrays
 }

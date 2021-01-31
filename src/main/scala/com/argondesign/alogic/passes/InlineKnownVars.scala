@@ -192,8 +192,7 @@ object InlineKnownVars {
     new EntityTransformerPass(declFirst = false, parallel = true) {
       val name = "inline-known-vars"
 
-      override def skip(decl: Decl, defn: Defn)(implicit cc: CompilerContext): Boolean =
-        super.skip(decl, defn) || defn.asInstanceOf[DefnEntity].combProcesses.isEmpty
+      override def skip(decl: DeclEntity, defn: DefnEntity): Boolean = defn.combProcesses.isEmpty
 
       def create(symbol: Symbol)(implicit cc: CompilerContext) = new InlineKnownVars(combOnly)
     }

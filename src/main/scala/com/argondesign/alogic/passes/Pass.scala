@@ -163,16 +163,13 @@ abstract class EntityTransformerPass(declFirst: Boolean, parallel: Boolean = fal
     extends PairTransformerPass(parallel) {
 
   // Only process entities
-  override protected def skip(
-      decl: Decl,
-      defn: Defn
-    )(
-      implicit
-      cc: CompilerContext
-    ): Boolean = decl match {
-    case _: DeclEntity => false
-    case _             => true
-  }
+  final override def skip(decl: Decl, defn: Defn)(implicit cc: CompilerContext): Boolean =
+    decl match {
+      case decl: DeclEntity => skip(decl, defn.asInstanceOf[DefnEntity])
+      case _                => true
+    }
+
+  protected def skip(decl: DeclEntity, defn: DefnEntity): Boolean = false
 
   protected def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer
 

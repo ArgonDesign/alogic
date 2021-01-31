@@ -94,8 +94,7 @@ final class LowerRegPorts(implicit cc: CompilerContext) extends StatelessTreeTra
 object LowerRegPorts extends EntityTransformerPass(declFirst = true, parallel = true) {
   val name = "lower-reg-ports"
 
-  override protected def skip(decl: Decl, defn: Defn)(implicit cc: CompilerContext): Boolean =
-    super.skip(decl, defn) || defn.asInstanceOf[DefnEntity].variant != EntityVariant.Fsm
+  override def skip(decl: DeclEntity, defn: DefnEntity): Boolean = defn.variant != EntityVariant.Fsm
 
   override protected def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
     new LowerRegPorts()

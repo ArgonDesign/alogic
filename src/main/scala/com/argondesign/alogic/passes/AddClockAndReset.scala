@@ -151,8 +151,7 @@ object AddClockAndReset {
     } andThen new EntityTransformerPass(declFirst = true, parallel = true) {
       val name = "add-clock-and-reset-b"
 
-      override protected def skip(decl: Decl, defn: Defn)(implicit cc: CompilerContext): Boolean =
-        super.skip(decl, defn) || decl.asInstanceOf[DeclEntity].instances.isEmpty
+      override def skip(decl: DeclEntity, defn: DefnEntity): Boolean = decl.instances.isEmpty
 
       def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
         new AddClockAndResetB(globalReplacements)

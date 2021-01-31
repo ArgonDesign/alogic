@@ -92,8 +92,7 @@ final class SimplifyStates(implicit cc: CompilerContext) extends StatelessTreeTr
 object SimplifyStates extends EntityTransformerPass(declFirst = false, parallel = true) {
   val name = "simplify-states"
 
-  override protected def skip(decl: Decl, defn: Defn)(implicit cc: CompilerContext): Boolean =
-    super.skip(decl, defn) || defn.asInstanceOf[DefnEntity].states.isEmpty
+  override def skip(decl: DeclEntity, defn: DefnEntity): Boolean = defn.states.isEmpty
 
   override protected def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
     new SimplifyStates
