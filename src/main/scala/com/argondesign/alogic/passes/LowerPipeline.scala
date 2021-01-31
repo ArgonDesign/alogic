@@ -368,6 +368,5 @@ final class LowerPipelineHost(implicit cc: CompilerContext) extends StatefulTree
 object LowerPipeline extends EntityTransformerPass(declFirst = false, parallel = true) {
   val name = "lower-pipeline"
 
-  override def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
-    new LowerPipelineHost
+  def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer = new LowerPipelineHost
 }

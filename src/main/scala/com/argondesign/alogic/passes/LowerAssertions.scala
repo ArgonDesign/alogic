@@ -296,7 +296,6 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatelessTreeT
 
   override protected def finalCheck(tree: Tree): Unit = {
     assert(condLvl == 0)
-
   }
 
 }
@@ -304,6 +303,5 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatelessTreeT
 object LowerAssertions extends EntityTransformerPass(declFirst = false, parallel = true) {
   val name = "lower-assertions"
 
-  override def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
-    new LowerAssertions
+  def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer = new LowerAssertions
 }

@@ -89,6 +89,5 @@ final class DefaultStorage extends StatelessTreeTransformer {
 object DefaultStorage extends EntityTransformerPass(declFirst = false, parallel = true) {
   val name = "default-storage"
 
-  override def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
-    new DefaultStorage
+  def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer = new DefaultStorage
 }
