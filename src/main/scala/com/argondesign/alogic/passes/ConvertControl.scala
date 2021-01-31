@@ -19,6 +19,7 @@ package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Messages.Ice
@@ -528,26 +529,10 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatelessTreeTr
 
 }
 
-object ConvertControl extends PairTransformerPass(parallel = true) {
+object ConvertControl extends EntityTransformerPass(declFirst = false, parallel = true) {
   val name = "convert-control"
 
-  def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
-    (decl, defn) match {
-      case (dcl: DeclEntity, _: DefnEntity) =>
-        if (dcl.functions.isEmpty) {
-          // If no functions, then there is nothing to do
-          (decl, defn)
-        } else {
-          // Perform the transform
-          val transformer = new ConvertControl
-          // First transform the defn
-          val newDefn = transformer(defn)
-          // Then transform the decl
-          val newDecl = transformer(decl)
-          (newDecl, newDefn)
-        }
-      case _ => (decl, defn)
-    }
-  }
+  override def skip(decl: DeclEntity, defn: DefnEntity): Boolean = decl.functions.isEmpty
 
+  def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer = new ConvertControl
 }

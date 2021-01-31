@@ -12,6 +12,7 @@ package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbols
 import com.argondesign.alogic.core.Symbols.Symbol
@@ -39,12 +40,6 @@ final class ConvertCtrlFuncArgret(implicit cc: CompilerContext) extends Stateful
   private val extraStmts = mutable.Stack[mutable.ListBuffer[Stmt]]()
   // Set of arguments of the current control function
   private var arguments: Set[Symbol] = Set.empty
-
-  def newTypes: List[(Decl, Defn)] = List from {
-    extraTypeSymbols.iterator map { symbol =>
-      (symbol.mkDecl regularize symbol.loc, symbol.mkDefn regularize symbol.loc)
-    }
-  }
 
   override def start(tree: Tree): Unit = tree match {
     case defn: DefnEntity =>
@@ -233,22 +228,25 @@ final class ConvertCtrlFuncArgret(implicit cc: CompilerContext) extends Stateful
     case _ => tree
   }
 
+  override protected def finish(tree: Tree): Tree = tree match {
+    case defn: DefnEntity =>
+      Thicket(defn :: extraTypeSymbols.iterator.map(s => s.mkDefn regularize s.loc).toList)
+    case decl: DeclEntity =>
+      Thicket(decl :: extraTypeSymbols.iterator.map(s => s.mkDecl regularize s.loc).toList)
+    case _ => unreachable
+  }
+
   override def finalCheck(tree: Tree): Unit = {
     assert(extraStmts.isEmpty)
   }
 
 }
 
-object ConvertCtrlFuncArgret extends PairTransformerPass(parallel = true) {
+object ConvertCtrlFuncArgret extends EntityTransformerPass(declFirst = false, parallel = true) {
   val name = "convert-ctrl-func-argret"
 
-  protected def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
-    val transform = new ConvertCtrlFuncArgret
-    val newDefn = transform(defn)
-    val newDecl = transform(decl)
-    val head = (newDecl, newDefn)
-    val (decls, defns) = (head :: transform.newTypes).unzip
-    (Thicket(decls), Thicket(defns))
-  }
+  override def skip(decl: DeclEntity, defn: DefnEntity): Boolean = defn.functions.isEmpty
 
+  def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
+    new ConvertCtrlFuncArgret
 }

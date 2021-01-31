@@ -17,6 +17,7 @@ package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.StackFactory
@@ -199,26 +200,10 @@ final class LowerStacks(implicit cc: CompilerContext) extends StatelessTreeTrans
 
 }
 
-object LowerStacks extends PairTransformerPass(parallel = true) {
+object LowerStacks extends EntityTransformerPass(declFirst = true, parallel = true) {
   val name = "lower-stacks"
 
-  def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
-    (decl, defn) match {
-      case (dcl: DeclEntity, dfn: DefnEntity) =>
-        if (dcl.decls.isEmpty || dfn.variant == EntityVariant.Net) {
-          // If no decls, or network, then there is nothing to do
-          (decl, defn)
-        } else {
-          // Perform the transform
-          val transformer = new LowerStacks
-          // First transform the decl
-          val newDecl = transformer(decl)
-          // Then transform the defn
-          val newDefn = transformer(defn)
-          (newDecl, newDefn)
-        }
-      case _ => (decl, defn)
-    }
-  }
+  override def skip(decl: DeclEntity, defn: DefnEntity): Boolean = defn.variant != EntityVariant.Fsm
 
+  def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer = new LowerStacks
 }

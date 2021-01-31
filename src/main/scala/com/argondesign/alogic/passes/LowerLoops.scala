@@ -17,8 +17,10 @@ package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Messages.Ice
+import com.argondesign.alogic.core.Symbols
 import com.argondesign.alogic.core.Types.TypeCombStmt
 import com.argondesign.alogic.core.Types.TypeCtrlStmt
 import com.argondesign.alogic.util.unreachable
@@ -130,12 +132,10 @@ final class LowerLoops extends StatelessTreeTransformer {
 
 }
 
-object LowerLoops extends PairTransformerPass(parallel = true) {
+object LowerLoops extends EntityTransformerPass(declFirst = true, parallel = true) {
   val name = "lower-loops"
 
-  def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
-    val transformer = new LowerLoops
-    (transformer(decl), transformer(defn))
-  }
+  override def skip(decl: DeclEntity, defn: DefnEntity): Boolean = decl.functions.isEmpty
 
+  def create(symbol: Symbols.Symbol)(implicit cc: CompilerContext): TreeTransformer = new LowerLoops
 }

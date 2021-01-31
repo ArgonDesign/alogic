@@ -17,6 +17,7 @@ package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Messages.Ice
@@ -383,42 +384,29 @@ final class LowerSrams(
 
 object LowerSrams {
 
-  class LowerSramsPass extends PairTransformerPass(parallel = true) {
-    val name = "lower-srams"
+  def apply(): EntityTransformerPass =
+    new EntityTransformerPass(declFirst = true, parallel = true) {
+      val name = "lower-srams"
 
-    val sramBuilder = new SramBuilder
+      val sramBuilder = new SramBuilder
 
-    def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
-      (decl, defn) match {
-        case (dcl: DeclEntity, dfn: DefnEntity) =>
-          if (dcl.decls.isEmpty || dfn.variant == EntityVariant.Net) {
-            // If no decls, or network, then there is nothing to do
-            (decl, defn)
-          } else {
-            // Perform the transform
-            val transformer = new LowerSrams(sramBuilder)
-            // First transform the decl
-            val newDecl = transformer(decl)
-            // Then transform the defn
-            val newDefn = transformer(defn)
-            (newDecl, newDefn)
+      override def skip(decl: DeclEntity, defn: DefnEntity): Boolean =
+        defn.variant == EntityVariant.Net
+
+      def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
+        new LowerSrams(sramBuilder)
+
+      override def finish(results: Pairs)(implicit cc: CompilerContext): Pairs = {
+        // Add sram sizes required to manifest
+        cc.manifest("sram-sizes") = List from {
+          sramBuilder.srams.iterator map {
+            case ((width, depth), _) => ListMap("width" -> width, "depth" -> depth)
           }
-        case _ => (decl, defn)
-      }
-    }
-
-    override def finish(results: Pairs)(implicit cc: CompilerContext): Pairs = {
-      // Add sram sizes required to manifest
-      cc.manifest("sram-sizes") = List from {
-        sramBuilder.srams.iterator map {
-          case ((width, depth), _) => ListMap("width" -> width, "depth" -> depth)
         }
+        // Add all SRAMs to the results
+        results ++ (sramBuilder.srams map { _._2 })
       }
-      // Add all SRAMs to the results
-      results ++ (sramBuilder.srams map { _._2 })
+
     }
 
-  }
-
-  def apply(): PairTransformerPass = new LowerSramsPass
 }

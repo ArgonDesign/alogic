@@ -12,6 +12,7 @@ package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbols.Symbol
@@ -35,12 +36,6 @@ final class ConvertCtrlFuncLocals(implicit cc: CompilerContext) extends Stateles
   private val extraDefns = ListBuffer[Defn]()
 
   private var rng: Random = _
-
-  def newTypes: List[(Decl, Defn)] = List from {
-    extraTypeSymbols.iterator map { symbol =>
-      (symbol.mkDecl regularize symbol.loc, symbol.mkDefn regularize symbol.loc)
-    }
-  }
 
   override def start(tree: Tree): Unit = tree match {
     case Defn(symbol) => rng = new Random(symbol.name.foldLeft(0)(_ ^ _))
@@ -231,6 +226,14 @@ final class ConvertCtrlFuncLocals(implicit cc: CompilerContext) extends Stateles
     case _ => tree
   }
 
+  override protected def finish(tree: Tree): Tree = tree match {
+    case defn: DefnEntity =>
+      Thicket(defn :: extraTypeSymbols.iterator.map(s => s.mkDefn regularize s.loc).toList)
+    case decl: DeclEntity =>
+      Thicket(decl :: extraTypeSymbols.iterator.map(s => s.mkDecl regularize s.loc).toList)
+    case _ => unreachable
+  }
+
   override protected def finalCheck(tree: Tree): Unit = tree visit {
     case StmtSplice(node: Decl) => throw Ice(node, "StmtSplice(_: Decl) remains")
     case StmtSplice(node: Defn) => throw Ice(node, "StmtSplice(_: Defn) remains")
@@ -242,16 +245,11 @@ final class ConvertCtrlFuncLocals(implicit cc: CompilerContext) extends Stateles
 
 }
 
-object ConvertCtrlFuncLocals extends PairTransformerPass(parallel = true) {
+object ConvertCtrlFuncLocals extends EntityTransformerPass(declFirst = false, parallel = true) {
   val name = "convert-ctrl-func-locals"
 
-  protected def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {
-    val transform = new ConvertCtrlFuncLocals
-    val newDefn = transform(defn)
-    val newDecl = transform(decl)
-    val head = (newDecl, newDefn)
-    val (decls, defns) = (head :: transform.newTypes).unzip
-    (Thicket(decls), Thicket(defns))
-  }
+  override def skip(decl: DeclEntity, defn: DefnEntity): Boolean = defn.functions.isEmpty
 
+  def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
+    new ConvertCtrlFuncLocals
 }
