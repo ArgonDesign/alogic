@@ -1,15 +1,9 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2018 Argon Design Ltd. All rights reserved.
-//
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler
-// Author: Geza Lore
-//
 // DESCRIPTION:
-//
 // Lower variables into flops and combinatorial nets. At this stage, anything
 // that is of TypeInt is a flop, unless it is driven through a connect, or is
 // one of the control signals of a memory, in which case it is a net.

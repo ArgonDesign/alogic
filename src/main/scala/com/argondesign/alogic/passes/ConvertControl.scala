@@ -1,15 +1,9 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2017-2019 Argon Design Ltd. All rights reserved.
-//
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler
-// Author: Peter de Rivaz/Geza Lore
-//
 // DESCRIPTION:
-//
 // Convert state functions to states:
 //  - Converts control functions to state system
 //  - Does NOT allocate state numbers, which will be done later

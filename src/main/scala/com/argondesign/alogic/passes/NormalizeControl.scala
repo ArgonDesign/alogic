@@ -1,15 +1,9 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Argon Design Ltd. Project P8009 Alogic
-// Copyright (c) 2020 Argon Design Ltd. All rights reserved.
-//
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
 //
-// Module: Alogic Compiler
-// Author: Geza Lore
-//
 // DESCRIPTION:
-//
 // Normalize control function control statements
 // - Add implicit 'fence' in empty branches of 'if' and 'case' statements
 // - Add default 'fence' if it does not exist in 'case' statements

@@ -1,15 +1,14 @@
-////////////////////////////////////////////////////////////////////////////////                                                                                          >
-// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.                                                                                                              >
-//                                                                                                                                                                        >
-// This file is covered by the BSD (with attribution) license.                                                                                                            >
-// See the LICENSE file for the precise wording of the license.                                                                                                           >
-//                                                                                                                                                                        >
-// DESCRIPTION:                                                                                                                                                           >
-// The TypeAssigner computes and assigns types of nodes based on their children                                                                                           >
+////////////////////////////////////////////////////////////////////////////////
+// Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
+// This file is covered by the BSD (with attribution) license.
+// See the LICENSE file for the precise wording of the license.
+//
+// DESCRIPTION:
+// The TypeAssigner computes and assigns types of nodes based on their children
 // note that the TypeAssigner assumes that the node is correctly typed and
 // has passed elaboration and therefore can be typed without knowing anything
 // about the enclosing context or values of symbols.
-////////////////////////////////////////////////////////////////////////////////                                                                                          >
+////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.core
 
