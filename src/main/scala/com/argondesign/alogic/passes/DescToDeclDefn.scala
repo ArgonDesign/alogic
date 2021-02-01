@@ -74,9 +74,9 @@ object DescToDeclDefnTransform extends StatelessTreeTransformer {
         case DescConst(Sym(symbol), _, spec, init) =>
           (DeclConst(symbol, spec), DefnConst(symbol, init))
         case DescArray(Sym(symbol), _, elem, size) =>
-          (DeclArray(symbol, elem, size.valueOption.get.toLong), DefnArray(symbol))
+          (DeclArray(symbol, elem, size.value.toLong), DefnArray(symbol))
         case DescSram(Sym(symbol), _, elem, size, st) =>
-          (DeclSram(symbol, elem, size.valueOption.get.toLong, st), DefnSram(symbol))
+          (DeclSram(symbol, elem, size.value.toLong, st), DefnSram(symbol))
         case DescType(Sym(symbol), _, spec) =>
           (DeclType(symbol, spec), DefnType(symbol))
         case DescEntity(Sym(symbol), _, variant, body) =>

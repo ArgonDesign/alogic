@@ -811,18 +811,18 @@ object SimplifyExpr extends StatelessTreeTransformer {
       val aLsb = aOp match {
         case ":"  => aRIdx
         case "+:" => aLIdx
-        case "-:" => aLIdx - (aRIdx.valueOption.get.toInt - 1)
+        case "-:" => aLIdx - (aRIdx.value.toInt - 1)
         case _    => unreachable
       }
       val bLsb = bOp match {
         case ":"  => bRidx
         case "+:" => bLidx
-        case "-:" => bLidx - (bRidx.valueOption.get.toInt - 1)
+        case "-:" => bLidx - (bRidx.value.toInt - 1)
         case _    => unreachable
       }
       val bMsb = bOp match {
         case ":"  => bLidx
-        case "+:" => bLidx + (bRidx.valueOption.get.toInt - 1)
+        case "+:" => bLidx + (bRidx.value.toInt - 1)
         case "-:" => bLidx
         case _    => unreachable
       }

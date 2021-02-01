@@ -255,7 +255,7 @@ object TypeAssigner {
     case ">" | ">=" | "<" | "<=" | "==" | "!=" | "&&" | "||" => TypeUInt(1)
     case "<<" | ">>" | "<<<" | ">>>"                         => tree.lhs.tpe
     case "'" =>
-      TypeInt(tree.rhs.tpe.isSigned, tree.lhs.valueOption.get.asLong)
+      TypeInt(tree.rhs.tpe.isSigned, tree.lhs.value.asLong)
     case _ =>
       val lTpe = tree.lhs.tpe
       val rTpe = tree.rhs.tpe
@@ -281,7 +281,7 @@ object TypeAssigner {
   }
 
   private def kind(tree: ExprRep) = {
-    TypeUInt(tree.count.valueOption.get.asLong * tree.expr.tpe.width)
+    TypeUInt(tree.count.value.asLong * tree.expr.tpe.width)
   }
 
   private def kind(tree: ExprCat) = {
@@ -293,7 +293,7 @@ object TypeAssigner {
       case _: TypeNum                              => TypeUInt(1)
       case TypeArray(kind, _)                      => kind
       case TypeVector(kind, _)                     => kind
-      case TypeType(kind)                          => TypeType(kind addVectorDimension tree.index.valueOption.get.asLong)
+      case TypeType(kind)                          => TypeType(kind addVectorDimension tree.index.value.asLong)
       case kind if kind.isPacked && kind.width > 0 => TypeUInt(1)
       case _                                       => unreachable
     }
@@ -301,9 +301,9 @@ object TypeAssigner {
 
   private def kind(tree: ExprSlice) = {
     val size = if (tree.op == ":") {
-      tree.lIdx.valueOption.get - tree.rIdx.valueOption.get + 1
+      tree.lIdx.value - tree.rIdx.value + 1
     } else {
-      tree.rIdx.valueOption.get
+      tree.rIdx.value
     }
     tree.expr.tpe.underlying match {
       case _: TypeNum                              => TypeUInt(size.asLong)

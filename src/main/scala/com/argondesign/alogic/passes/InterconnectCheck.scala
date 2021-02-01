@@ -78,17 +78,17 @@ object InterconnectCheck extends PairTransformerPass(parallel = true) {
           case (dmap, (assign, expr)) =>
             expr match {
               case ExprIndex(tgt, idx) =>
-                val iVal = idx.valueOption.get.toInt
+                val iVal = idx.value.toInt
                 addRange(dmap, dst(tgt), iVal, 1, assign)
               case ExprSlice(tgt, lIdx, op, rIdx) =>
                 val width = op match {
-                  case ":" => (lIdx.valueOption.get - rIdx.valueOption.get).toInt + 1
-                  case _   => rIdx.valueOption.get.toInt
+                  case ":" => (lIdx.value - rIdx.value).toInt + 1
+                  case _   => rIdx.value.toInt
                 }
                 val lo = op match {
-                  case ":"  => rIdx.valueOption.get.toInt
-                  case "+:" => lIdx.valueOption.get.toInt
-                  case "-:" => lIdx.valueOption.get.toInt - width + 1
+                  case ":"  => rIdx.value.toInt
+                  case "+:" => lIdx.value.toInt
+                  case "-:" => lIdx.value.toInt - width + 1
                 }
                 addRange(dmap, dst(tgt), lo, width, assign)
               case _ =>
