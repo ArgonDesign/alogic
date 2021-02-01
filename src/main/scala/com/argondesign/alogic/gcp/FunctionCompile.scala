@@ -165,7 +165,10 @@ class FunctionCompile extends HttpFunction {
             Compiler.parseArgs(messageBuffer, args, Some(sandboxPath)) flatMap {
               case (settings, source, params) =>
                 settings pipe {
-                  _.copy(sandboxPathOpt = Some(sandboxPath))
+                  _.copy(
+                    sandboxPathOpt = Some(sandboxPath),
+                    parallel = false
+                  )
                 } pipe { settings =>
                   CommandLineInterface.compile(args, settings, source, params) map { _ =>
                     val oDir = settings.oPath.get
