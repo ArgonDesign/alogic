@@ -1329,17 +1329,6 @@ object TreeCopier {
       ) withLocOf tree
     }
 
-  //////////////////////////////////////////////////////////////////////////////
-  // Thicket
-  //////////////////////////////////////////////////////////////////////////////
-
-  def apply(tree: Thicket)(trees: List[Tree]): Thicket =
-    if (trees eq tree.trees) {
-      tree
-    } else {
-      Thicket(trees)
-    }
-
   // $COVERAGE-ON$
 
 }

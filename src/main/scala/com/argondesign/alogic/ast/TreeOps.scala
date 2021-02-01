@@ -288,9 +288,10 @@ trait TreeOps extends TreePrintOps { this: Tree =>
   ////////////////////////////////////////////////////////////////////////////
 
   def regularize(loc: Loc): this.type = {
-    if (this ne Stump) {
-      this rewrite new Regularize(loc)
+    if (!hasLoc) {
+      this withLoc loc
     }
+    this rewrite new Regularize(loc)
     this
   }
 

@@ -13,6 +13,7 @@ import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.ast.Trees.Expr._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Types.TypeUInt
 import org.scalatest.freespec.AnyFreeSpec
@@ -136,21 +137,21 @@ final class ExprOpsSpec extends AnyFreeSpec with AlogicTest {
       }
     }
     "slice Expr : Int" in {
-      TypeAssigner(ExprInt(false, 8, 0))
-        .slice(2, ":", TypeAssigner(Expr(1))) should matchPattern {
+      (ExprInt(false, 8, 0) regularize Loc.synthetic)
+        .slice(2, ":", (Expr(1) regularize Loc.synthetic)) should matchPattern {
         case ExprSlice(ExprInt(false, 8, v), ExprInt(false, 3, b), ":", Expr(1))
             if v == 0 && b == 2 =>
       }
     }
     "slice Int : Expr" in {
-      TypeAssigner(ExprInt(false, 8, 0))
-        .slice(TypeAssigner(Expr(2)), ":", 1) should matchPattern {
+      (ExprInt(false, 8, 0) regularize Loc.synthetic)
+        .slice((Expr(2) regularize Loc.synthetic), ":", 1) should matchPattern {
         case ExprSlice(ExprInt(false, 8, v), Expr(2), ":", ExprInt(false, 3, a))
             if v == 0 && a == 1 =>
       }
     }
     "slice Int : Int" in {
-      TypeAssigner(ExprInt(false, 8, 0)).slice(2, ":", 1) should matchPattern {
+      (ExprInt(false, 8, 0) regularize Loc.synthetic).slice(2, ":", 1) should matchPattern {
         case ExprSlice(ExprInt(false, 8, v), ExprInt(false, 3, a), ":", ExprInt(false, 3, b))
             if v == 0 && a == 2 && b == 1 =>
       }
@@ -162,21 +163,21 @@ final class ExprOpsSpec extends AnyFreeSpec with AlogicTest {
       }
     }
     "slice Expr +: Int" in {
-      TypeAssigner(ExprInt(false, 8, 0))
-        .slice(TypeAssigner(Expr(1)), "+:", 2) should matchPattern {
+      (ExprInt(false, 8, 0) regularize Loc.synthetic)
+        .slice((Expr(1) regularize Loc.synthetic), "+:", 2) should matchPattern {
         case ExprSlice(ExprInt(false, 8, v), Expr(1), "+:", ExprInt(false, 4, b))
             if v == 0 && b == 2 =>
       }
     }
     "slice Int +: Expr" in {
-      TypeAssigner(ExprInt(false, 8, 0))
-        .slice(1, "+:", TypeAssigner(Expr(2))) should matchPattern {
+      (ExprInt(false, 8, 0) regularize Loc.synthetic)
+        .slice(1, "+:", (Expr(2) regularize Loc.synthetic)) should matchPattern {
         case ExprSlice(ExprInt(false, 8, v), ExprInt(false, 3, a), "+:", Expr(2))
             if v == 0 && a == 1 =>
       }
     }
     "slice Int +: Int" in {
-      TypeAssigner(ExprInt(false, 8, 0)).slice(1, "+:", 2) should matchPattern {
+      (ExprInt(false, 8, 0) regularize Loc.synthetic).slice(1, "+:", 2) should matchPattern {
         case ExprSlice(ExprInt(false, 8, v), ExprInt(false, 3, a), "+:", ExprInt(false, 4, b))
             if v == 0 && a == 1 && b == 2 =>
       }
@@ -188,21 +189,21 @@ final class ExprOpsSpec extends AnyFreeSpec with AlogicTest {
       }
     }
     "slice Expr -: Int" in {
-      TypeAssigner(ExprInt(false, 7, 0))
-        .slice(TypeAssigner(Expr(1)), "-:", 2) should matchPattern {
+      (ExprInt(false, 7, 0) regularize Loc.synthetic)
+        .slice((Expr(1) regularize Loc.synthetic), "-:", 2) should matchPattern {
         case ExprSlice(ExprInt(false, 7, v), Expr(1), "-:", ExprInt(false, 3, b))
             if v == 0 && b == 2 =>
       }
     }
     "slice Int -: Expr" in {
-      TypeAssigner(ExprInt(false, 7, 0))
-        .slice(1, "-:", TypeAssigner(Expr(2))) should matchPattern {
+      (ExprInt(false, 7, 0) regularize Loc.synthetic)
+        .slice(1, "-:", (Expr(2) regularize Loc.synthetic)) should matchPattern {
         case ExprSlice(ExprInt(false, 7, v), ExprInt(false, 3, a), "-:", Expr(2))
             if v == 0 && a == 1 =>
       }
     }
     "slice Int -: Int" in {
-      TypeAssigner(ExprInt(false, 7, 0)).slice(1, "-:", 2) should matchPattern {
+      (ExprInt(false, 7, 0) regularize Loc.synthetic).slice(1, "-:", 2) should matchPattern {
         case ExprSlice(ExprInt(false, 7, v), ExprInt(false, 3, a), "-:", ExprInt(false, 3, b))
             if v == 0 && a == 1 && b == 2 =>
       }

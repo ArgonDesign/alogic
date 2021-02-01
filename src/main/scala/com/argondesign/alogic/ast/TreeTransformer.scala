@@ -27,10 +27,16 @@ abstract class TreeTransformer extends (Tree => Tree) with ChainingSyntax {
   // Apply transform to tree
   final def apply(tree: Tree): Tree = {
     assert(!typed || tree.hasTpe, tree)
+    assert(tree.hasLoc, tree)
     // Call start
     start(tree)
-    // Walk the tree
-    val walked = walkTree(tree)
+    // Walk the tree (Thickets and stump are special because they cannot exist
+    // inside a Tree, so handle specially if explicitly invoked on one)
+    val walked = tree match {
+      case Thicket(trees) => Thicket(walk(trees))
+      case Stump          => Stump
+      case _              => walk(tree)
+    }
     // Call finish
     val result = finish(walked)
     // Call checks if appropriate
@@ -713,12 +719,9 @@ abstract class TreeTransformer extends (Tree => Tree) with ChainingSyntax {
       case node: Ref => walkChildrenRef(node)
       case node: Pkg => walkChildrenPkg(node)
       ////////////////////////////////////////////////////////////////////////
-      // Thicket/Stump TODO: these should be unreachable
+      // Thicket/Stump
       ////////////////////////////////////////////////////////////////////////
-      case node: Thicket =>
-        val trees = walk(node.trees)
-        TreeCopier(node)(trees)
-      case Stump => unreachable
+      case _: Thicket | Stump => unreachable
     }
   }
 
