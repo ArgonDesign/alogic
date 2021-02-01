@@ -231,7 +231,7 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatefulTreeTran
 
       // Drop any trailing statements after a statement that always returns
       val result = {
-        val (init, tail) = simplified.iterator.span(!_.alwaysReturns)
+        val (init, tail) = simplified.iterator.span(!_.alwaysTerminates)
         init concat tail.nextOption()
       }
 

@@ -9,3 +9,4 @@ fsm stmt_unreachable_03 {
   }
 }
 // :2: WARNING: Function 'unused' is unused
+// :4: WARNING: Statement is unreachable

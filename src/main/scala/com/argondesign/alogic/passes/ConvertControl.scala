@@ -319,10 +319,16 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatelessTreeTr
         // Add a comment as well so empty states created by 'fence' statements
         // do not get optimized away in CreateStateSystem
         Thicket(
-          List(
-            StmtComment(s"@@@KEEP@@@") regularize tree.loc,
-            StmtGoto(ref) regularize tree.loc
-          )
+          StmtComment(s"@@@KEEP@@@") regularize tree.loc,
+          StmtGoto(ref) regularize tree.loc
+        )
+
+      case StmtSplice(assertion @ AssertionUnreachable(false, _)) =>
+        val ref = TypeAssigner(ExprSym(followingState.top) withLocOf tree)
+        val newAssertion = TypeAssigner(assertion.copy(comb = true) withLocOf assertion)
+        Thicket(
+          TypeAssigner(StmtSplice(newAssertion) withLocOf tree),
+          TypeAssigner(StmtGoto(ref) withLocOf tree)
         )
 
       case _: StmtBreak =>

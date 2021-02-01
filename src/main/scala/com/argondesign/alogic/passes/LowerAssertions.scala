@@ -180,7 +180,7 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatelessTreeT
     ////////////////////////////////////////////////////////////////////////////
 
     // 'unreachable' is not under a conditional, i.e.: it is reachable
-    case StmtSplice(AssertionUnreachable(msgOpt)) if condLvl == 0 =>
+    case StmtSplice(AssertionUnreachable(_, msgOpt)) if condLvl == 0 =>
       val suffix = msgOpt.map(": " + _).getOrElse("")
       cc.error(tree, s"'unreachable' statement is always reached$suffix")
       Stump
@@ -190,7 +190,7 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatelessTreeT
       Stump
 
     // If assertions are enabled, convert to deferred assertions.
-    case StmtSplice(AssertionUnreachable(msgOpt)) =>
+    case StmtSplice(AssertionUnreachable(_, msgOpt)) =>
       val prefix = s"_unreachable_${unreachableSeqNum.next()}"
       val comment = s"'unreachable' on line ${tree.loc.line}"
       val enSymbol = cc.newSymbol(s"${prefix}_en", tree.loc)

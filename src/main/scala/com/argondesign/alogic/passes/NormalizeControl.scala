@@ -59,9 +59,9 @@ object NormalizeControlTransform extends StatelessTreeTransformer {
   private def convertFinal(stmt: Stmt): Iterator[Stmt] = {
     require(stmt.tpe.isCtrlStmt)
     stmt match {
-      // 'return' and 'goto' are OK
-      case _: StmtReturn => Iterator.single(stmt)
-      case _: StmtGoto   => Iterator.single(stmt)
+      // 'return', 'goto' and 'unreachable' are OK
+      case _: StmtReturn | _: StmtGoto | StmtSplice(_: AssertionUnreachable) =>
+        Iterator.single(stmt)
 
       // Convert final 'fence' to 'Comment + return'. The comment is there to
       // prevent potential removal of an empty state if the function ends in

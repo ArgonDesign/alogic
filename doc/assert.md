@@ -109,6 +109,9 @@ string argument which provides an error message.
 unreachable "Shouldn't have reached this";
 ```
 
+As opposed to assertion statements, an `unreachable` statement is considered a
+control statement inside of control functions.
+
 Like assertion statements, the compiler will drop `unreachable` statements that
 it can statically prove to be unreachable. Similarly, `unreachable` statements
 that are known to be reached will raise a compiler error. The remaining

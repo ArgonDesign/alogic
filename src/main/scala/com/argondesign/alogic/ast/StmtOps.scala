@@ -11,32 +11,36 @@ import com.argondesign.alogic.util.unreachable
 
 trait StmtOps { this: Stmt =>
 
-  // Indicates if this statement always returns, i.e.: anything following it
-  // in a sequence of statements will have no effect
-  lazy val alwaysReturns: Boolean = this match {
-    case _: StmtReturn          => true
-    case StmtIf(_, ts, es)      => (ts exists { _.alwaysReturns }) && (es exists { _.alwaysReturns })
-    case StmtCase(_, cases)     => cases forall { _.stmts exists { _.alwaysReturns } }
-    case StmtBlock(ss)          => ss exists { _.alwaysReturns }
-    case StmtLoop(body)         => body exists { _.alwaysReturns }
-    case StmtWhile(_, body)     => body exists { _.alwaysReturns }
-    case StmtFor(_, _, _, body) => body exists { _.alwaysReturns }
-    case StmtDo(_, body)        => body exists { _.alwaysReturns }
+  // Indicates if this statement always terminates execution of a sequence of
+  // statements, e.g: returns or throws/stops the world, i.e.: statements
+  // following it in a sequence of statements will have no effect
+  lazy val alwaysTerminates: Boolean = this match {
+    case _: StmtReturn | StmtSplice(_: AssertionUnreachable) => true
+    //
+    case StmtIf(_, ts, es)      => ts.exists(_.alwaysTerminates) && es.exists(_.alwaysTerminates)
+    case StmtCase(_, cases)     => cases.forall(_.stmts.exists(_.alwaysTerminates))
+    case StmtBlock(ss)          => ss exists { _.alwaysTerminates }
+    case StmtLoop(body)         => body.exists(_.alwaysTerminates)
+    case StmtWhile(_, body)     => body.exists(_.alwaysTerminates)
+    case StmtFor(_, _, _, body) => body.exists(_.alwaysTerminates)
+    case StmtDo(_, body)        => body.exists(_.alwaysTerminates)
     case _: StmtLet             => unreachable
     case _                      => false
   }
 
-  // Indicates if this statement will never return, i.e.: anything following it
-  // in a sequence of statements will have effect
-  lazy val neverReturns: Boolean = this match {
-    case _: StmtReturn          => false
-    case StmtIf(_, ts, es)      => (ts forall { _.neverReturns }) && (es forall { _.neverReturns })
-    case StmtCase(_, cases)     => cases forall { _.stmts forall { _.neverReturns } }
-    case StmtBlock(ss)          => ss forall { _.neverReturns }
-    case StmtLoop(body)         => body forall { _.neverReturns }
-    case StmtWhile(_, body)     => body forall { _.neverReturns }
-    case StmtFor(_, _, _, body) => body forall { _.neverReturns }
-    case StmtDo(_, body)        => body forall { _.neverReturns }
+  // Indicates if this statement never terminates execution of a sequence of
+  // statements, e.g: returns or throws/stops the world, i.e.: statements
+  // following it in a sequence of statements will have effect
+  lazy val neverTerminates: Boolean = this match {
+    case _: StmtReturn | StmtSplice(_: AssertionUnreachable) => false
+    //
+    case StmtIf(_, ts, es)      => ts.forall(_.neverTerminates) && es.forall(_.neverTerminates)
+    case StmtCase(_, cases)     => cases.forall(_.stmts.forall(_.neverTerminates))
+    case StmtBlock(ss)          => ss.forall(_.neverTerminates)
+    case StmtLoop(body)         => body.forall(_.neverTerminates)
+    case StmtWhile(_, body)     => body.forall(_.neverTerminates)
+    case StmtFor(_, _, _, body) => body.forall(_.neverTerminates)
+    case StmtDo(_, body)        => body.forall(_.neverTerminates)
     case _: StmtLet             => unreachable
     case _                      => true
   }

@@ -217,7 +217,7 @@ object Trees {
   case class AssertionAssert(cond: Expr, msgOpt: Option[String]) extends Assertion
   case class AssertionAssume(cond: Expr, msgOpt: Option[String]) extends Assertion
   case class AssertionStatic(cond: Expr, msgOpt: Option[String]) extends Assertion
-  case class AssertionUnreachable(msgOpt: Option[String]) extends Assertion
+  case class AssertionUnreachable(comb: Boolean, msgOpt: Option[String]) extends Assertion
 
   //////////////////////////////////////////////////////////////////////////////
   // Package (file) contents

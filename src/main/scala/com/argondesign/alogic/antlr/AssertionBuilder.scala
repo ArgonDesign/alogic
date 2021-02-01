@@ -43,7 +43,7 @@ object AssertionBuilder extends BaseBuilder[AssertionContext, Assertion] {
         val msgOpt = Option.when(ctx.STRING != null) {
           ctx.STRING.txt.slice(1, ctx.STRING.txt.length - 1)
         }
-        AssertionUnreachable(msgOpt) withLoc ctx.loc
+        AssertionUnreachable(true, msgOpt) withLoc ctx.loc
       }
     }
 

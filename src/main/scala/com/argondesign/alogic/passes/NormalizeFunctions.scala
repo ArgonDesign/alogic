@@ -22,7 +22,7 @@ final class NormalizeFunctions(implicit cc: CompilerContext) extends StatelessTr
   private var inStaticMethod: Boolean = false
 
   private def trimUnreachable[T <: Tree](stmts: List[Stmt])(copy: List[Stmt] => T): Option[T] = {
-    val (init, tail) = stmts.iterator.span(!_.alwaysReturns)
+    val (init, tail) = stmts.iterator.span(!_.alwaysTerminates)
     val lastOption = tail.nextOption() // Need to consume this eagerly here
     val reachable = init concat lastOption
     Option.when(tail.nonEmpty) {
@@ -77,12 +77,12 @@ final class NormalizeFunctions(implicit cc: CompilerContext) extends StatelessTr
 
   // Conditionalize all statements which follow statements that might return.
   private def conditionalize(stmts: List[Stmt])(implicit didReturnSymbol: Symbol): List[Stmt] = {
-    val (init, tail) = stmts.iterator span { _.neverReturns }
+    val (init, tail) = stmts.iterator span { _.neverTerminates }
     if (tail.isEmpty) {
       stmts
     } else {
       val critical = tail.next()
-      assert(!critical.alwaysReturns || !tail.hasNext, "Unreachable should have been pruned")
+      assert(!critical.alwaysTerminates || !tail.hasNext, "Unreachable should have been pruned")
       val fini = if (!tail.hasNext) {
         conditionalize(critical) :: Nil
       } else {
@@ -90,11 +90,11 @@ final class NormalizeFunctions(implicit cc: CompilerContext) extends StatelessTr
         // statement is an 'if' with one branch always returning, then stick
         // the remaining statements at the end of the other branch.
         critical match {
-          case s @ StmtIf(_, ts, es) if ts exists { _.alwaysReturns } =>
+          case s @ StmtIf(_, ts, es) if ts exists { _.alwaysTerminates } =>
             conditionalize(
               TypeAssigner(s.copy(elseStmts = es appendedAll tail) withLoc s.loc)
             ) :: Nil
-          case s @ StmtIf(_, ts, es) if es exists { _.alwaysReturns } =>
+          case s @ StmtIf(_, ts, es) if es exists { _.alwaysTerminates } =>
             conditionalize(
               TypeAssigner(s.copy(thenStmts = ts appendedAll tail) withLoc s.loc)
             ) :: Nil
@@ -143,7 +143,7 @@ final class NormalizeFunctions(implicit cc: CompilerContext) extends StatelessTr
 
       val hadError = !symbol.kind.asCallable.retType.isVoid && {
         trimmed.body.lastOption pipe {
-          case Some(last) => Option.when(!last.alwaysReturns)(last)
+          case Some(last) => Option.when(!last.alwaysTerminates)(last)
           case None       => Some(tree)
         } tap {
           case Some(loc) => cc.error(loc, "Control reaches end of non-void function")
@@ -156,7 +156,7 @@ final class NormalizeFunctions(implicit cc: CompilerContext) extends StatelessTr
       @tailrec
       def noEarlyReturn(stmts: List[Stmt]): Boolean = stmts match {
         case _ :: Nil | Nil => true
-        case s :: ss        => if (s.neverReturns) noEarlyReturn(ss) else false
+        case s :: ss        => if (s.neverTerminates) noEarlyReturn(ss) else false
       }
 
       if (hadError) {
