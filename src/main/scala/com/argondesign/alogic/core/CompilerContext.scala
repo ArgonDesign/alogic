@@ -12,7 +12,6 @@
 package com.argondesign.alogic.core
 
 import com.argondesign.alogic.ast.Trees.Arg
-import com.argondesign.alogic.builtins.Builtins
 import com.argondesign.alogic.core.Messages.Fatal
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Types.Type
@@ -26,7 +25,6 @@ final class CompilerContext(
     val messageBuffer: MessageBuffer = new MessageBuffer(),
     val settings: Settings = Settings())
     extends Messaging
-    with Builtins
     with Input
     with Output
     with Profiling

@@ -8,6 +8,7 @@ package com.argondesign.alogic.frontend
 
 import com.argondesign.alogic.analysis.StaticEvaluation
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.builtins.Builtins
 import com.argondesign.alogic.core.Bindings
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
@@ -1559,7 +1560,7 @@ object Elaborate {
         }
       } map {
         case e @ ExprCall(ExprSym(symbol), _) =>
-          cc.getBuiltin(symbol) map { ExprBuiltin(_, e.args) withLocOf e } getOrElse e
+          Builtins.get(symbol) map { ExprBuiltin(_, e.args) withLocOf e } getOrElse e
         case e => e
       }
     case e: ExprBuiltin =>

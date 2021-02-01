@@ -9,11 +9,10 @@
 
 package com.argondesign.alogic.builtins
 
-import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.frontend.SymbolTable
 
-trait Builtins { this: CompilerContext =>
+object Builtins {
 
   private val builtins: Map[Symbol, Builtin] = Iterator(
     AtBits,
@@ -31,10 +30,10 @@ trait Builtins { this: CompilerContext =>
     DollarUnsigned
   ).map(b => new Symbol(b.name) -> b).toMap
 
-  def getBuiltin(symbol: Symbol): Option[Builtin] = builtins.get(symbol)
+  def get(symbol: Symbol): Option[Builtin] = builtins.get(symbol)
 
   // Symbol table holding all builtin symbols
-  val builtinSymbolTable: SymbolTable = builtins.foldLeft(SymbolTable.empty) {
+  val symbolTable: SymbolTable = builtins.foldLeft(SymbolTable.empty) {
     case (st, (symbol, _)) => st + symbol
   }
 

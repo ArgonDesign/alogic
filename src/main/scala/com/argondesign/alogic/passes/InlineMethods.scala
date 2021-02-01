@@ -325,7 +325,7 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatefulTreeTran
   private def mustInline(kind: Type): Boolean = kind match {
     case _: TypeNormalMethod | _: TypeStaticMethod => true
     case TypeCombFunc(symbol, _, _) =>
-      symbol.defnOption.nonEmpty // False for builtin methods on ports/rams etc
+      symbol.defnOption.nonEmpty // False for extension methods on ports/rams etc
     case _ => false
   }
 

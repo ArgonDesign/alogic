@@ -21,6 +21,7 @@ import com.argondesign.alogic.frontend.Finished
 import com.argondesign.alogic.frontend.Frontend
 import com.argondesign.alogic.passes._
 import com.argondesign.alogic.ExprExtractors._
+import com.argondesign.alogic.builtins.Builtins
 import com.argondesign.alogic.core.Messages.Fatal
 import com.argondesign.alogic.frontend.Elaborate
 import org.scalatest.freespec.AnyFreeSpec
@@ -46,7 +47,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
     val tree = text.asTree[Expr]()
     assert(cc.messages.forall(_.isInstanceOf[Warning]))
     val expr = Elaborate
-      .elaborate(tree, cc.builtinSymbolTable)
+      .elaborate(tree, Builtins.symbolTable)
       .proceed(e => { fe.typeCheck(e) map { _ => e } })
       .map(Clarify.apply)
       .pipe {
