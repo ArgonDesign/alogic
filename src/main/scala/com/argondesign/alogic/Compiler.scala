@@ -44,7 +44,6 @@ object Compiler {
       // Build settings based on arguments
       val settings = Settings(
         importSearchDirs = options.ydir() map { _.toAbsolutePath },
-        srcBase = options.srcbase.toOption map { _.toAbsolutePath },
         oPath = options.odir.toOption map { _.toAbsolutePath },
         sep = options.sep(),
         uninitialized = options.uninitialized(),

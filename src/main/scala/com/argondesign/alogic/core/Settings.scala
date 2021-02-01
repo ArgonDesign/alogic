@@ -17,8 +17,6 @@ import java.nio.file.Path
 case class Settings(
     // Directories to search for imported packages
     importSearchDirs: List[Path] = Nil,
-    // Source base directory
-    srcBase: Option[Path] = None,
     // Output directory
     oPath: Option[Path] = None,
     // The field separator sequence

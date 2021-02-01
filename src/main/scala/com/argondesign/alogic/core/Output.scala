@@ -22,30 +22,29 @@ trait Output { this: CompilerContext =>
       case Some(value) => value
       case None        => unreachable
     }
-    val srcBase = settings.srcBase
 
     treeAndSuffixOrFileName match {
-      case Left((tree: Tree, suffix)) =>
+      case Left((tree, suffix)) =>
         val oDir = if (tree.loc eq Loc.synthetic) {
           oPath // Emit synthetic decls to the root output directory
         } else {
-          srcBase match {
-            case None => oPath
-            case Some(base) =>
-              val dirPath = tree.loc.source.file.toPath.toRealPath().getParent
-              assert(dirPath startsWith base)
-              val relPath = base relativize dirPath
-              oPath resolve relPath
+          // Directory containing the source of this tree
+          val sourceDir = tree.loc.source.file.getParentFile.getCanonicalFile.toPath
+          // If there is an input search dir that contains the source of this
+          // symbol, put it under the same directory hierarchical in the output
+          // directory, otherwise put it straight the output directory.
+          settings.importSearchDirs.find(sourceDir.startsWith) match {
+            case Some(searchDir) => oPath.resolve(searchDir relativize sourceDir)
+            case None            => oPath
           }
         }
         val base = tree match {
           case decl: Decl        => decl.symbol.name
           case desc: DescPackage => desc.packageName
           case desc: Desc        => desc.symbol.name
-          case _                 => ???
+          case _                 => unreachable
         }
         (oDir resolve (base + suffix)).toFile
-      case Left(_)         => ???
       case Right(fileName) => (oPath resolve fileName).toFile
     }
   }

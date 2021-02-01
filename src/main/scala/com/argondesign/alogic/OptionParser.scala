@@ -187,33 +187,8 @@ class OptionParser(args: Seq[String], messageBuffer: MessageBuffer, sandboxPathO
   val odir = opt[Path](
     short = 'o',
     required = true,
-    descr = "Output directory. See description of --srcbase as well"
+    descr = "Names the output directory."
   )
-
-  val srcbase = opt[Path](
-    noshort = true,
-    required = false,
-    descr = """Base directory for source files. When specified, all directories
-              |specified with -y must be under this directory, and output files
-              |will be written to the same relative path under the output
-              |directory specified with -o, as the corresponding source is
-              |relative to --srcbase. When --srcbase is not provided, output
-              |files are written to the output directory directly
-              |""".stripMargin.replace('\n', ' ')
-  )
-
-  validateOpt(srcbase, ydir) {
-    case (Some(base), Some(ys)) =>
-      val basePath = base.toRealPath()
-      val bad = ys filterNot { _.toRealPath() startsWith basePath }
-      if (bad.isEmpty) {
-        Right(())
-      } else {
-        val msgs = for (file <- bad) yield s"-y '$file' is not under --srcbase '$base'"
-        Left(msgs mkString "\n")
-      }
-    case _ => Right(())
-  }
 
   val sep = opt[String](
     noshort = true,
