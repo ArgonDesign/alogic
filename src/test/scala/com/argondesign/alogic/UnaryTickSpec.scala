@@ -146,7 +146,6 @@ final class UnaryTickSpec extends AnyFreeSpec with AlogicTest {
             |  u3 g;
             |}
             |
-            |(* toplevel *)
             |fsm x {
             |  in s a;
             |  void main() {

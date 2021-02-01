@@ -219,8 +219,6 @@ class SymbolAttributes {
       cc: CompilerContext
     ): Unit =
     attr foreach {
-      case AttrBool("toplevel")                      => topLevel set true
-      case a @ Attr("toplevel")                      => cc.error(a, "'toplevel' attribute is a boolean flag")
       case AttrBool("liftsrams")                     => liftSrams set true
       case a @ Attr("liftsrams")                     => cc.error(a, "'liftSrams' attribute is a boolean flag")
       case AttrExpr("stacklimit", ExprNum(_, value)) => stackLimit set value.toInt

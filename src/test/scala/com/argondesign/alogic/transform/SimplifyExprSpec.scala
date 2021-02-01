@@ -2374,7 +2374,6 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
                  |  b_t  f2;
                  |}
                  |
-                 |(* toplevel *)
                  |fsm x {
                  |  a_t a;
                  |  void main() {
