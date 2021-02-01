@@ -11,7 +11,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.ParOrSeqIterable
 import com.argondesign.alogic.core.ParOrSeqIterable.ImmutableIterableToParOrSeqIterable
-import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.unreachable

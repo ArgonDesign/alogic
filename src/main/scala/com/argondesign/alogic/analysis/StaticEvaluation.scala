@@ -14,7 +14,7 @@ package com.argondesign.alogic.analysis
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.ast.Trees.Expr.Integral
 import com.argondesign.alogic.core.Bindings
-import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.util.PartialMatch._
 import com.argondesign.alogic.util.unreachable
 

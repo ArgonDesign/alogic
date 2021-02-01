@@ -20,7 +20,7 @@ import com.argondesign.alogic.core.Messages.Note
 import com.argondesign.alogic.core.ParOrSeqIterable
 import com.argondesign.alogic.core.Source
 import com.argondesign.alogic.core.SourceContext
-import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.core.Types.Type
 import com.argondesign.alogic.util.unreachable
 

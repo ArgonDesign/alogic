@@ -22,7 +22,7 @@ import com.argondesign.alogic.core.SyncSliceFactory
 import com.argondesign.alogic.core.FlowControlTypes._
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.StorageTypes._
-import com.argondesign.alogic.core.Symbols._
+import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.passes.LowerFlowControl.LoweredSymbols
 import com.argondesign.alogic.util.unreachable

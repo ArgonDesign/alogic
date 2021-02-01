@@ -13,7 +13,7 @@ import com.argondesign.alogic.core.Messages.Warning
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FuncVariant
 import com.argondesign.alogic.core.SymbolAttributes
-import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.Symbol
 import org.scalatest.freespec.AnyFreeSpec
 
 final class AnalyseCallGraphSpec extends AnyFreeSpec with AlogicTest {

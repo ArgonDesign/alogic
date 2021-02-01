@@ -16,7 +16,7 @@ import com.argondesign.alogic.ast.Trees.Expr.InstancePortSel
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Messages.Error
 import com.argondesign.alogic.core.Messages.Note
-import com.argondesign.alogic.core.Symbols._
+import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.util.Ordinal
 import com.argondesign.alogic.util.unreachable
 

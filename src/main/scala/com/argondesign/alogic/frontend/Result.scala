@@ -13,7 +13,7 @@ import com.argondesign.alogic.core.Messages.Error
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Messages.Message
 import com.argondesign.alogic.core.Messages.Note
-import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.Symbol
 
 // Result of a front-end operation
 sealed trait Result[+T] extends ResultOps[T]

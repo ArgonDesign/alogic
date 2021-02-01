@@ -9,7 +9,7 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.Symbol
 import org.scalatest.freespec.AnyFreeSpec
 
 final class ConvertControlSpec extends AnyFreeSpec with AlogicTest {

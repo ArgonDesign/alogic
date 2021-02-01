@@ -12,7 +12,7 @@ package com.argondesign.alogic.backend
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.ParOrSeqMap.ImmutableMapToParOrSeqMap
-import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.passes.Pairs
 import com.argondesign.alogic.passes.SimplePass
 import com.argondesign.alogic.util.unreachable

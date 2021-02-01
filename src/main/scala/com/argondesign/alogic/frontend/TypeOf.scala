@@ -15,7 +15,7 @@ import com.argondesign.alogic.core.FuncVariant
 import com.argondesign.alogic.core.Locatable
 import com.argondesign.alogic.core.Messages.Error
 import com.argondesign.alogic.core.Messages.Note
-import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.unreachable
 import com.argondesign.alogic.util.BigIntOps._

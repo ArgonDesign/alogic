@@ -15,30 +15,58 @@ import com.argondesign.alogic.ast.Trees.Arg
 import com.argondesign.alogic.builtins.Builtins
 import com.argondesign.alogic.core.Messages.Fatal
 import com.argondesign.alogic.core.Messages.Ice
-import com.argondesign.alogic.core.enums.ResetStyle._
+import com.argondesign.alogic.core.Types.Type
+import com.argondesign.alogic.core.enums.ResetStyle
 import com.argondesign.alogic.passes.Passes
+import com.argondesign.alogic.util.SequenceNumbers
 
 import scala.collection.mutable
 
-class CompilerContext(
+final class CompilerContext(
     val messageBuffer: MessageBuffer = new MessageBuffer(),
     val settings: Settings = Settings())
     extends Messaging
-    with Symbols
     with Builtins
     with Input
     with Output
     with Profiling
     with StatelessTransforms {
 
+  //////////////////////////////////////////////////////////////////////////////
+  // Creating Symbol instances
+  //////////////////////////////////////////////////////////////////////////////
+
+  private val symbolSequenceNumbers = new SequenceNumbers
+
+  def newSymbol(name: String, loc: Loc): Symbol = synchronized {
+    new Symbol(name, loc, symbolSequenceNumbers.next)
+  }
+
+  def newTemp(name: String, loc: Loc, kind: Type): Symbol = {
+    val symbol = newSymbol(name, loc)
+    symbol.kind = kind
+    symbol.attr.tmp set true
+    symbol
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
   // Shorthand for frequently accessed settings
+  //////////////////////////////////////////////////////////////////////////////
+
   val sep: String = settings.sep
 
+  //////////////////////////////////////////////////////////////////////////////
   // Name of reset signal
+  //////////////////////////////////////////////////////////////////////////////
+
   val rst: String = settings.resetStyle match {
-    case AsyncLow | SyncLow => "rst_n"
-    case _                  => "rst"
+    case ResetStyle.AsyncLow | ResetStyle.SyncLow => "rst_n"
+    case _                                        => "rst"
   }
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Manifest and statistic
+  //////////////////////////////////////////////////////////////////////////////
 
   val manifest: mutable.Map[String, Any] = mutable.LinkedHashMap[String, Any]()
 

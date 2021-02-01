@@ -15,7 +15,7 @@ import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FlowControlTypes._
 import com.argondesign.alogic.core.Loc
-import com.argondesign.alogic.core.Symbols._
+import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Types._
 

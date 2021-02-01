@@ -15,7 +15,7 @@ import com.argondesign.alogic.core.Messages.Error
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Messages.Message
 import com.argondesign.alogic.core.StorageTypes.StorageTypeDefault
-import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.core.TypeCompound
 import com.argondesign.alogic.core.Types.TypeIn
 import com.argondesign.alogic.core.Types.TypeOut

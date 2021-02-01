@@ -16,7 +16,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.StorageTypes.StorageTypeDefault
-import com.argondesign.alogic.core.Symbols._
+import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.unreachable
 

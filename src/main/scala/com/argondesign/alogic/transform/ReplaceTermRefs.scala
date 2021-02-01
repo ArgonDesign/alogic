@@ -11,7 +11,7 @@ package com.argondesign.alogic.transform
 
 import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.Symbol
 
 final class ReplaceTermRefs(
     bindings: Symbol => Option[Expr],

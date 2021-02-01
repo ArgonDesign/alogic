@@ -15,7 +15,7 @@ import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FuncVariant
 import com.argondesign.alogic.core.Messages.Ice
-import com.argondesign.alogic.core.Symbols._
+import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.unreachable

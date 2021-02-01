@@ -20,7 +20,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Messages.Ice
-import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.Symbol
 
 import scala.annotation.nowarn
 import scala.annotation.tailrec

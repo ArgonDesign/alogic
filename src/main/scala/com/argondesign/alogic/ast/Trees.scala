@@ -15,7 +15,7 @@ import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Locationed
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlType
 import com.argondesign.alogic.core.StorageTypes.StorageType
-import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.enums.EntityVariant
 import com.argondesign.alogic.frontend.FinalResult

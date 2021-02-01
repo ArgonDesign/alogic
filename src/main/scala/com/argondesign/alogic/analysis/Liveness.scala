@@ -11,7 +11,7 @@ package com.argondesign.alogic.analysis
 
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Messages.Ice
-import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.util.unreachable
 import com.argondesign.alogic.util.BitSetOps._
 

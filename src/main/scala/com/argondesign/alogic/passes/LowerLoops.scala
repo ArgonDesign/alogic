@@ -14,7 +14,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Messages.Ice
-import com.argondesign.alogic.core.Symbols
+import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.core.Types.TypeCombStmt
 import com.argondesign.alogic.core.Types.TypeCtrlStmt
 import com.argondesign.alogic.util.unreachable
@@ -131,5 +131,5 @@ object LowerLoops extends EntityTransformerPass(declFirst = true, parallel = tru
 
   override def skip(decl: DeclEntity, defn: DefnEntity): Boolean = decl.functions.isEmpty
 
-  def create(symbol: Symbols.Symbol)(implicit cc: CompilerContext): TreeTransformer = new LowerLoops
+  def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer = new LowerLoops
 }

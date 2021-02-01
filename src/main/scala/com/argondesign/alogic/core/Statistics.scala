@@ -10,7 +10,7 @@
 package com.argondesign.alogic.core
 
 import com.argondesign.alogic.core.Messages.Ice
-import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.lib.Json
 
 import java.io.PrintWriter

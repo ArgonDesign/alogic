@@ -10,8 +10,7 @@
 package com.argondesign.alogic.builtins
 
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Loc
-import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.frontend.SymbolTable
 
 trait Builtins { this: CompilerContext =>
@@ -30,7 +29,7 @@ trait Builtins { this: CompilerContext =>
     DollarFinish,
     DollarSigned,
     DollarUnsigned
-  ).map(b => newSymbol(b.name, Loc.synthetic) -> b).toMap
+  ).map(b => new Symbol(b.name) -> b).toMap
 
   def getBuiltin(symbol: Symbol): Option[Builtin] = builtins.get(symbol)
 

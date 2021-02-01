@@ -13,8 +13,7 @@ import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Symbols
-import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Types.TypeRecord
 import com.argondesign.alogic.core.Types.TypeStack
@@ -78,7 +77,7 @@ final class ConvertCtrlFuncArgret(implicit cc: CompilerContext) extends Stateful
     case _ =>
   }
 
-  override def replace(symbol: Symbols.Symbol): Boolean =
+  override def replace(symbol: Symbol): Boolean =
     (argsMap contains symbol) || (retMap contains symbol)
 
   override def enter(tree: Tree): Option[Tree] = tree match {

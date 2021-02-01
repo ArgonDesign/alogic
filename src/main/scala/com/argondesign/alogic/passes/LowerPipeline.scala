@@ -19,7 +19,7 @@ import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.TypeCompound
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.Messages.Ice
-import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.unreachable
 

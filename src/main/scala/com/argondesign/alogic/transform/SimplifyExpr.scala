@@ -17,7 +17,7 @@ import com.argondesign.alogic.builtins.DollarSigned
 import com.argondesign.alogic.builtins.DollarUnsigned
 import com.argondesign.alogic.core.Messages.Fatal
 import com.argondesign.alogic.core.Messages.Ice
-import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Math.clog2

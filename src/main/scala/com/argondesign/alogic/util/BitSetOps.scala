@@ -9,7 +9,7 @@
 
 package com.argondesign.alogic.util
 
-import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.Symbol
 
 import scala.collection.immutable
 import scala.collection.immutable.BitSet

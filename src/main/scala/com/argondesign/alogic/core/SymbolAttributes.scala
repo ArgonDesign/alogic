@@ -7,7 +7,6 @@
 package com.argondesign.alogic.core
 
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.Symbols._
 import com.argondesign.alogic.core.Types.TypeEntity
 
 import scala.collection.mutable

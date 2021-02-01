@@ -12,7 +12,7 @@ package com.argondesign.alogic.frontend
 import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Loc
-import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.util.unreachable
 import com.argondesign.alogic.util.BigIntOps.BigIntClassOps
 

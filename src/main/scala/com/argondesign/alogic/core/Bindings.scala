@@ -11,7 +11,7 @@
 package com.argondesign.alogic.core
 
 import com.argondesign.alogic.ast.Trees.Expr
-import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec

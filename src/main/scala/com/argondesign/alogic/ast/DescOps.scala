@@ -7,7 +7,7 @@
 package com.argondesign.alogic.ast
 
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.util.unreachable
 
 trait DescOps { this: Desc =>

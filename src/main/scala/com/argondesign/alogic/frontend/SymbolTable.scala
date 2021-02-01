@@ -9,7 +9,7 @@
 
 package com.argondesign.alogic.frontend
 
-import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.Symbol
 
 class SymbolTable private (
     private val local: Map[String, Symbol], // The map of names in the local scope

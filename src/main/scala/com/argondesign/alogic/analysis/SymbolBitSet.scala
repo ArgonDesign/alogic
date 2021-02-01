@@ -10,7 +10,7 @@
 
 package com.argondesign.alogic.analysis
 
-import com.argondesign.alogic.core.Symbols.Symbol
+import com.argondesign.alogic.core.Symbol
 
 import scala.collection.immutable.BitSet
 import scala.language.implicitConversions
