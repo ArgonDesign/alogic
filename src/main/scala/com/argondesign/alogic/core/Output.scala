@@ -14,6 +14,7 @@ import com.argondesign.alogic.util.unreachable
 
 import java.io.File
 import java.io.PrintWriter
+import java.nio.file.Paths
 
 trait Output { this: CompilerContext =>
 
@@ -39,10 +40,11 @@ trait Output { this: CompilerContext =>
           }
         }
         val base = tree match {
-          case decl: Decl        => decl.symbol.name
-          case desc: DescPackage => desc.packageName
-          case desc: Desc        => desc.symbol.name
-          case _                 => unreachable
+          case decl: Decl => decl.symbol.name
+          case desc: DescPackage =>
+            Paths.get(desc.loc.file).getFileName.toString.takeWhile(_ != '.')
+          case desc: Desc => desc.symbol.name
+          case _          => unreachable
         }
         (oDir resolve (base + suffix)).toFile
       case Right(fileName) => (oPath resolve fileName).toFile

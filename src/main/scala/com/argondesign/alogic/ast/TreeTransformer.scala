@@ -9,7 +9,6 @@
 
 package com.argondesign.alogic.ast
 
-import com.argondesign.alogic.Config
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.TypeAssigner
@@ -39,13 +38,10 @@ abstract class TreeTransformer extends (Tree => Tree) with ChainingSyntax {
     }
     // Call finish
     val result = finish(walked)
-    // Call checks if appropriate
-    if (Config.applyTransformChecks) {
-      // Apply default check
-      defaultCheck(tree, result)
-      // Apply final check
-      finalCheck(result)
-    }
+    // Apply default check
+    defaultCheck(tree, result)
+    // Apply final check
+    finalCheck(result)
     // Yield result
     result
   }

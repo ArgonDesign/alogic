@@ -376,10 +376,10 @@ trait ExprObjOps { self: Expr.type =>
   // Extractor for instance port selects
   object InstancePortSel {
 
-    def unapply(expr: ExprSel): Option[(Symbol, Symbol)] = expr match {
-      case ExprSel(ExprSym(symbol), sel) =>
+    def unapply(expr: ExprSel): Option[(Symbol, Symbol)] = expr.expr match {
+      case ExprSym(symbol) =>
         symbol.kind match {
-          case kind: TypeEntity => kind(sel) map { (symbol, _) }
+          case kind: TypeEntity => kind(expr.selector).map((symbol, _))
           case _                => None
         }
       case _ => None

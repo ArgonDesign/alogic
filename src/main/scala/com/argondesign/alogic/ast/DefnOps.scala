@@ -11,8 +11,6 @@ import com.argondesign.alogic.core.Symbol
 
 trait DefnOps { this: Defn =>
 
-  def defns: List[Defn] = Nil
-
   final lazy val initializer: Option[Expr] = this match {
     case DefnVar(_, iOpt)    => iOpt
     case DefnVal(_, i)       => Some(i)

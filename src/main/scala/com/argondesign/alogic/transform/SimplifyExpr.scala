@@ -392,7 +392,7 @@ object SimplifyExpr extends StatelessTreeTransformer {
           case kind: TypeNum           => ExprType(kind) withLoc tree.loc
           case kind: TypeVector        => ExprType(kind) withLoc tree.loc
           case TypeVoid                => ExprType(TypeVoid) withLoc tree.loc
-          case TypeStr                 => ExprType(TypeStr) withLoc tree.loc
+          case TypeStr                 => unreachable // Cannot write in source
           case TypeEntity(`symbol`, _) => tree
           case TypeRecord(`symbol`, _) => tree
           case TypeEntity(s, _)        => ExprSym(s) withLoc tree.loc

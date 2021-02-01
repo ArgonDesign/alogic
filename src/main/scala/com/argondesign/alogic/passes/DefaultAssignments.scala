@@ -36,7 +36,7 @@ object DefaultAssignments extends PairTransformerPass(parallel = true) {
 
     val needsDefault = mutable.Set[Symbol]()
 
-    decl.decls.iterator foreach {
+    decl.asInstanceOf[DeclEntity].decls.iterator foreach {
       case DeclVar(symbol, _) if !symbol.attr.flop.isSet       => needsDefault += symbol
       case DeclOut(symbol, _, _, _) if !symbol.attr.flop.isSet => needsDefault += symbol
       case _                                                   =>

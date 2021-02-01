@@ -60,9 +60,6 @@ object BigIntOps {
     def mask(width: Int): BigInt = (BigInt(1) << width) - 1
     def mask(width: BigInt): BigInt = (BigInt(1) << width.toInt) - 1
 
-    def oneHot(bit: Int): BigInt = BigInt(1) << bit
-    def oneHot(bit: BigInt): BigInt = BigInt(1) << bit.toInt
-
     def uMax(width: Int): BigInt = mask(width)
 
     def iMin(width: Int): BigInt = BigInt(-1) << (width - 1)

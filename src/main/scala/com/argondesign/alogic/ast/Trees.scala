@@ -88,12 +88,12 @@ object Trees {
   case class DescArray(ref: Ref, attr: List[Attr], elem: Expr, size: Expr) extends Desc
   case class DescSram(ref: Ref, attr: List[Attr], elem: Expr, size: Expr, st: StorageType) extends Desc
   case class DescType(ref: Ref, attr: List[Attr], spec: Expr) extends Desc
-  case class DescEntity(ref: Ref, attr: List[Attr], variant: EntityVariant.Type, body: List[Ent]) extends Desc with DescEntityOps
-  case class DescRecord(ref: Ref, attr: List[Attr], body: List[Rec]) extends Desc with DescRecordOps
+  case class DescEntity(ref: Ref, attr: List[Attr], variant: EntityVariant.Type, body: List[Ent]) extends Desc
+  case class DescRecord(ref: Ref, attr: List[Attr], body: List[Rec]) extends Desc 
   case class DescInstance(ref: Ref, attr: List[Attr], spec: Expr) extends Desc
-  case class DescSingleton(ref: Ref, attr: List[Attr], variant: EntityVariant.Type, body: List[Ent]) extends Desc with DescSingletonOps
+  case class DescSingleton(ref: Ref, attr: List[Attr], variant: EntityVariant.Type, body: List[Ent]) extends Desc
   case class DescFunc(ref: Ref, attr: List[Attr], variant: FuncVariant, ret: Expr, args: List[Desc], body: List[Stmt]) extends Desc
-  case class DescPackage(ref: Ref, attr: List[Attr], body: List[Pkg]) extends Desc with DescPackageOps
+  case class DescPackage(ref: Ref, attr: List[Attr], body: List[Pkg]) extends Desc 
   case class DescGenVar(ref: Ref, attr: List[Attr], spec: Expr, init: Expr) extends Desc
   case class DescGenIf(ref: Ref, attr: List[Attr], cases: List[GenCase], defaults: List[Tree]) extends Desc
   case class DescGenFor(ref: Ref, attr: List[Attr], inits: List[Desc], cond: Expr, steps: List[Stmt], body: List[Tree]) extends Desc
@@ -142,10 +142,10 @@ object Trees {
   case class DeclSram(symbol: Symbol, elem: Expr, size: Long, st: StorageType) extends Decl
   case class DeclStack(symbol: Symbol, elem: Expr, size: Long) extends Decl
   case class DeclType(symbol: Symbol, spec: Expr) extends Decl
-  case class DeclEntity(symbol: Symbol, override val decls: List[Decl]) extends Decl with DeclEntityOps
-  case class DeclRecord(symbol: Symbol, override val decls: List[Decl]) extends Decl with DeclRecordOps
+  case class DeclEntity(symbol: Symbol, decls: List[Decl]) extends Decl with DeclEntityOps
+  case class DeclRecord(symbol: Symbol,  decls: List[Decl]) extends Decl 
   case class DeclInstance(symbol: Symbol, spec: Expr) extends Decl
-  case class DeclSingleton(symbol: Symbol, override val decls: List[Decl]) extends Decl with DeclSingletonOps
+  case class DeclSingleton(symbol: Symbol, decls: List[Decl]) extends Decl with DeclSingletonOps
   case class DeclFunc(symbol: Symbol, variant: FuncVariant, ret: Expr, args: List[Decl]) extends Decl
   case class DeclState(symbol: Symbol) extends Decl
   // format: on
@@ -175,8 +175,8 @@ object Trees {
   case class DefnEntity(symbol: Symbol, variant: EntityVariant.Type, body: List[Ent]) extends Defn with DefnEntityOps
   case class DefnRecord(symbol: Symbol, body: List[Rec]) extends Defn with DefnRecordOps
   case class DefnInstance(symbol: Symbol) extends Defn
-  case class DefnSingleton(symbol: Symbol, variant: EntityVariant.Type, body: List[Ent]) extends Defn with DefnSingletonOps
-  case class DefnFunc(symbol: Symbol, args: List[Defn], body: List[Stmt]) extends Defn with DefnFuncOps
+  case class DefnSingleton(symbol: Symbol, variant: EntityVariant.Type, body: List[Ent]) extends Defn 
+  case class DefnFunc(symbol: Symbol, args: List[Defn], body: List[Stmt]) extends Defn 
   case class DefnState(symbol: Symbol, body: List[Stmt]) extends Defn
   // format: on
 

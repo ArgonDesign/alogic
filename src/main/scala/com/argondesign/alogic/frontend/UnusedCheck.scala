@@ -90,15 +90,19 @@ final class UnusedCheck(implicit cc: CompilerContext) extends StatelessTreeTrans
             // Mark the package symbol used
             markUsed(desc.symbol)
             // Mark all members as used
-            csomag.descs foreach { desc => markUsed(desc.symbol) }
+            csomag.body foreach {
+              case PkgSplice(desc: Desc) => markUsed(desc.symbol)
+              case _                     =>
+            }
           case DescEntity(_, _, variant, body) =>
             processEntity(desc.symbol, variant, body)
           case DescSingleton(_, _, variant, body) =>
             processEntity(desc.symbol, variant, body)
           case record: DescRecord =>
             // Mark all members as used
-            record.descs foreach { desc =>
-              markUsed(desc.symbol)
+            record.body foreach {
+              case RecSplice(desc: Desc) => markUsed(desc.symbol)
+              case _                     =>
             }
           case DescFunc(_, _, variant, _, args, _) =>
             // Mark entry point functions as used

@@ -11,8 +11,6 @@ import com.argondesign.alogic.core.Symbol
 
 trait DeclOps { this: Decl =>
 
-  def decls: List[Decl] = Nil
-
   def cpy(symbol: Symbol): Decl = this match {
     // $COVERAGE-OFF$ Trivial to keep full, but not necessarily used
     case node: DeclVar       => node.copy(symbol = symbol)

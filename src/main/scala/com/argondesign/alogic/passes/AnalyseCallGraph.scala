@@ -479,7 +479,7 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatelessTree
         case _                                                   => true
       }
 
-      decl.symbol.defn.defns collectFirst {
+      decl.symbol.defn.asInstanceOf[DefnEntity].defns collectFirst {
         // Add the Decl of the return stack
         case Defn(symbol) if symbol.attr.returnStack.isSet =>
           val stackDecl = symbol.mkDecl regularize decl.loc
