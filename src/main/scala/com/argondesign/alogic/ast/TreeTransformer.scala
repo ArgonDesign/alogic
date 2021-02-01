@@ -171,6 +171,8 @@ abstract class TreeTransformer extends (Tree => Tree) with ChainingSyntax {
       case tree        => treeCopier(tree)
     }
 
+  // $COVERAGE-OFF$ Some of these are not necessarily reached, but we keep all for completeness
+
   final private def walkChildrenRef(tree: Ref): Tree = tree match {
     case node: Ident =>
       val indices = walk(node.idxs)
@@ -677,6 +679,8 @@ abstract class TreeTransformer extends (Tree => Tree) with ChainingSyntax {
       val expr = walk(node.expr)
       TreeCopier(node)(idxs, expr)
   }
+
+  // $COVERAGE-ON$
 
   //////////////////////////////////////////////////////////////////////////////
   // Protected internals

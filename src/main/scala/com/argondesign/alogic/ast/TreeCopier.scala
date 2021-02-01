@@ -11,28 +11,25 @@ package com.argondesign.alogic.ast
 
 import com.argondesign.alogic.ast.Trees._
 
-// scalastyle:off token
-
-// Given a Tree and new child nodes, create new Tree if children are not the same as
-// the children of the current Tree, otherwise reuse existing Tree. Note that only
-// fields containing Tree instances are checked as other fields are not transformed
-// recursively in TreeTransformer
+// Given a Tree and new child nodes, create new Tree if children are not the
+// same as the children of the current Tree, otherwise reuse existing Tree.
+// Note that only fields containing Tree instances are checked as other fields
+// are not transformed recursively in TreeTransformer
 object TreeCopier {
+
+  // $COVERAGE-OFF$ Some of these are not necessarily used, but we keep for completeness
 
   //////////////////////////////////////////////////////////////////////////////
   // Ref
   //////////////////////////////////////////////////////////////////////////////
 
-  def apply(tree: Ident)(indices: List[Tree]): Ident = {
+  def apply(tree: Ident)(indices: List[Tree]): Ident =
     if (indices eq tree.idxs) {
       tree
     } else {
-      assert(indices forall {
-        _.isInstanceOf[Expr]
-      })
-      Ident(tree.base, indices.asInstanceOf[List[Expr]]) withLoc tree.loc
+      assert(indices.forall(_.isInstanceOf[Expr]))
+      Ident(tree.base, indices.asInstanceOf[List[Expr]]) withLocOf tree
     }
-  }
 
   //////////////////////////////////////////////////////////////////////////////
   // Desc
@@ -45,26 +42,21 @@ object TreeCopier {
       attr: List[Tree],
       spec: Tree,
       initOpt: Option[Tree]
-    ): DescVar = {
+    ): DescVar =
     if (
       (ref eq tree.ref) && (attr eq tree.attr) && (spec eq tree.spec) && (initOpt eq tree.initOpt)
     ) {
       tree
     } else {
-      assert(attr forall {
-        _.isInstanceOf[Attr]
-      })
-      assert(initOpt forall {
-        _.isInstanceOf[Expr]
-      })
+      assert(attr.forall(_.isInstanceOf[Attr]))
+      assert(initOpt.forall(_.isInstanceOf[Expr]))
       DescVar(
         ref.asInstanceOf[Ref],
         attr.asInstanceOf[List[Attr]],
         spec.asInstanceOf[Expr],
         initOpt.asInstanceOf[Option[Expr]]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
   def apply(
       tree: DescVal
@@ -73,21 +65,18 @@ object TreeCopier {
       attr: List[Tree],
       spec: Tree,
       init: Tree
-    ): DescVal = {
+    ): DescVal =
     if ((ref eq tree.ref) && (attr eq tree.attr) && (spec eq tree.spec) && (init eq tree.init)) {
       tree
     } else {
-      assert(attr forall {
-        _.isInstanceOf[Attr]
-      })
+      assert(attr.forall(_.isInstanceOf[Attr]))
       DescVal(
         ref.asInstanceOf[Ref],
         attr.asInstanceOf[List[Attr]],
         spec.asInstanceOf[Expr],
         init.asInstanceOf[Expr]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
   def apply(
       tree: DescStatic
@@ -96,41 +85,33 @@ object TreeCopier {
       attr: List[Tree],
       spec: Tree,
       initOpt: Option[Tree]
-    ): DescStatic = {
+    ): DescStatic =
     if (
       (ref eq tree.ref) && (attr eq tree.attr) && (spec eq tree.spec) && (initOpt eq tree.initOpt)
     ) {
       tree
     } else {
-      assert(attr forall {
-        _.isInstanceOf[Attr]
-      })
-      assert(initOpt forall {
-        _.isInstanceOf[Expr]
-      })
+      assert(attr.forall(_.isInstanceOf[Attr]))
+      assert(initOpt.forall(_.isInstanceOf[Expr]))
       DescStatic(
         ref.asInstanceOf[Ref],
         attr.asInstanceOf[List[Attr]],
         spec.asInstanceOf[Expr],
         initOpt.asInstanceOf[Option[Expr]]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: DescIn)(ref: Tree, attr: List[Tree], spec: Tree): DescIn = {
+  def apply(tree: DescIn)(ref: Tree, attr: List[Tree], spec: Tree): DescIn =
     if ((ref eq tree.ref) && (attr eq tree.attr) && (spec eq tree.spec)) {
       tree
     } else {
-      assert(attr forall {
-        _.isInstanceOf[Attr]
-      })
+      assert(attr.forall(_.isInstanceOf[Attr]))
       tree.copy(
         ref = ref.asInstanceOf[Ref],
         attr = attr.asInstanceOf[List[Attr]],
         spec = spec.asInstanceOf[Expr]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
   def apply(
       tree: DescOut
@@ -139,69 +120,55 @@ object TreeCopier {
       attr: List[Tree],
       spec: Tree,
       initOpt: Option[Tree]
-    ): DescOut = {
+    ): DescOut =
     if (
       (ref eq tree.ref) && (attr eq tree.attr) && (spec eq tree.spec) && (initOpt eq tree.initOpt)
     ) {
       tree
     } else {
-      assert(attr forall {
-        _.isInstanceOf[Attr]
-      })
-      assert(initOpt forall {
-        _.isInstanceOf[Expr]
-      })
+      assert(attr.forall(_.isInstanceOf[Attr]))
+      assert(initOpt.forall(_.isInstanceOf[Expr]))
       tree.copy(
         ref = ref.asInstanceOf[Ref],
         attr = attr.asInstanceOf[List[Attr]],
         spec = spec.asInstanceOf[Expr],
         initOpt = initOpt.asInstanceOf[Option[Expr]]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: DescPipeVar)(ref: Tree, attr: List[Tree], spec: Tree): DescPipeVar = {
+  def apply(tree: DescPipeVar)(ref: Tree, attr: List[Tree], spec: Tree): DescPipeVar =
     if ((ref eq tree.ref) && (attr eq tree.attr) && (spec eq tree.spec)) {
       tree
     } else {
-      assert(attr forall {
-        _.isInstanceOf[Attr]
-      })
+      assert(attr.forall(_.isInstanceOf[Attr]))
       DescPipeVar(
         ref.asInstanceOf[Ref],
         attr.asInstanceOf[List[Attr]],
         spec.asInstanceOf[Expr]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: DescPipeIn)(ref: Tree, attr: List[Tree]): DescPipeIn = {
+  def apply(tree: DescPipeIn)(ref: Tree, attr: List[Tree]): DescPipeIn =
     if ((ref eq tree.ref) && (attr eq tree.attr)) {
       tree
     } else {
-      assert(attr forall {
-        _.isInstanceOf[Attr]
-      })
+      assert(attr.forall(_.isInstanceOf[Attr]))
       tree.copy(
         ref = ref.asInstanceOf[Ref],
         attr = attr.asInstanceOf[List[Attr]]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: DescPipeOut)(ref: Tree, attr: List[Tree]): DescPipeOut = {
+  def apply(tree: DescPipeOut)(ref: Tree, attr: List[Tree]): DescPipeOut =
     if ((ref eq tree.ref) && (attr eq tree.attr)) {
       tree
     } else {
-      assert(attr forall {
-        _.isInstanceOf[Attr]
-      })
+      assert(attr.forall(_.isInstanceOf[Attr]))
       tree.copy(
         ref = ref.asInstanceOf[Ref],
         attr = attr.asInstanceOf[List[Attr]]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
   def apply(
       tree: DescParam
@@ -210,26 +177,21 @@ object TreeCopier {
       attr: List[Tree],
       spec: Tree,
       initOpt: Option[Tree]
-    ): DescParam = {
+    ): DescParam =
     if (
       (ref eq tree.ref) && (attr eq tree.attr) && (spec eq tree.spec) && (initOpt eq tree.initOpt)
     ) {
       tree
     } else {
-      assert(attr forall {
-        _.isInstanceOf[Attr]
-      })
-      assert(initOpt forall {
-        _.isInstanceOf[Expr]
-      })
+      assert(attr.forall(_.isInstanceOf[Attr]))
+      assert(initOpt.forall(_.isInstanceOf[Expr]))
       tree.copy(
         ref = ref.asInstanceOf[Ref],
         attr = attr.asInstanceOf[List[Attr]],
         spec = spec.asInstanceOf[Expr],
         initOpt = initOpt.asInstanceOf[Option[Expr]]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
   def apply(
       tree: DescParamType
@@ -237,23 +199,18 @@ object TreeCopier {
       ref: Tree,
       attr: List[Tree],
       initOpt: Option[Tree]
-    ): DescParamType = {
+    ): DescParamType =
     if ((ref eq tree.ref) && (attr eq tree.attr) && (initOpt eq tree.initOpt)) {
       tree
     } else {
-      assert(attr forall {
-        _.isInstanceOf[Attr]
-      })
-      assert(initOpt forall {
-        _.isInstanceOf[Expr]
-      })
+      assert(attr.forall(_.isInstanceOf[Attr]))
+      assert(initOpt.forall(_.isInstanceOf[Expr]))
       tree.copy(
         ref = ref.asInstanceOf[Ref],
         attr = attr.asInstanceOf[List[Attr]],
         initOpt = initOpt.asInstanceOf[Option[Expr]]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
   def apply(
       tree: DescConst
@@ -262,21 +219,18 @@ object TreeCopier {
       attr: List[Tree],
       spec: Tree,
       init: Tree
-    ): DescConst = {
+    ): DescConst =
     if ((ref eq tree.ref) && (attr eq tree.attr) && (spec eq tree.spec) && (init eq tree.init)) {
       tree
     } else {
-      assert(attr forall {
-        _.isInstanceOf[Attr]
-      })
+      assert(attr.forall(_.isInstanceOf[Attr]))
       DescConst(
         ref.asInstanceOf[Ref],
         attr.asInstanceOf[List[Attr]],
         spec.asInstanceOf[Expr],
         init.asInstanceOf[Expr]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
   def apply(
       tree: DescArray
@@ -285,21 +239,18 @@ object TreeCopier {
       attr: List[Tree],
       elem: Tree,
       size: Tree
-    ): DescArray = {
+    ): DescArray =
     if ((ref eq tree.ref) && (attr eq tree.attr) && (elem eq tree.elem) && (size eq tree.size)) {
       tree
     } else {
-      assert(attr forall {
-        _.isInstanceOf[Attr]
-      })
+      assert(attr.forall(_.isInstanceOf[Attr]))
       DescArray(
         ref.asInstanceOf[Ref],
         attr.asInstanceOf[List[Attr]],
         elem.asInstanceOf[Expr],
         size.asInstanceOf[Expr]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
   def apply(
       tree: DescSram
@@ -308,23 +259,20 @@ object TreeCopier {
       attr: List[Tree],
       elem: Tree,
       size: Tree
-    ): DescSram = {
+    ): DescSram =
     if ((ref eq tree.ref) && (attr eq tree.attr) && (elem eq tree.elem) && (size eq tree.size)) {
       tree
     } else {
-      assert(attr forall {
-        _.isInstanceOf[Attr]
-      })
+      assert(attr.forall(_.isInstanceOf[Attr]))
       tree.copy(
         ref = ref.asInstanceOf[Ref],
         attr = attr.asInstanceOf[List[Attr]],
         elem = elem.asInstanceOf[Expr],
         size = size.asInstanceOf[Expr]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: DescType)(ref: Tree, attr: List[Tree], spec: Tree): DescType = {
+  def apply(tree: DescType)(ref: Tree, attr: List[Tree], spec: Tree): DescType =
     if ((ref eq tree.ref) && (attr eq tree.attr) && (spec eq tree.spec)) {
       tree
     } else {
@@ -332,78 +280,59 @@ object TreeCopier {
         ref.asInstanceOf[Ref],
         attr.asInstanceOf[List[Attr]],
         spec.asInstanceOf[Expr]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: DescEntity)(ref: Tree, attr: List[Tree], body: List[Tree]): DescEntity = {
+  def apply(tree: DescEntity)(ref: Tree, attr: List[Tree], body: List[Tree]): DescEntity =
     if ((ref eq tree.ref) && (attr eq tree.attr) && (body eq tree.body)) {
       tree
     } else {
-      assert(attr forall {
-        _.isInstanceOf[Attr]
-      })
-      assert(body forall {
-        _.isInstanceOf[Ent]
-      })
+      assert(attr.forall(_.isInstanceOf[Attr]))
+      assert(body.forall(_.isInstanceOf[Ent]))
       tree.copy(
         ref = ref.asInstanceOf[Ref],
         attr = attr.asInstanceOf[List[Attr]],
         body = body.asInstanceOf[List[Ent]]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: DescRecord)(ref: Tree, attr: List[Tree], body: List[Tree]): DescRecord = {
+  def apply(tree: DescRecord)(ref: Tree, attr: List[Tree], body: List[Tree]): DescRecord =
     if ((ref eq tree.ref) && (attr eq tree.attr) && (body eq tree.body)) {
       tree
     } else {
-      assert(attr forall {
-        _.isInstanceOf[Attr]
-      })
-      assert(body forall {
-        _.isInstanceOf[Rec]
-      })
+      assert(attr.forall(_.isInstanceOf[Attr]))
+      assert(body.forall(_.isInstanceOf[Rec]))
       DescRecord(
         ref.asInstanceOf[Ref],
         attr.asInstanceOf[List[Attr]],
         body.asInstanceOf[List[Rec]]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: DescInstance)(ref: Tree, attr: List[Tree], spec: Tree): DescInstance = {
+  def apply(tree: DescInstance)(ref: Tree, attr: List[Tree], spec: Tree): DescInstance =
     if ((ref eq tree.ref) && (attr eq tree.attr) && (spec eq tree.spec)) {
       tree
     } else {
-      assert(attr forall {
-        _.isInstanceOf[Attr]
-      })
+      assert(attr.forall(_.isInstanceOf[Attr]))
       DescInstance(
         ref.asInstanceOf[Ref],
         attr.asInstanceOf[List[Attr]],
         spec.asInstanceOf[Expr]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: DescSingleton)(ref: Tree, attr: List[Tree], body: List[Tree]): DescSingleton = {
+  def apply(tree: DescSingleton)(ref: Tree, attr: List[Tree], body: List[Tree]): DescSingleton =
     if ((ref eq tree.ref) && (attr eq tree.attr) && (body eq tree.body)) {
       tree
     } else {
-      assert(attr forall {
-        _.isInstanceOf[Attr]
-      })
-      assert(body forall {
-        _.isInstanceOf[Ent]
-      })
+      assert(attr.forall(_.isInstanceOf[Attr]))
+      assert(body.forall(_.isInstanceOf[Ent]))
       tree.copy(
         ref = ref.asInstanceOf[Ref],
         attr = attr.asInstanceOf[List[Attr]],
         body = body.asInstanceOf[List[Ent]]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
   def apply(
       tree: DescFunc
@@ -413,48 +342,36 @@ object TreeCopier {
       ret: Tree,
       args: List[Tree],
       body: List[Tree]
-    ): DescFunc = {
+    ): DescFunc =
     if (
       (ref eq tree.ref) && (attr eq tree.attr) && (ret eq tree.ret) && (args eq tree.args) && (body eq tree.body)
     ) {
       tree
     } else {
-      assert(attr forall {
-        _.isInstanceOf[Attr]
-      })
-      assert(args forall {
-        _.isInstanceOf[Desc]
-      })
-      assert(body forall {
-        _.isInstanceOf[Stmt]
-      })
+      assert(attr.forall(_.isInstanceOf[Attr]))
+      assert(args.forall(_.isInstanceOf[Desc]))
+      assert(body.forall(_.isInstanceOf[Stmt]))
       tree.copy(
         ref = ref.asInstanceOf[Ref],
         attr = attr.asInstanceOf[List[Attr]],
         ret = ret.asInstanceOf[Expr],
         args = args.asInstanceOf[List[Desc]],
         body = body.asInstanceOf[List[Stmt]]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: DescPackage)(ref: Tree, attr: List[Tree], body: List[Tree]): DescPackage = {
+  def apply(tree: DescPackage)(ref: Tree, attr: List[Tree], body: List[Tree]): DescPackage =
     if ((ref eq tree.ref) && (attr eq tree.attr) && (body eq tree.body)) {
       tree
     } else {
-      assert(attr forall {
-        _.isInstanceOf[Attr]
-      })
-      assert(body forall {
-        _.isInstanceOf[Pkg]
-      })
+      assert(attr.forall(_.isInstanceOf[Attr]))
+      assert(body.forall(_.isInstanceOf[Pkg]))
       DescPackage(
         ref.asInstanceOf[Ref],
         attr.asInstanceOf[List[Attr]],
         body.asInstanceOf[List[Pkg]]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
   def apply(
       tree: DescGenVar
@@ -463,21 +380,18 @@ object TreeCopier {
       attr: List[Tree],
       spec: Tree,
       init: Tree
-    ): DescGenVar = {
+    ): DescGenVar =
     if ((ref eq tree.ref) && (attr eq tree.attr) && (spec eq tree.spec) && (init eq tree.init)) {
       tree
     } else {
-      assert(attr forall {
-        _.isInstanceOf[Attr]
-      })
+      assert(attr.forall(_.isInstanceOf[Attr]))
       DescGenVar(
         ref.asInstanceOf[Ref],
         attr.asInstanceOf[List[Attr]],
         spec.asInstanceOf[Expr],
         init.asInstanceOf[Expr]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
   def apply(
       tree: DescGenIf
@@ -486,26 +400,21 @@ object TreeCopier {
       attr: List[Tree],
       cases: List[Tree],
       defaults: List[Tree]
-    ): DescGenIf = {
+    ): DescGenIf =
     if (
       (ref eq tree.ref) && (attr eq tree.attr) && (cases eq tree.cases) && (defaults eq tree.defaults)
     ) {
       tree
     } else {
-      assert(attr forall {
-        _.isInstanceOf[Attr]
-      })
-      cases forall {
-        _.isInstanceOf[GenCase]
-      }
+      assert(attr.forall(_.isInstanceOf[Attr]))
+      cases.forall(_.isInstanceOf[GenCase])
       DescGenIf(
         ref.asInstanceOf[Ref],
         attr.asInstanceOf[List[Attr]],
         cases.asInstanceOf[List[GenCase]],
         defaults
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
   def apply(
       tree: DescGenFor
@@ -516,21 +425,15 @@ object TreeCopier {
       cond: Tree,
       steps: List[Tree],
       body: List[Tree]
-    ): DescGenFor = {
+    ): DescGenFor =
     if (
       (ref eq tree.ref) && (attr eq tree.attr) && (inits eq tree.inits) && (cond eq tree.cond) && (steps eq tree.steps) && (body eq tree.body)
     ) {
       tree
     } else {
-      assert(attr forall {
-        _.isInstanceOf[Attr]
-      })
-      assert(inits forall {
-        _.isInstanceOf[Desc]
-      })
-      assert(steps forall {
-        _.isInstanceOf[Stmt]
-      })
+      assert(attr.forall(_.isInstanceOf[Attr]))
+      assert(inits.forall(_.isInstanceOf[Desc]))
+      assert(steps.forall(_.isInstanceOf[Stmt]))
       DescGenFor(
         ref.asInstanceOf[Ref],
         attr.asInstanceOf[List[Attr]],
@@ -538,9 +441,8 @@ object TreeCopier {
         cond.asInstanceOf[Expr],
         steps.asInstanceOf[List[Stmt]],
         body
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
   def apply(
       tree: DescGenRange
@@ -550,570 +452,483 @@ object TreeCopier {
       init: Tree,
       end: Tree,
       body: List[Tree]
-    ): DescGenRange = {
+    ): DescGenRange =
     if (
       (ref eq tree.ref) && (attr eq tree.attr) && (init eq tree.init) && (end eq tree.end) && (body eq tree.body)
     ) {
       tree
     } else {
-      assert(attr forall {
-        _.isInstanceOf[Attr]
-      })
+      assert(attr.forall(_.isInstanceOf[Attr]))
       tree.copy(
         ref = ref.asInstanceOf[Ref],
         attr = attr.asInstanceOf[List[Attr]],
         init = init.asInstanceOf[Desc],
         end = end.asInstanceOf[Expr],
         body = body
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: DescGenScope)(ref: Tree, attr: List[Tree], body: List[Tree]): DescGenScope = {
+  def apply(tree: DescGenScope)(ref: Tree, attr: List[Tree], body: List[Tree]): DescGenScope =
     if ((ref eq tree.ref) && (attr eq tree.attr) && (body eq tree.body)) {
       tree
     } else {
-      assert(attr forall {
-        _.isInstanceOf[Attr]
-      })
+      assert(attr.forall(_.isInstanceOf[Attr]))
       DescGenScope(
         ref.asInstanceOf[Ref],
         attr.asInstanceOf[List[Attr]],
         body
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: DescAlias)(ref: Tree, attr: List[Tree], expr: Tree): DescAlias = {
+  def apply(tree: DescAlias)(ref: Tree, attr: List[Tree], expr: Tree): DescAlias =
     if ((ref eq tree.ref) && (attr eq tree.attr) && (expr eq tree.expr)) {
       tree
     } else {
-      assert(attr forall {
-        _.isInstanceOf[Attr]
-      })
+      assert(attr.forall(_.isInstanceOf[Attr]))
       tree.copy(
         ref = ref.asInstanceOf[Ref],
         attr = attr.asInstanceOf[List[Attr]],
         expr = expr.asInstanceOf[Expr]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: DescParametrized)(ref: Tree, attr: List[Tree], desc: Tree): DescParametrized = {
+  def apply(tree: DescParametrized)(ref: Tree, attr: List[Tree], desc: Tree): DescParametrized =
     if ((ref eq tree.ref) && (attr eq tree.attr) && (desc eq tree.desc)) {
       tree
     } else {
-      assert(attr forall {
-        _.isInstanceOf[Attr]
-      })
+      assert(attr.forall(_.isInstanceOf[Attr]))
       tree.copy(
         ref.asInstanceOf[Ref],
         attr.asInstanceOf[List[Attr]],
         desc.asInstanceOf[Desc]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
   //////////////////////////////////////////////////////////////////////////////
   // Attr
   //////////////////////////////////////////////////////////////////////////////
 
-  def apply(tree: AttrExpr)(expr: Tree): AttrExpr = {
+  def apply(tree: AttrExpr)(expr: Tree): AttrExpr =
     if (expr eq tree.expr) {
       tree
     } else {
-      tree.copy(expr = expr.asInstanceOf[Expr]) withLoc tree.loc
+      tree.copy(expr = expr.asInstanceOf[Expr]) withLocOf tree
     }
-  }
 
   //////////////////////////////////////////////////////////////////////////////
   // GenCase
   //////////////////////////////////////////////////////////////////////////////
 
-  def apply(tree: GenCase)(cond: Tree, body: List[Tree]): GenCase = {
+  def apply(tree: GenCase)(cond: Tree, body: List[Tree]): GenCase =
     if ((cond eq tree.cond) && (body eq tree.body)) {
       tree
     } else {
-      GenCase(cond.asInstanceOf[Expr], body) withLoc tree.loc
+      GenCase(cond.asInstanceOf[Expr], body) withLocOf tree
     }
-  }
 
   //////////////////////////////////////////////////////////////////////////////
   // Decl
   //////////////////////////////////////////////////////////////////////////////
 
-  def apply(tree: DeclVar)(spec: Tree): DeclVar = {
+  def apply(tree: DeclVar)(spec: Tree): DeclVar =
     if (spec eq tree.spec) {
       tree
     } else {
       tree.copy(
         spec = spec.asInstanceOf[Expr]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: DeclVal)(spec: Tree): DeclVal = {
+  def apply(tree: DeclVal)(spec: Tree): DeclVal =
     if (spec eq tree.spec) {
       tree
     } else {
       tree.copy(
         spec = spec.asInstanceOf[Expr]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: DeclStatic)(spec: Tree): DeclStatic = {
+  def apply(tree: DeclStatic)(spec: Tree): DeclStatic =
     if (spec eq tree.spec) {
       tree
     } else {
       tree.copy(
         spec = spec.asInstanceOf[Expr]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: DeclIn)(spec: Tree): DeclIn = {
+  def apply(tree: DeclIn)(spec: Tree): DeclIn =
     if (spec eq tree.spec) {
       tree
     } else {
       tree.copy(
         spec = spec.asInstanceOf[Expr]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: DeclOut)(spec: Tree): DeclOut = {
+  def apply(tree: DeclOut)(spec: Tree): DeclOut =
     if (spec eq tree.spec) {
       tree
     } else {
       tree.copy(
         spec = spec.asInstanceOf[Expr]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: DeclPipeVar)(spec: Tree): DeclPipeVar = {
+  def apply(tree: DeclPipeVar)(spec: Tree): DeclPipeVar =
     if (spec eq tree.spec) {
       tree
     } else {
       tree.copy(
         spec = spec.asInstanceOf[Expr]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: DeclConst)(spec: Tree): DeclConst = {
+  def apply(tree: DeclConst)(spec: Tree): DeclConst =
     if (spec eq tree.spec) {
       tree
     } else {
       tree.copy(
         spec = spec.asInstanceOf[Expr]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: DeclArray)(elem: Tree): DeclArray = {
+  def apply(tree: DeclArray)(elem: Tree): DeclArray =
     if (elem eq tree.elem) {
       tree
     } else {
       tree.copy(
         elem = elem.asInstanceOf[Expr]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: DeclSram)(elem: Tree): DeclSram = {
+  def apply(tree: DeclSram)(elem: Tree): DeclSram =
     if (elem eq tree.elem) {
       tree
     } else {
       tree.copy(
         elem = elem.asInstanceOf[Expr]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: DeclStack)(elem: Tree): DeclStack = {
+  def apply(tree: DeclStack)(elem: Tree): DeclStack =
     if (elem eq tree.elem) {
       tree
     } else {
       tree.copy(
         elem = elem.asInstanceOf[Expr]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: DeclType)(spec: Tree): DeclType = {
+  def apply(tree: DeclType)(spec: Tree): DeclType =
     if (spec eq tree.spec) {
       tree
     } else {
       tree.copy(
         spec = spec.asInstanceOf[Expr]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: DeclEntity)(decls: List[Tree]): DeclEntity = {
+  def apply(tree: DeclEntity)(decls: List[Tree]): DeclEntity =
     if (decls eq tree.decls) {
       tree
     } else {
-      assert(decls forall {
-        _.isInstanceOf[Decl]
-      })
+      assert(decls.forall(_.isInstanceOf[Decl]))
       tree.copy(
         decls = decls.asInstanceOf[List[Decl]]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: DeclRecord)(decls: List[Tree]): DeclRecord = {
+  def apply(tree: DeclRecord)(decls: List[Tree]): DeclRecord =
     if (decls eq tree.decls) {
       tree
     } else {
-      assert(decls forall {
-        _.isInstanceOf[Decl]
-      })
+      assert(decls.forall(_.isInstanceOf[Decl]))
       tree.copy(
         decls = decls.asInstanceOf[List[Decl]]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: DeclInstance)(spec: Tree): DeclInstance = {
+  def apply(tree: DeclInstance)(spec: Tree): DeclInstance =
     if (spec eq tree.spec) {
       tree
     } else {
       tree.copy(
         spec = spec.asInstanceOf[Expr]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: DeclSingleton)(decls: List[Tree]): DeclSingleton = {
+  def apply(tree: DeclSingleton)(decls: List[Tree]): DeclSingleton =
     if (decls eq tree.decls) {
       tree
     } else {
-      assert(decls forall {
-        _.isInstanceOf[Decl]
-      })
+      assert(decls.forall(_.isInstanceOf[Decl]))
       tree.copy(
         decls = decls.asInstanceOf[List[Decl]]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: DeclFunc)(ret: Tree, args: List[Tree]): DeclFunc = {
+  def apply(tree: DeclFunc)(ret: Tree, args: List[Tree]): DeclFunc =
     if ((ret eq tree.ret) && (args eq tree.args)) {
       tree
     } else {
-      assert(args forall {
-        _.isInstanceOf[Decl]
-      })
+      assert(args.forall(_.isInstanceOf[Decl]))
       tree.copy(
         ret = ret.asInstanceOf[Expr],
         args = args.asInstanceOf[List[Decl]]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
   //////////////////////////////////////////////////////////////////////////////
   // Defn
   //////////////////////////////////////////////////////////////////////////////
 
-  def apply(tree: DefnVar)(initOpt: Option[Tree]): DefnVar = {
+  def apply(tree: DefnVar)(initOpt: Option[Tree]): DefnVar =
     if (initOpt eq tree.initOpt) {
       tree
     } else {
-      assert(initOpt forall {
-        _.isInstanceOf[Expr]
-      })
+      assert(initOpt.forall(_.isInstanceOf[Expr]))
       tree.copy(
         initOpt = initOpt.asInstanceOf[Option[Expr]]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: DefnVal)(init: Tree): DefnVal = {
+  def apply(tree: DefnVal)(init: Tree): DefnVal =
     if (init eq tree.init) {
       tree
     } else {
       tree.copy(
         init = init.asInstanceOf[Expr]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: DefnStatic)(initOpt: Option[Tree]): DefnStatic = {
+  def apply(tree: DefnStatic)(initOpt: Option[Tree]): DefnStatic =
     if (initOpt eq tree.initOpt) {
       tree
     } else {
-      assert(initOpt forall {
-        _.isInstanceOf[Expr]
-      })
+      assert(initOpt.forall(_.isInstanceOf[Expr]))
       tree.copy(
         initOpt = initOpt.asInstanceOf[Option[Expr]]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: DefnOut)(initOpt: Option[Tree]): DefnOut = {
+  def apply(tree: DefnOut)(initOpt: Option[Tree]): DefnOut =
     if (initOpt eq tree.initOpt) {
       tree
     } else {
-      assert(initOpt forall {
-        _.isInstanceOf[Expr]
-      })
+      assert(initOpt.forall(_.isInstanceOf[Expr]))
       tree.copy(
         initOpt = initOpt.asInstanceOf[Option[Expr]]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: DefnConst)(init: Tree): DefnConst = {
+  def apply(tree: DefnConst)(init: Tree): DefnConst =
     if (init eq tree.init) {
       tree
     } else {
       tree.copy(
         init = init.asInstanceOf[Expr]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: DefnEntity)(body: List[Tree]): DefnEntity = {
+  def apply(tree: DefnEntity)(body: List[Tree]): DefnEntity =
     if (body eq tree.body) {
       tree
     } else {
-      assert(body forall {
-        _.isInstanceOf[Ent]
-      })
+      assert(body.forall(_.isInstanceOf[Ent]))
       tree.copy(
         body = body.asInstanceOf[List[Ent]]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: DefnRecord)(body: List[Tree]): DefnRecord = {
+  def apply(tree: DefnRecord)(body: List[Tree]): DefnRecord =
     if (body eq tree.body) {
       tree
     } else {
-      assert(body forall {
-        _.isInstanceOf[Rec]
-      })
+      assert(body.forall(_.isInstanceOf[Rec]))
       tree.copy(
         body = body.asInstanceOf[List[Rec]]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: DefnSingleton)(body: List[Tree]): DefnSingleton = {
+  def apply(tree: DefnSingleton)(body: List[Tree]): DefnSingleton =
     if (body eq tree.body) {
       tree
     } else {
-      assert(body forall {
-        _.isInstanceOf[Ent]
-      })
+      assert(body.forall(_.isInstanceOf[Ent]))
       tree.copy(
         body = body.asInstanceOf[List[Ent]]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: DefnFunc)(args: List[Tree], body: List[Tree]): DefnFunc = {
+  def apply(tree: DefnFunc)(args: List[Tree], body: List[Tree]): DefnFunc =
     if ((args eq tree.args) && (body eq tree.body)) {
       tree
     } else {
-      assert(args forall {
-        _.isInstanceOf[Defn]
-      })
-      assert(body forall {
-        _.isInstanceOf[Stmt]
-      })
+      assert(args.forall(_.isInstanceOf[Defn]))
+      assert(body.forall(_.isInstanceOf[Stmt]))
       tree.copy(
         args = args.asInstanceOf[List[Defn]],
         body = body.asInstanceOf[List[Stmt]]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: DefnState)(body: List[Tree]): DefnState = {
+  def apply(tree: DefnState)(body: List[Tree]): DefnState =
     if (body eq tree.body) {
       tree
     } else {
-      assert(body forall {
-        _.isInstanceOf[Stmt]
-      })
+      assert(body.forall(_.isInstanceOf[Stmt]))
       tree.copy(
         body = body.asInstanceOf[List[Stmt]]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
   //////////////////////////////////////////////////////////////////////////////
   // Import
   //////////////////////////////////////////////////////////////////////////////
 
-  def apply(tree: ImportOne)(ident: Tree): ImportOne = {
+  def apply(tree: ImportOne)(ident: Tree): ImportOne =
     if (ident eq tree.ident) {
       tree
     } else {
       tree.copy(
         ident = ident.asInstanceOf[Ident]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: ImportPending)(ident: Tree): ImportPending = {
+  def apply(tree: ImportPending)(ident: Tree): ImportPending =
     if (ident eq tree.ident) {
       tree
     } else {
       tree.copy(
         ident = ident.asInstanceOf[Ident]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
   //////////////////////////////////////////////////////////////////////////////
   // Using
   //////////////////////////////////////////////////////////////////////////////
 
-  def apply(tree: UsingOne)(expr: Tree, identOpt: Option[Tree]): UsingOne = {
+  def apply(tree: UsingOne)(expr: Tree, identOpt: Option[Tree]): UsingOne =
     if ((expr eq tree.expr) && (identOpt eq tree.identOpt)) {
       tree
     } else {
-      assert(identOpt forall {
-        _.isInstanceOf[Ident]
-      })
+      assert(identOpt.forall(_.isInstanceOf[Ident]))
       UsingOne(
         expr.asInstanceOf[Expr],
         identOpt.asInstanceOf[Option[Ident]]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: UsingAll)(expr: Tree): UsingAll = {
+  def apply(tree: UsingAll)(expr: Tree): UsingAll =
     if (expr eq tree.expr) {
       tree
     } else {
-      tree.copy(expr = expr.asInstanceOf[Expr]) withLoc tree.loc
+      tree.copy(expr = expr.asInstanceOf[Expr]) withLocOf tree
     }
-  }
 
-  def apply(tree: UsingGenLoopBody)(expr: Tree): UsingGenLoopBody = {
+  def apply(tree: UsingGenLoopBody)(expr: Tree): UsingGenLoopBody =
     if (expr eq tree.expr) {
       tree
     } else {
-      tree.copy(expr = expr.asInstanceOf[Expr]) withLoc tree.loc
+      tree.copy(expr = expr.asInstanceOf[Expr]) withLocOf tree
     }
-  }
 
   //////////////////////////////////////////////////////////////////////////////
   // From
   //////////////////////////////////////////////////////////////////////////////
 
-  def apply(tree: FromOne)(name: Tree, identOpt: Option[Tree]): FromOne = {
+  def apply(tree: FromOne)(name: Tree, identOpt: Option[Tree]): FromOne =
     if ((name eq tree.name) && (identOpt eq tree.identOpt)) {
       tree
     } else {
-      assert(identOpt forall { _.isInstanceOf[Ident] })
+      assert(identOpt.forall(_.isInstanceOf[Ident]))
       tree.copy(
         name = name.asInstanceOf[Expr],
         identOpt = identOpt.asInstanceOf[Option[Ident]]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
   //////////////////////////////////////////////////////////////////////////////
   // Assertion
   //////////////////////////////////////////////////////////////////////////////
 
-  def apply(tree: AssertionAssert)(cond: Tree): AssertionAssert = {
+  def apply(tree: AssertionAssert)(cond: Tree): AssertionAssert =
     if (cond eq tree.cond) {
       tree
     } else {
-      tree.copy(cond = cond.asInstanceOf[Expr]) withLoc tree.loc
+      tree.copy(cond = cond.asInstanceOf[Expr]) withLocOf tree
     }
-  }
 
-  def apply(tree: AssertionAssume)(cond: Tree): AssertionAssume = {
+  def apply(tree: AssertionAssume)(cond: Tree): AssertionAssume =
     if (cond eq tree.cond) {
       tree
     } else {
-      tree.copy(cond = cond.asInstanceOf[Expr]) withLoc tree.loc
+      tree.copy(cond = cond.asInstanceOf[Expr]) withLocOf tree
     }
-  }
 
-  def apply(tree: AssertionStatic)(cond: Tree): AssertionStatic = {
+  def apply(tree: AssertionStatic)(cond: Tree): AssertionStatic =
     if (cond eq tree.cond) {
       tree
     } else {
-      tree.copy(cond = cond.asInstanceOf[Expr]) withLoc tree.loc
+      tree.copy(cond = cond.asInstanceOf[Expr]) withLocOf tree
     }
-  }
 
   //////////////////////////////////////////////////////////////////////////////
   // Pkg
   //////////////////////////////////////////////////////////////////////////////
 
-  def apply(tree: PkgSplice)(spliceable: Tree): PkgSplice = {
+  def apply(tree: PkgSplice)(spliceable: Tree): PkgSplice =
     if (spliceable eq tree.tree) {
       tree
     } else {
-      PkgSplice(spliceable.asInstanceOf[Spliceable]) withLoc tree.loc
+      PkgSplice(spliceable.asInstanceOf[Spliceable]) withLocOf tree
     }
-  }
 
-  def apply(tree: PkgCompile)(expr: Tree, identOpt: Option[Tree]): PkgCompile = {
+  def apply(tree: PkgCompile)(expr: Tree, identOpt: Option[Tree]): PkgCompile =
     if ((expr eq tree.expr) && (identOpt eq tree.identOpt)) {
       tree
     } else {
-      assert(identOpt forall { _.isInstanceOf[Ident] })
+      assert(identOpt.forall(_.isInstanceOf[Ident]))
       PkgCompile(
         expr.asInstanceOf[Expr],
         identOpt.asInstanceOf[Option[Ident]]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
   //////////////////////////////////////////////////////////////////////////////
   // Ent
   //////////////////////////////////////////////////////////////////////////////
 
-  def apply(tree: EntSplice)(spliceable: Tree): EntSplice = {
+  def apply(tree: EntSplice)(spliceable: Tree): EntSplice =
     if (spliceable eq tree.tree) {
       tree
     } else {
-      EntSplice(spliceable.asInstanceOf[Spliceable]) withLoc tree.loc
+      EntSplice(spliceable.asInstanceOf[Spliceable]) withLocOf tree
     }
-  }
 
-  def apply(tree: EntConnect)(lhs: Tree, rhs: List[Tree]): EntConnect = {
+  def apply(tree: EntConnect)(lhs: Tree, rhs: List[Tree]): EntConnect =
     if ((lhs eq tree.lhs) && (rhs eq tree.rhs)) {
       tree
     } else {
-      assert(rhs forall {
-        _.isInstanceOf[Expr]
-      })
-      EntConnect(lhs.asInstanceOf[Expr], rhs.asInstanceOf[List[Expr]]) withLoc tree.loc
+      assert(rhs.forall(_.isInstanceOf[Expr]))
+      EntConnect(lhs.asInstanceOf[Expr], rhs.asInstanceOf[List[Expr]]) withLocOf tree
     }
-  }
 
-  def apply(tree: EntAssign)(lhs: Tree, rhs: Tree): EntAssign = {
+  def apply(tree: EntAssign)(lhs: Tree, rhs: Tree): EntAssign =
     if ((lhs eq tree.lhs) && (rhs eq tree.rhs)) {
       tree
     } else {
-      EntAssign(lhs.asInstanceOf[Expr], rhs.asInstanceOf[Expr]) withLoc tree.loc
+      EntAssign(lhs.asInstanceOf[Expr], rhs.asInstanceOf[Expr]) withLocOf tree
     }
-  }
 
-  def apply(tree: EntCombProcess)(stmts: List[Tree]): EntCombProcess = {
+  def apply(tree: EntCombProcess)(stmts: List[Tree]): EntCombProcess =
     if (stmts eq tree.stmts) {
       tree
     } else {
-      assert(stmts forall {
-        _.isInstanceOf[Stmt]
-      })
-      EntCombProcess(stmts.asInstanceOf[List[StmtIf]]) withLoc tree.loc
+      assert(stmts.forall(_.isInstanceOf[Stmt]))
+      EntCombProcess(stmts.asInstanceOf[List[StmtIf]]) withLocOf tree
     }
-  }
 
   def apply(
       tree: EntClockedProcess
@@ -1121,58 +936,48 @@ object TreeCopier {
       clk: Tree,
       rstOpt: Option[Tree],
       stmts: List[Tree]
-    ): EntClockedProcess = {
+    ): EntClockedProcess =
     if ((clk eq tree.clk) && (rstOpt eq tree.rstOpt) && (stmts eq tree.stmts)) {
       tree
     } else {
-      assert(rstOpt forall {
-        _.isInstanceOf[Expr]
-      })
-      assert(stmts forall {
-        _.isInstanceOf[Stmt]
-      })
+      assert(rstOpt.forall(_.isInstanceOf[Expr]))
+      assert(stmts.forall(_.isInstanceOf[Stmt]))
       EntClockedProcess(
         clk.asInstanceOf[Expr],
         rstOpt.asInstanceOf[Option[Expr]],
         stmts.asInstanceOf[List[Stmt]]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
   //////////////////////////////////////////////////////////////////////////////
   // Rec
   //////////////////////////////////////////////////////////////////////////////
 
-  def apply(tree: RecSplice)(spliceable: Tree): RecSplice = {
+  def apply(tree: RecSplice)(spliceable: Tree): RecSplice =
     if (spliceable eq tree.tree) {
       tree
     } else {
-      RecSplice(spliceable.asInstanceOf[Spliceable]) withLoc tree.loc
+      RecSplice(spliceable.asInstanceOf[Spliceable]) withLocOf tree
     }
-  }
 
   //////////////////////////////////////////////////////////////////////////////
   // Stmt
   //////////////////////////////////////////////////////////////////////////////
 
-  def apply(tree: StmtSplice)(spliceable: Tree): StmtSplice = {
+  def apply(tree: StmtSplice)(spliceable: Tree): StmtSplice =
     if (spliceable eq tree.tree) {
       tree
     } else {
-      StmtSplice(spliceable.asInstanceOf[Spliceable]) withLoc tree.loc
+      StmtSplice(spliceable.asInstanceOf[Spliceable]) withLocOf tree
     }
-  }
 
-  def apply(tree: StmtBlock)(body: List[Tree]): StmtBlock = {
+  def apply(tree: StmtBlock)(body: List[Tree]): StmtBlock =
     if (body eq tree.body) {
       tree
     } else {
-      assert(body forall {
-        _.isInstanceOf[Stmt]
-      })
-      StmtBlock(body.asInstanceOf[List[Stmt]]) withLoc tree.loc
+      assert(body.forall(_.isInstanceOf[Stmt]))
+      StmtBlock(body.asInstanceOf[List[Stmt]]) withLocOf tree
     }
-  }
 
   def apply(
       tree: StmtIf
@@ -1180,59 +985,45 @@ object TreeCopier {
       cond: Tree,
       thenStmts: List[Tree],
       elseStmts: List[Tree]
-    ): StmtIf = {
+    ): StmtIf =
     if ((cond eq tree.cond) && (thenStmts eq tree.thenStmts) && (elseStmts eq tree.elseStmts)) {
       tree
     } else {
-      assert(thenStmts forall {
-        _.isInstanceOf[Stmt]
-      })
-      assert(elseStmts forall {
-        _.isInstanceOf[Stmt]
-      })
+      assert(thenStmts.forall(_.isInstanceOf[Stmt]))
+      assert(elseStmts.forall(_.isInstanceOf[Stmt]))
       StmtIf(
         cond.asInstanceOf[Expr],
         thenStmts.asInstanceOf[List[Stmt]],
         elseStmts.asInstanceOf[List[Stmt]]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: StmtCase)(expr: Tree, cases: List[Tree]): StmtCase = {
+  def apply(tree: StmtCase)(expr: Tree, cases: List[Tree]): StmtCase =
     if ((expr eq tree.expr) && (cases eq tree.cases)) {
       tree
     } else {
-      assert(cases forall {
-        _.isInstanceOf[Case]
-      })
+      assert(cases.forall(_.isInstanceOf[Case]))
       StmtCase(
         expr.asInstanceOf[Expr],
         cases.asInstanceOf[List[Case]]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: StmtLoop)(body: List[Tree]): StmtLoop = {
+  def apply(tree: StmtLoop)(body: List[Tree]): StmtLoop =
     if (body eq tree.body) {
       tree
     } else {
-      assert(body forall {
-        _.isInstanceOf[Stmt]
-      })
-      StmtLoop(body.asInstanceOf[List[Stmt]]) withLoc tree.loc
+      assert(body.forall(_.isInstanceOf[Stmt]))
+      StmtLoop(body.asInstanceOf[List[Stmt]]) withLocOf tree
     }
-  }
 
-  def apply(tree: StmtWhile)(cond: Tree, body: List[Tree]): StmtWhile = {
+  def apply(tree: StmtWhile)(cond: Tree, body: List[Tree]): StmtWhile =
     if ((cond eq tree.cond) && (body eq tree.body)) {
       tree
     } else {
-      assert(body forall {
-        _.isInstanceOf[Stmt]
-      })
-      StmtWhile(cond.asInstanceOf[Expr], body.asInstanceOf[List[Stmt]]) withLoc tree.loc
+      assert(body.forall(_.isInstanceOf[Stmt]))
+      StmtWhile(cond.asInstanceOf[Expr], body.asInstanceOf[List[Stmt]]) withLocOf tree
     }
-  }
 
   def apply(
       tree: StmtFor
@@ -1241,218 +1032,173 @@ object TreeCopier {
       cond: Option[Tree],
       steps: List[Tree],
       body: List[Tree]
-    ): StmtFor = {
+    ): StmtFor =
     if (
       (inits eq tree.inits) && (cond eq tree.condOpt) && (steps eq tree.steps) && (body eq tree.body)
     ) {
       tree
     } else {
-      assert(inits forall {
-        _.isInstanceOf[Stmt]
-      })
-      assert(cond forall {
-        _.isInstanceOf[Expr]
-      })
-      assert(steps forall {
-        _.isInstanceOf[Stmt]
-      })
-      assert(body forall {
-        _.isInstanceOf[Stmt]
-      })
+      assert(inits.forall(_.isInstanceOf[Stmt]))
+      assert(cond.forall(_.isInstanceOf[Expr]))
+      assert(steps.forall(_.isInstanceOf[Stmt]))
+      assert(body.forall(_.isInstanceOf[Stmt]))
       StmtFor(
         inits.asInstanceOf[List[Stmt]],
         cond.asInstanceOf[Option[Expr]],
         steps.asInstanceOf[List[Stmt]],
         body.asInstanceOf[List[Stmt]]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: StmtDo)(cond: Tree, body: List[Tree]): StmtDo = {
+  def apply(tree: StmtDo)(cond: Tree, body: List[Tree]): StmtDo =
     if ((cond eq tree.cond) && (body eq tree.body)) {
       tree
     } else {
-      assert(body forall {
-        _.isInstanceOf[Stmt]
-      })
-      StmtDo(cond.asInstanceOf[Expr], body.asInstanceOf[List[Stmt]]) withLoc tree.loc
+      assert(body.forall(_.isInstanceOf[Stmt]))
+      StmtDo(cond.asInstanceOf[Expr], body.asInstanceOf[List[Stmt]]) withLocOf tree
     }
-  }
 
-  def apply(tree: StmtLet)(inits: List[Tree], body: List[Tree]): StmtLet = {
+  def apply(tree: StmtLet)(inits: List[Tree], body: List[Tree]): StmtLet =
     if ((inits eq tree.inits) && (body eq tree.body)) {
       tree
     } else {
-      assert(inits forall {
-        _.isInstanceOf[Stmt]
-      })
-      assert(body forall {
-        _.isInstanceOf[Stmt]
-      })
-      StmtLet(inits.asInstanceOf[List[Stmt]], body.asInstanceOf[List[Stmt]]) withLoc tree.loc
+      assert(inits.forall(_.isInstanceOf[Stmt]))
+      assert(body.forall(_.isInstanceOf[Stmt]))
+      StmtLet(inits.asInstanceOf[List[Stmt]], body.asInstanceOf[List[Stmt]]) withLocOf tree
     }
-  }
 
-  def apply(tree: StmtGoto)(expr: Tree): StmtGoto = {
+  def apply(tree: StmtGoto)(expr: Tree): StmtGoto =
     if (expr eq tree.expr) {
       tree
     } else {
-      StmtGoto(expr.asInstanceOf[Expr]) withLoc tree.loc
+      StmtGoto(expr.asInstanceOf[Expr]) withLocOf tree
     }
-  }
 
-  def apply(tree: StmtReturn)(exprOpt: Option[Tree]): StmtReturn = {
+  def apply(tree: StmtReturn)(exprOpt: Option[Tree]): StmtReturn =
     if (exprOpt eq tree.exprOpt) {
       tree
     } else {
-      assert(exprOpt forall {
-        _.isInstanceOf[Expr]
-      })
-      tree.copy(exprOpt = exprOpt.asInstanceOf[Option[Expr]]) withLoc tree.loc
+      assert(exprOpt.forall(_.isInstanceOf[Expr]))
+      tree.copy(exprOpt = exprOpt.asInstanceOf[Option[Expr]]) withLocOf tree
     }
-  }
 
-  def apply(tree: StmtAssign)(lhs: Tree, rhs: Tree): StmtAssign = {
+  def apply(tree: StmtAssign)(lhs: Tree, rhs: Tree): StmtAssign =
     if ((lhs eq tree.lhs) && (rhs eq tree.rhs)) {
       tree
     } else {
-      StmtAssign(lhs.asInstanceOf[Expr], rhs.asInstanceOf[Expr]) withLoc tree.loc
+      StmtAssign(lhs.asInstanceOf[Expr], rhs.asInstanceOf[Expr]) withLocOf tree
     }
-  }
 
-  def apply(tree: StmtUpdate)(lhs: Tree, rhs: Tree): StmtUpdate = {
+  def apply(tree: StmtUpdate)(lhs: Tree, rhs: Tree): StmtUpdate =
     if ((lhs eq tree.lhs) && (rhs eq tree.rhs)) {
       tree
     } else {
-      StmtUpdate(lhs.asInstanceOf[Expr], tree.op, rhs.asInstanceOf[Expr]) withLoc tree.loc
+      StmtUpdate(lhs.asInstanceOf[Expr], tree.op, rhs.asInstanceOf[Expr]) withLocOf tree
     }
-  }
 
-  def apply(tree: StmtPost)(expr: Tree): StmtPost = {
+  def apply(tree: StmtPost)(expr: Tree): StmtPost =
     if (expr eq tree.expr) {
       tree
     } else {
-      StmtPost(expr.asInstanceOf[Expr], tree.op) withLoc tree.loc
+      StmtPost(expr.asInstanceOf[Expr], tree.op) withLocOf tree
     }
-  }
 
-  def apply(tree: StmtDelayed)(lhs: Tree, rhs: Tree): StmtDelayed = {
+  def apply(tree: StmtDelayed)(lhs: Tree, rhs: Tree): StmtDelayed =
     if ((lhs eq tree.lhs) && (rhs eq tree.rhs)) {
       tree
     } else {
-      StmtDelayed(lhs.asInstanceOf[Expr], rhs.asInstanceOf[Expr]) withLoc tree.loc
+      StmtDelayed(lhs.asInstanceOf[Expr], rhs.asInstanceOf[Expr]) withLocOf tree
     }
-  }
 
-  def apply(tree: StmtOutcall)(output: Tree, func: Tree, inputs: List[Tree]): StmtOutcall = {
+  def apply(tree: StmtOutcall)(output: Tree, func: Tree, inputs: List[Tree]): StmtOutcall =
     if ((output eq tree.output) && (func eq tree.func) && (inputs eq tree.inputs)) {
       tree
     } else {
-      assert(inputs forall {
-        _.isInstanceOf[Expr]
-      })
+      assert(inputs.forall(_.isInstanceOf[Expr]))
       StmtOutcall(
         output.asInstanceOf[Expr],
         func.asInstanceOf[Expr],
         inputs.asInstanceOf[List[Expr]]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: StmtExpr)(expr: Tree): StmtExpr = {
+  def apply(tree: StmtExpr)(expr: Tree): StmtExpr =
     if (expr eq tree.expr) {
       tree
     } else {
-      StmtExpr(expr.asInstanceOf[Expr]) withLoc tree.loc
+      StmtExpr(expr.asInstanceOf[Expr]) withLocOf tree
     }
-  }
 
-  def apply(tree: StmtWait)(cond: Tree): StmtWait = {
+  def apply(tree: StmtWait)(cond: Tree): StmtWait =
     if (cond eq tree.cond) {
       tree
     } else {
-      StmtWait(cond.asInstanceOf[Expr]) withLoc tree.loc
+      StmtWait(cond.asInstanceOf[Expr]) withLocOf tree
     }
-  }
 
   //////////////////////////////////////////////////////////////////////////////
   // Case
   //////////////////////////////////////////////////////////////////////////////
 
-  def apply(tree: CaseSplice)(spliceable: Tree): CaseSplice = {
+  def apply(tree: CaseSplice)(spliceable: Tree): CaseSplice =
     if (spliceable eq tree.tree) {
       tree
     } else {
-      CaseSplice(spliceable.asInstanceOf[Spliceable]) withLoc tree.loc
+      CaseSplice(spliceable.asInstanceOf[Spliceable]) withLocOf tree
     }
-  }
 
-  def apply(tree: CaseRegular)(cond: List[Tree], stmts: List[Tree]): CaseRegular = {
+  def apply(tree: CaseRegular)(cond: List[Tree], stmts: List[Tree]): CaseRegular =
     if ((cond eq tree.cond) && (stmts eq tree.stmts)) {
       tree
     } else {
-      assert(cond forall {
-        _.isInstanceOf[Expr]
-      })
-      assert(stmts forall {
-        _.isInstanceOf[Stmt]
-      })
-      CaseRegular(cond.asInstanceOf[List[Expr]], stmts.asInstanceOf[List[Stmt]]) withLoc tree.loc
+      assert(cond.forall(_.isInstanceOf[Expr]))
+      assert(stmts.forall(_.isInstanceOf[Stmt]))
+      CaseRegular(cond.asInstanceOf[List[Expr]], stmts.asInstanceOf[List[Stmt]]) withLocOf tree
     }
-  }
 
-  def apply(tree: CaseDefault)(stmts: List[Tree]): CaseDefault = {
+  def apply(tree: CaseDefault)(stmts: List[Tree]): CaseDefault =
     if (stmts eq tree.stmts) {
       tree
     } else {
-      assert(stmts forall {
-        _.isInstanceOf[Stmt]
-      })
-      CaseDefault(stmts.asInstanceOf[List[Stmt]]) withLoc tree.loc
+      assert(stmts.forall(_.isInstanceOf[Stmt]))
+      CaseDefault(stmts.asInstanceOf[List[Stmt]]) withLocOf tree
     }
-  }
 
   //////////////////////////////////////////////////////////////////////////////
   // Expr
   //////////////////////////////////////////////////////////////////////////////
 
-  def apply(tree: ExprCall)(expr: Tree, args: List[Tree]): ExprCall = {
+  def apply(tree: ExprCall)(expr: Tree, args: List[Tree]): ExprCall =
     if ((expr eq tree.expr) && (args eq tree.args)) {
       tree
     } else {
-      assert(args forall {
-        _.isInstanceOf[Arg]
-      })
-      ExprCall(expr.asInstanceOf[Expr], args.asInstanceOf[List[Arg]]) withLoc tree.loc
+      assert(args.forall(_.isInstanceOf[Arg]))
+      ExprCall(expr.asInstanceOf[Expr], args.asInstanceOf[List[Arg]]) withLocOf tree
     }
-  }
 
-  def apply(tree: ExprBuiltin)(args: List[Tree]): ExprBuiltin = {
+  def apply(tree: ExprBuiltin)(args: List[Tree]): ExprBuiltin =
     if (args eq tree.args) {
       tree
     } else {
-      assert(args forall { _.isInstanceOf[Arg] })
-      tree.copy(args = args.asInstanceOf[List[Arg]]) withLoc tree.loc
+      assert(args.forall(_.isInstanceOf[Arg]))
+      tree.copy(args = args.asInstanceOf[List[Arg]]) withLocOf tree
     }
-  }
 
-  def apply(tree: ExprUnary)(expr: Tree): ExprUnary = {
+  def apply(tree: ExprUnary)(expr: Tree): ExprUnary =
     if (expr eq tree.expr) {
       tree
     } else {
-      tree.copy(expr = expr.asInstanceOf[Expr]) withLoc tree.loc
+      tree.copy(expr = expr.asInstanceOf[Expr]) withLocOf tree
     }
-  }
 
-  def apply(tree: ExprBinary)(lhs: Tree, rhs: Tree): ExprBinary = {
+  def apply(tree: ExprBinary)(lhs: Tree, rhs: Tree): ExprBinary =
     if ((lhs eq tree.lhs) && (rhs eq tree.rhs)) {
       tree
     } else {
-      tree.copy(lhs = lhs.asInstanceOf[Expr], rhs = rhs.asInstanceOf[Expr]) withLoc tree.loc
+      tree.copy(lhs = lhs.asInstanceOf[Expr], rhs = rhs.asInstanceOf[Expr]) withLocOf tree
     }
-  }
 
-  def apply(tree: ExprCond)(cond: Tree, thenExpr: Tree, elseExpr: Tree): ExprCond = {
+  def apply(tree: ExprCond)(cond: Tree, thenExpr: Tree, elseExpr: Tree): ExprCond =
     if ((cond eq tree.cond) && (thenExpr eq tree.thenExpr) && (elseExpr eq tree.elseExpr)) {
       tree
     } else {
@@ -1460,38 +1206,32 @@ object TreeCopier {
         cond.asInstanceOf[Expr],
         thenExpr.asInstanceOf[Expr],
         elseExpr.asInstanceOf[Expr]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: ExprRep)(count: Tree, expr: Tree): ExprRep = {
+  def apply(tree: ExprRep)(count: Tree, expr: Tree): ExprRep =
     if ((count eq tree.count) && (expr eq tree.expr)) {
       tree
     } else {
-      ExprRep(count.asInstanceOf[Expr], expr.asInstanceOf[Expr]) withLoc tree.loc
+      ExprRep(count.asInstanceOf[Expr], expr.asInstanceOf[Expr]) withLocOf tree
     }
-  }
 
-  def apply(tree: ExprCat)(parts: List[Tree]): ExprCat = {
+  def apply(tree: ExprCat)(parts: List[Tree]): ExprCat =
     if (parts eq tree.parts) {
       tree
     } else {
-      assert(parts forall {
-        _.isInstanceOf[Expr]
-      })
-      ExprCat(parts.asInstanceOf[List[Expr]]) withLoc tree.loc
+      assert(parts.forall(_.isInstanceOf[Expr]))
+      ExprCat(parts.asInstanceOf[List[Expr]]) withLocOf tree
     }
-  }
 
-  def apply(tree: ExprIndex)(expr: Tree, index: Tree): ExprIndex = {
+  def apply(tree: ExprIndex)(expr: Tree, index: Tree): ExprIndex =
     if ((expr eq tree.expr) && (index eq tree.index)) {
       tree
     } else {
-      ExprIndex(expr.asInstanceOf[Expr], index.asInstanceOf[Expr]) withLoc tree.loc
+      ExprIndex(expr.asInstanceOf[Expr], index.asInstanceOf[Expr]) withLocOf tree
     }
-  }
 
-  def apply(tree: ExprSlice)(expr: Tree, lIdx: Tree, rIdx: Tree): ExprSlice = {
+  def apply(tree: ExprSlice)(expr: Tree, lIdx: Tree, rIdx: Tree): ExprSlice =
     if ((expr eq tree.expr) && (lIdx eq tree.lIdx) && (rIdx eq tree.rIdx)) {
       tree
     } else {
@@ -1499,121 +1239,107 @@ object TreeCopier {
         expr = expr.asInstanceOf[Expr],
         lIdx = lIdx.asInstanceOf[Expr],
         rIdx = rIdx.asInstanceOf[Expr]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: ExprDot)(expr: Tree, idxs: List[Tree]): ExprDot = {
+  def apply(tree: ExprDot)(expr: Tree, idxs: List[Tree]): ExprDot =
     if ((expr eq tree.expr) && (idxs eq tree.idxs)) {
       tree
     } else {
-      assert(idxs forall {
-        _.isInstanceOf[Expr]
-      })
+      assert(idxs.forall(_.isInstanceOf[Expr]))
       tree.copy(
         expr = expr.asInstanceOf[Expr],
         idxs = idxs.asInstanceOf[List[Expr]]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: ExprSel)(expr: Tree): ExprSel = {
+  def apply(tree: ExprSel)(expr: Tree): ExprSel =
     if (expr eq tree.expr) {
       tree
     } else {
       tree.copy(
         expr = expr.asInstanceOf[Expr]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: ExprSymSel)(expr: Tree): ExprSymSel = {
+  def apply(tree: ExprSymSel)(expr: Tree): ExprSymSel =
     if (expr eq tree.expr) {
       tree
     } else {
       tree.copy(
         expr = expr.asInstanceOf[Expr]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
-  def apply(tree: ExprIdent)(idxs: List[Tree]): ExprIdent = {
+  def apply(tree: ExprIdent)(idxs: List[Tree]): ExprIdent =
     if (idxs eq tree.idxs) {
       tree
     } else {
-      assert(idxs forall { _.isInstanceOf[Expr] })
-      tree.copy(idxs = idxs.asInstanceOf[List[Expr]]) withLoc tree.loc
+      assert(idxs.forall(_.isInstanceOf[Expr]))
+      tree.copy(idxs = idxs.asInstanceOf[List[Expr]]) withLocOf tree
     }
-  }
 
-  def apply(tree: ExprOld)(expr: Tree): ExprOld = {
+  def apply(tree: ExprOld)(expr: Tree): ExprOld =
     if (expr eq tree.expr) {
       tree
     } else {
-      ExprOld(expr.asInstanceOf[Expr]) withLoc tree.loc
+      ExprOld(expr.asInstanceOf[Expr]) withLocOf tree
     }
-  }
 
-  def apply(tree: ExprThis)(expr: Tree): ExprThis = {
+  def apply(tree: ExprThis)(expr: Tree): ExprThis =
     if (expr eq tree.expr) {
       tree
     } else {
-      ExprThis(expr.asInstanceOf[Expr]) withLoc tree.loc
+      ExprThis(expr.asInstanceOf[Expr]) withLocOf tree
     }
-  }
 
-  def apply(tree: ExprCast)(expr: Tree): ExprCast = {
+  def apply(tree: ExprCast)(expr: Tree): ExprCast =
     if (expr eq tree.expr) {
       tree
     } else {
-      tree.copy(expr = expr.asInstanceOf[Expr]) withLoc tree.loc
+      tree.copy(expr = expr.asInstanceOf[Expr]) withLocOf tree
     }
-  }
 
   //////////////////////////////////////////////////////////////////////////////
   // Arg
   //////////////////////////////////////////////////////////////////////////////
 
-  def apply(tree: ArgP)(expr: Tree): ArgP = {
+  def apply(tree: ArgP)(expr: Tree): ArgP =
     if (expr eq tree.expr) {
       tree
     } else {
-      ArgP(expr.asInstanceOf[Expr]) withLoc tree.loc
+      ArgP(expr.asInstanceOf[Expr]) withLocOf tree
     }
-  }
 
-  def apply(tree: ArgN)(expr: Tree): ArgN = {
+  def apply(tree: ArgN)(expr: Tree): ArgN =
     if (expr eq tree.expr) {
       tree
     } else {
-      tree.copy(expr = expr.asInstanceOf[Expr]) withLoc tree.loc
+      tree.copy(expr = expr.asInstanceOf[Expr]) withLocOf tree
     }
-  }
 
-  def apply(tree: ArgD)(idxs: List[Tree], expr: Tree): ArgD = {
+  def apply(tree: ArgD)(idxs: List[Tree], expr: Tree): ArgD =
     if ((idxs eq tree.idxs) && (expr eq tree.expr)) {
       tree
     } else {
-      assert(idxs forall {
-        _.isInstanceOf[Expr]
-      })
+      assert(idxs.forall(_.isInstanceOf[Expr]))
       tree.copy(
         idxs = idxs.asInstanceOf[List[Expr]],
         expr = expr.asInstanceOf[Expr]
-      ) withLoc tree.loc
+      ) withLocOf tree
     }
-  }
 
   //////////////////////////////////////////////////////////////////////////////
   // Thicket
   //////////////////////////////////////////////////////////////////////////////
 
-  def apply(tree: Thicket)(trees: List[Tree]): Thicket = {
+  def apply(tree: Thicket)(trees: List[Tree]): Thicket =
     if (trees eq tree.trees) {
       tree
     } else {
       Thicket(trees)
     }
-  }
+
+  // $COVERAGE-ON$
 
 }
