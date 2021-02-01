@@ -4,7 +4,7 @@
 // See the LICENSE file for the precise wording of the license.
 //
 // DESCRIPTION:
-// Compiler profiling
+// Internal profiling utilities, for developer assistance only
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.core
@@ -14,6 +14,8 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 
 trait Profiling { this: CompilerContext =>
+
+  // $COVERAGE-OFF$ Debug code
 
   private val measurements = mutable.Map[List[String], Double]()
   private val trace: ThreadLocal[List[String]] = ThreadLocal.withInitial[List[String]](() => Nil)
@@ -85,7 +87,8 @@ trait Profiling { this: CompilerContext =>
     writer.println(f"${"TOTAL".padTo(width, ' ')} $total2%8.2f 100.00%%")
 
     writer.flush()
-
   }
+
+  // $COVERAGE-ON$
 
 }
