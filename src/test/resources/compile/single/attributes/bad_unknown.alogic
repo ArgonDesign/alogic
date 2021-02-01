@@ -1,0 +1,3 @@
+(* unknownAttribute *)
+network bad_unknown {}
+// :1: ERROR: Unknown attribute 'unknownAttribute'

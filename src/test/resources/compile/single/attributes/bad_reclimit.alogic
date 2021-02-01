@@ -1,0 +1,7 @@
+fsm bad_reclimit {
+  (* reclimit *)
+  void main() {
+    fence;
+  }
+}
+// :2: ERROR: 'reclimit' attribute must be an expression

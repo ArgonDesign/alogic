@@ -1,0 +1,3 @@
+(* liftsrams = true *)
+network bad_liftsrams {}
+// :1: ERROR: 'liftsrams' attribute is a boolean flag

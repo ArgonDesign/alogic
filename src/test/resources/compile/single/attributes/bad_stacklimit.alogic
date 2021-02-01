@@ -1,0 +1,7 @@
+(* stacklimit *)
+fsm bad_reclimit {
+  void main() {
+    fence;
+  }
+}
+// :1: ERROR: 'stacklimit' attribute must be an expression

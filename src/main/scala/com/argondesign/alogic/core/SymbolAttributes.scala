@@ -220,11 +220,11 @@ class SymbolAttributes {
     ): Unit =
     attr foreach {
       case AttrBool("liftsrams")                     => liftSrams set true
-      case a @ Attr("liftsrams")                     => cc.error(a, "'liftSrams' attribute is a boolean flag")
+      case a @ Attr("liftsrams")                     => cc.error(a, "'liftsrams' attribute is a boolean flag")
       case AttrExpr("stacklimit", ExprNum(_, value)) => stackLimit set value.toInt
       case a @ Attr("stacklimit")                    => cc.error(a, "'stacklimit' attribute must be an expression")
       case AttrExpr("reclimit", ExprNum(_, value))   => recLimit set value.toInt
-      case a @ Attr("reclimit")                      => cc.error(a, "'stacklimit' attribute must be an expression")
+      case a @ Attr("reclimit")                      => cc.error(a, "'reclimit' attribute must be an expression")
       case a @ Attr(name)                            => cc.error(a, s"Unknown attribute '$name'")
     }
 
