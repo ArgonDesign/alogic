@@ -284,13 +284,19 @@ object Elaborate {
                   checkProgress(processed.iterator.map(_._1)) match {
                     case Left(messages) => Failure(messages)
                     case Right(true)    => // Made some progress
-                      // Incorporate progress
-                      val merged = processed map {
-                        case (Finished(tree), _)   => (true, tree) // Completed result earlier
-                        case (Complete(tree), _)   => (true, tree) // Completed result just now
-                        case (Partial(tree, _), _) => (false, tree) // Partial progress
-                        case (_: Unknown, tree)    => (false, tree) // No progress
-                        case _                     => unreachable // Failures checked above
+                      // Incorporate progress, drop empty scopes while at it
+                      val merged = processed flatMap {
+                        case (Finished(tree), _) =>
+                          Iterator.single((true, tree)) // Completed result earlier
+                        case (Complete(DescGenScope(_, _, Nil)), _) =>
+                          Iterator.empty // Completed result just now, drop empty scope
+                        case (Complete(tree), _) =>
+                          Iterator.single((true, tree)) // Completed result just now
+                        case (Partial(tree, _), _) =>
+                          Iterator.single((false, tree)) // Partial progress
+                        case (_: Unknown, tree) =>
+                          Iterator.single((false, tree)) // No progress
+                        case _ => unreachable // Failures checked above
                       } flatMap {
                         case (flag, Thicket(trees)) => trees.iterator.map((flag, _))
                         case (_, Stump)             => Iterator.empty

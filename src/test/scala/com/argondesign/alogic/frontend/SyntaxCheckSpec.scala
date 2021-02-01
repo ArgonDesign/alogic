@@ -228,13 +228,27 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
                    | default: b;
                    |}""".stripMargin.asTree[Stmt]()
 
-      tree rewrite checker shouldBe StmtError()
+      tree rewrite checker
 
       cc.messages should have length 2
       cc.messages(0) should beThe[Error]("Multiple 'default' clauses specified in case statement")
       cc.messages(0).loc.line shouldBe 2
       cc.messages(1) should beThe[Error]("Multiple 'default' clauses specified in case statement")
       cc.messages(1).loc.line shouldBe 3
+    }
+
+    "reject case statements with default clasue not in last position" in {
+      val tree = """case(1) {
+                   | default: a;
+                   | 1: b;
+                   |}""".stripMargin.asTree[Stmt]()
+
+      tree rewrite checker
+
+      cc.messages.loneElement should beThe[Error](
+        "'default' clause must come last in a case statement"
+      )
+      cc.messages.loneElement.loc.line shouldBe 2
     }
 
     "reject disallowed package contents" - {

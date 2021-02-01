@@ -276,15 +276,18 @@ final class SyntaxCheck(implicit cc: CompilerContext) extends StatelessTreeTrans
       }
 
     case StmtCase(_, cases) =>
-      val defaults = cases collect { case c: CaseDefault => c }
-      if (defaults.lengthIs <= 1) {
-        tree
-      } else {
-        defaults foreach {
-          cc.error(_, "Multiple 'default' clauses specified in case statement")
-        }
-        StmtError() withLoc tree.loc
+      cases.collect { case c: CaseDefault => c } match {
+        case Nil => // OK
+        case default :: Nil =>
+          if (default ne cases.last) {
+            cc.error(default, "'default' clause must come last in a case statement")
+          }
+        case defaults =>
+          defaults foreach {
+            cc.error(_, "Multiple 'default' clauses specified in case statement")
+          }
       }
+      tree
 
     case StmtAssign(lhs, _) =>
       if (lhs.isLValueExpr) {

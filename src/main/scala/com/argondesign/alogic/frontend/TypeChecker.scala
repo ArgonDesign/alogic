@@ -205,12 +205,7 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
           case _                                    => unreachable
         }
     def lastStmt(trees: List[Tree]): Option[Stmt] =
-      trees
-        .filter {
-          case StmtSplice(DescGenScope(_, _, Nil)) => false
-          case _                                   => true
-        }
-        .lastOption
+      trees.lastOption
         .flatMap {
           case StmtSplice(DescGenScope(_, _, body)) => lastStmt(body)
           case stmt: Stmt                           => Some(stmt)
