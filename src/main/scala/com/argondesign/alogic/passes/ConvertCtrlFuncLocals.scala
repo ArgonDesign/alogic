@@ -110,7 +110,7 @@ final class ConvertCtrlFuncLocals(implicit cc: CompilerContext) extends Stateles
         }
       }
       // Add total number of local variable bits to stats
-      cc.stats((symbol.hierName, "local-bits")) = localSymbols.foldLeft(0)(_ + _.kind.width.toInt)
+      cc.statistics.set(symbol, "local-bits", localSymbols.foldLeft(0)(_ + _.kind.width.toInt))
       //
       None
 

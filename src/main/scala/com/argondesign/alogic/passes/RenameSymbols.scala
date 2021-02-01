@@ -213,6 +213,9 @@ object RenameSymbols {
                       .replace(",", "_")
                       .replace("]", "")
                       .replace("-", "n")
+                      .replace("(", cc.sep)
+                      .replace("=", "_")
+                      .replace(")", "")
                     rename(symbol, fixIfKeyword(newName))
                   }
                 }

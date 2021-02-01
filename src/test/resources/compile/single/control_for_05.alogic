@@ -123,4 +123,4 @@ fsm control_for_05 {
 //
 // endmodule
 // }}}
-// @stats/control_for_05/states: 8
+// @stats/$TEST_FILE|control_for_05|states: 8

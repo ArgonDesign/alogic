@@ -70,4 +70,4 @@ fsm control_loop_02 {
 //
 // endmodule
 // }}}
-// @stats/control_loop_02/states: 4
+// @stats/$TEST_FILE|control_loop_02|states: 4

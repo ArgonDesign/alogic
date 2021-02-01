@@ -39,7 +39,7 @@ fsm foreign_func_00 {
 //
 // @sim/expect: TIMEOUT at 100ns
 //
-// @manifest/foreign-functions/f {{{
+// @manifest/foreign-functions|f {{{
 //  {
 //    "return" : {
 //      "width" : 1,

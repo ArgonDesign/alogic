@@ -54,5 +54,5 @@ fsm control_if_01 {
 //
 //  endmodule
 // }}}
-// @stats/control_if_01/stack-depth: 0
-// @stats/control_if_01/states: 3
+// @stats/$TEST_FILE|control_if_01|stack-depth: 0
+// @stats/$TEST_FILE|control_if_01|states: 3

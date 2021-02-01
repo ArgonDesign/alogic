@@ -82,4 +82,4 @@ fsm control_for_12 {
 //
 // endmodule
 // }}}
-// @stats/control_for_12/states: 4
+// @stats/$TEST_FILE|control_for_12|states: 4

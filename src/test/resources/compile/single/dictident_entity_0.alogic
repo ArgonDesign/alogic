@@ -11,4 +11,4 @@ network dictident_entity_0#[0] {
 //    assign o = i;
 //  endmodule
 // }}}
-// @manifest/top-levels/dictident_entity_0__0/source-name: "dictident_entity_0#[0]"
+// @manifest/top-levels|dictident_entity_0__0|source-name: "dictident_entity_0#[0]"

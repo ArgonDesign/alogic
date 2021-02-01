@@ -96,4 +96,4 @@ fsm control_while_01 {
 //
 // endmodule
 // }}}
-// @stats/control_while_01/states: 6
+// @stats/$TEST_FILE|control_while_01|states: 6

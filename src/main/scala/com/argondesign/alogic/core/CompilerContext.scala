@@ -42,7 +42,7 @@ class CompilerContext(
 
   val manifest: mutable.Map[String, Any] = mutable.LinkedHashMap[String, Any]()
 
-  val stats: mutable.Map[(String, String), Any] = mutable.Map.empty
+  val statistics: Statistics = new Statistics
 
   //////////////////////////////////////////////////////////////////////////////
   // Compile the given source

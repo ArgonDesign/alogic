@@ -181,17 +181,7 @@ object WriteAux extends PairsTransformerPass {
     // Write out the stats
     if (cc.settings.stats) {
       val w = cc.getOutputWriter("stats.json")
-      val stats: ListMap[String, ListMap[String, Any]] = ListMap from {
-        cc.stats.groupBy(_._1._1).toSeq.sortBy(_._1) map {
-          case (hierName, dict) =>
-            hierName -> {
-              ListMap from {
-                dict.toSeq.sortBy(_._1) map { case ((_, key), value) => key -> value }
-              }
-            }
-        }
-      }
-      Json.write(w, stats)
+      cc.statistics.write(w)
       w.close()
     }
 

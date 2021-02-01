@@ -159,7 +159,7 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends StatefulTree
         }
       }
 
-      cc.stats((defn.symbol.hierName, "states")) = nStates
+      cc.statistics.set(defn.symbol, "states", nStates)
 
       // Pick up the entry state
       val (entryStates, otherStates) = trueStates partition { _.symbol.attr.entry.isSet }

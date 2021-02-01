@@ -24,7 +24,6 @@ private[frontend] object Specialize {
       body: List[Tree]
     )(
       implicit
-      cc: CompilerContext,
       fe: Frontend
     ): String = {
     def gatherParamDescs(trees: List[Tree]): List[Desc] = trees map {
@@ -37,33 +36,32 @@ private[frontend] object Specialize {
       case _                        => Nil
     }
 
-    gatherParamDescs(body) map {
-      case d: DescParam =>
-        fe.evaluate(d.symbol, d.ref.loc, unreachable, markUsed = false)
-          .flatMap(fe.evaluate(_, unreachable))
-          .get
-          .pipe {
-            case v if v >= 0 => s"${d.name}_$v"
-            case v           => s"${d.name}_n${-v}"
+    gatherParamDescs(body)
+      .map {
+        case d: DescParam =>
+          fe.evaluate(d.symbol, d.ref.loc, unreachable, markUsed = false)
+            .flatMap(fe.evaluate(_, unreachable))
+            .get
+            .pipe(v => s"${d.name}=$v")
+        case d: DescParamType =>
+          def typeToName(kind: TypeFund): String = kind match {
+            case TypeSInt(size)          => s"i$size"
+            case TypeUInt(size)          => s"u$size"
+            case TypeNum(true)           => "int"
+            case TypeNum(false)          => "uint"
+            case TypeVector(eType, size) => s"${typeToName(eType)}[$size]"
+            case TypeVoid                => "void"
+            case TypeStr                 => unreachable
+            case TypeRecord(symbol, _)   => symbol.name
+            case TypeEntity(symbol, _)   => symbol.name
           }
-      case d: DescParamType =>
-        def typeToName(kind: TypeFund): String = kind match {
-          case TypeSInt(size)          => s"i$size"
-          case TypeUInt(size)          => s"u$size"
-          case TypeNum(true)           => "int"
-          case TypeNum(false)          => "uint"
-          case TypeVector(eType, size) => s"${typeToName(eType)}[$size]"
-          case TypeVoid                => "void"
-          case TypeStr                 => unreachable
-          case TypeRecord(symbol, _)   => symbol.name
-          case TypeEntity(symbol, _)   => symbol.name
-        }
-        fe.typeOf(d.symbol, d.symbol.loc)
-          .map(kind => typeToName(kind.asType.kind))
-          .get
-          .pipe(name => s"${d.name}_$name")
-      case _ => unreachable
-    } mkString cc.sep
+          fe.typeOf(d.symbol, d.symbol.loc)
+            .map(kind => typeToName(kind.asType.kind))
+            .get
+            .pipe(name => s"${d.name}=$name")
+        case _ => unreachable
+      }
+      .mkString("(", ",", ")")
   }
 
   def apply(
@@ -138,7 +136,7 @@ private[frontend] object Specialize {
                     fe.typeCheck(newDesc) tapEach { _ =>
                       // Assign the name of the result symbol, now that we
                       // type checking has passed
-                      val newName = s"${symbol.name}${cc.sep}${paramsSuffix(body)}"
+                      val newName = symbol.name + paramsSuffix(body)
                       newSymbol.name = newName
                       newSymbol.origName = newName
                     } flatMap { _ =>

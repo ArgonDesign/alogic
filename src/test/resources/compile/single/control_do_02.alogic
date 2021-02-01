@@ -70,4 +70,4 @@ fsm control_do_02 {
 //
 // endmodule
 // }}}
-// @stats/control_do_02/states: 4
+// @stats/$TEST_FILE|control_do_02|states: 4

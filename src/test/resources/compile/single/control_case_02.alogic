@@ -53,5 +53,5 @@ fsm control_case_02 {
 //
 //  endmodule
 // }}}
-// @stats/control_case_02/stack-depth: 0
-// @stats/control_case_02/states: 2
+// @stats/$TEST_FILE|control_case_02|stack-depth: 0
+// @stats/$TEST_FILE|control_case_02|states: 2

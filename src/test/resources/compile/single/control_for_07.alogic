@@ -177,4 +177,4 @@ fsm control_for_07 {
 //
 // endmodule
 // }}}
-// @stats/control_for_07/states: 12
+// @stats/$TEST_FILE|control_for_07|states: 12

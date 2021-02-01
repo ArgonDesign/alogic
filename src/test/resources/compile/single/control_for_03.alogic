@@ -142,4 +142,4 @@ fsm control_for_03 {
 //
 // endmodule
 // }}}
-// @stats/control_for_03/states: 10
+// @stats/$TEST_FILE|control_for_03|states: 10

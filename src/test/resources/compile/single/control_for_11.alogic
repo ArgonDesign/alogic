@@ -110,4 +110,4 @@ fsm control_for_11 {
 //
 // endmodule
 // }}}
-// @stats/control_for_11/states: 6
+// @stats/$TEST_FILE|control_for_11|states: 6

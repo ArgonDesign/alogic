@@ -43,7 +43,7 @@ fsm foreign_func_05 {
 //  - .*/foreign_func_05\.v:\d+: Verilog \$finish
 // }}}
 //
-// @manifest/foreign-functions/f {{{
+// @manifest/foreign-functions|f {{{
 //  {
 //    "return" : {
 //      "width" : 0,

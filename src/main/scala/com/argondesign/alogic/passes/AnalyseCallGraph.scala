@@ -453,7 +453,7 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatelessTree
 
       val stackDepth = returnStackDepth(defn.symbol, callArcs, adjMat, indMat, recLimtis)
 
-      cc.stats((defn.symbol.hierName, "stack-depth")) = stackDepth
+      cc.statistics.set(defn.symbol, "stack-depth", stackDepth)
 
       if (stackDepth == 0) {
         TypeAssigner(defn.copy(body = newBody) withLoc defn.loc)

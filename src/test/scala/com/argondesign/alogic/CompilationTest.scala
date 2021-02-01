@@ -671,23 +671,6 @@ abstract class CompilationTest(val parallel: Boolean)
     }
   }
 
-  private def checkJson(name: String, json: Json, expected: Map[String, String]): Unit = {
-    expected foreach {
-      case (keys, value) =>
-        val root: io.circe.ACursor = json.hcursor
-        val selection = keys.split("/").foldLeft(root)({ case (c, k) => c.downField(k) })
-        val expectedValue = io.circe.parser.parse(value) match {
-          case Left(failure) =>
-            fail(s"Failed to parse expected '$name' entry '$keys': " + failure.message)
-          case Right(json) => json
-        }
-        selection.focus match {
-          case None       => fail(s"No entry '$keys' in '$name'")
-          case Some(json) => assert(json == expectedValue, s"'$name' - '$keys'")
-        }
-    }
-  }
-
   sealed private trait MessageSpec {
     val fileLineOpt: Option[(String, Int)]
     val patterns: List[String]
@@ -829,7 +812,25 @@ abstract class CompilationTest(val parallel: Boolean)
 
     finishPendingMessageSpec()
 
-    (attrs.toMap, dicts.toMap, mesgSpecs.toList)
+    def expandDollarVars(string: String): String =
+      string
+        .replaceAll("\\$TEST_DIR", checkFile.getParentFile.getCanonicalPath)
+        .replaceAll("\\$TEST_FILE", checkFile.getCanonicalPath)
+
+    val attrMap = Map from {
+      attrs.iterator.map { case (k, v) => expandDollarVars(k) -> expandDollarVars(v) }
+    }
+
+    val dictMap = Map.from {
+      dicts.iterator.map {
+        case (k, dict) =>
+          expandDollarVars(k) -> Map.from {
+            dict.iterator.map { case (k, v) => expandDollarVars(k) -> expandDollarVars(v) }
+          }
+      }
+    }
+
+    (attrMap, dictMap, mesgSpecs.toList)
   } tap {
     case (attr, dict, _) =>
       val validAttr = Set(
@@ -899,7 +900,7 @@ abstract class CompilationTest(val parallel: Boolean)
             args
               .split(" ")
               .filter(_.nonEmpty)
-              .map(_.replaceAll("\\$TESTDIR", sourceDir.toString))
+              .map(_.replaceAll("\\$TEST_DIR", sourceDir.toString))
               .foreach(buf.append)
 
           // Arguments specified in the tests
@@ -1020,7 +1021,7 @@ abstract class CompilationTest(val parallel: Boolean)
             }
 
           dict get "manifest" foreach { expected =>
-            checkJson("manifest.json", manifest, expected)
+            CheckJson(manifest, expected)
           }
 
           //////////////////////////////////////////////////////////////////////
@@ -1034,7 +1035,7 @@ abstract class CompilationTest(val parallel: Boolean)
                 case Right(json)   => json
               }
 
-            checkJson("stats.json", stats, expected)
+            CheckJson(stats, expected)
           }
 
           val outTop = attr.getOrElse(

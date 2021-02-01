@@ -31,7 +31,7 @@ fsm foreign_func_04 {
 //  - .*/foreign_func_04\.v:\d+: Verilog \$finish
 // }}}
 //
-// @manifest/foreign-functions/yay {{{
+// @manifest/foreign-functions|yay {{{
 //  {
 //    "return" : {
 //      "width" : 0,

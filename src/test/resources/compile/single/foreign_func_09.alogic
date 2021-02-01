@@ -54,7 +54,7 @@ network foreign_func_09 {
 //  - .*/foreign_func_09__a\.v:\d+: Verilog \$finish
 // }}}
 //
-// @manifest/foreign-functions/f {{{
+// @manifest/foreign-functions|f {{{
 //  {
 //    "return" : {
 //      "width" : 0,

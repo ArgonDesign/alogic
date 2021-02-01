@@ -142,4 +142,4 @@ fsm control_while_03 {
 //
 // endmodule
 // }}}
-// @stats/control_while_03/states: 10
+// @stats/$TEST_FILE|control_while_03|states: 10

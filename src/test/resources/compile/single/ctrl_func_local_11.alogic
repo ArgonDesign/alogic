@@ -32,4 +32,4 @@ fsm ctrl_func_local_11 {
 //
 //  endmodule
 // }}}
-// @stats/ctrl_func_local_11.main/local-bits: 0
+// @stats/$TEST_FILE|ctrl_func_local_11.main|local-bits: 0

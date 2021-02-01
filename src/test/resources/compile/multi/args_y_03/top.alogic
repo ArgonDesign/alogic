@@ -1,4 +1,4 @@
-// @args: -y $TESTDIR/ydir
+// @args: -y $TEST_DIR/ydir
 import "this_is_the_correct_package" as p;
 
 compile p.connect as top;

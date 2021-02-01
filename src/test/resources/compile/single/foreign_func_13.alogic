@@ -55,7 +55,7 @@ network foreign_func_13 {
 //
 // @sim/expect: TIMEOUT at 100ns
 //
-// @manifest/foreign-functions/f {{{
+// @manifest/foreign-functions|f {{{
 //  {
 //    "return" : {
 //      "width" : 32,

@@ -10,6 +10,7 @@
 package com.argondesign.alogic.gcp
 
 import com.argondesign.alogic.BuildInfo
+import com.argondesign.alogic.CheckJson
 import com.argondesign.alogic.MockitoSugar._
 import com.google.cloud.functions.HttpRequest
 import com.google.cloud.functions.HttpResponse
@@ -20,7 +21,6 @@ import org.scalatest.matchers.should.Matchers
 
 import java.io._
 import java.net.HttpURLConnection
-import scala.annotation.tailrec
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
 import scala.util.ChainingSyntax
@@ -30,43 +30,6 @@ final class FunctionCompileSpec
     with Matchers
     with OptionValues
     with ChainingSyntax {
-
-  // TODO: Factor this together with the one in CompilationTest
-  private def checkJson(json: io.circe.Json, expected: Map[String, String]): Unit =
-    expected foreach {
-      case (key, value) =>
-        @tailrec
-        def select(key: String, cursor: io.circe.ACursor): io.circe.ACursor = if (key.isEmpty) {
-          cursor
-        } else {
-          val (first, rest) = {
-            def splitEscaped(string: String): (String, String) = {
-              val (first, rest) = string.span(_ != '.')
-              if (first.endsWith("\\")) {
-                val (subFirst, subRest) = splitEscaped(rest.tail)
-                (first.init + "." + subFirst, subRest)
-              } else {
-                (first, rest.tail)
-              }
-            }
-            splitEscaped(key)
-          }
-          val (name, idx) = first.span(_ != '[')
-          val fCursor = cursor.downField(name)
-          select(rest, if (idx.isEmpty) fCursor else fCursor.downN(idx.tail.init.toInt))
-        }
-
-        select(key, json.hcursor).focus match {
-          case None => fail(s"No entry '$key'")
-          case Some(json) =>
-            if (value == "*") {
-              // Wildcard: OK
-            } else {
-              val expectedValue = io.circe.parser.parse(value).fold(_ => fail(), identity)
-              assert(json === expectedValue, s"'$key''")
-            }
-        }
-    }
 
   private val requestHeaders = Map.empty[String, java.util.List[String]].asJava
 
@@ -120,7 +83,7 @@ final class FunctionCompileSpec
       getServicer(request, response)
       verify()
       val resultJson = io.circe.parser.parse(getContent()).fold(_ => fail(), identity)
-      checkJson(resultJson, expected.toMap)
+      CheckJson(resultJson, expected.toMap)
     }
 
     def withServicer(servicer: (HttpRequest, HttpResponse) => Unit): checkOk =
@@ -268,8 +231,8 @@ final class FunctionCompileSpec
 
         checkOk(request)(
           "code" -> "\"ok\"",
-          "outputFiles.out/example\\.v" -> "*",
-          "outputFiles.out/manifest\\.json" -> "*",
+          "outputFiles|out/example.v" -> "*",
+          "outputFiles|out/manifest.json" -> "*",
           "messages" -> "[]"
         )
       }
@@ -392,8 +355,8 @@ final class FunctionCompileSpec
       checkOk(request)(
         "code" -> "\"crash\"",
         "outputFiles" -> "{}",
-        "messages[0].file" -> "\"\"",
-        "messages[0].category" -> "\"STDERR\""
+        "messages[0]|file" -> "\"\"",
+        "messages[0]|category" -> "\"STDERR\""
       )
     }
 
@@ -413,9 +376,9 @@ final class FunctionCompileSpec
           checkOk(request)(
             "code" -> "\"ok\"",
             "outputFiles" -> "{}",
-            "messages[0].file" -> "\"\"",
-            "messages[0].category" -> "\"ERROR\"",
-            "messages[0].lines[0]" -> s""""Input file $path is outside sandbox""""
+            "messages[0]|file" -> "\"\"",
+            "messages[0]|category" -> "\"ERROR\"",
+            "messages[0]|lines[0]" -> s""""Input file $path is outside sandbox""""
           )
         }
       }
@@ -438,10 +401,10 @@ final class FunctionCompileSpec
       )(
         "code" -> "\"ok\"",
         "outputFiles" -> "{}",
-        "messages[0].file" -> "\"top.alogic\"",
-        "messages[0].line" -> "1",
-        "messages[0].category" -> "\"ERROR\"",
-        "messages[0].lines[0]" -> "\"Imported file is outside sandbox\""
+        "messages[0]|file" -> "\"top.alogic\"",
+        "messages[0]|line" -> "1",
+        "messages[0]|category" -> "\"ERROR\"",
+        "messages[0]|lines[0]" -> "\"Imported file is outside sandbox\""
       )
     }
 

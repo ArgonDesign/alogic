@@ -27,7 +27,7 @@ fsm foreign_func_08 {
 //  - .*/foreign_func_08\.v:\d+: Verilog \$finish
 // }}}
 //
-// @manifest/foreign-functions/f {{{
+// @manifest/foreign-functions|f {{{
 //  {
 //    "return" : {
 //      "width" : 0,
