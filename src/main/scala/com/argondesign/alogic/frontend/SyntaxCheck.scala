@@ -25,7 +25,6 @@ import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeReady
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeValid
 import com.argondesign.alogic.core.FuncVariant
 import com.argondesign.alogic.core.StorageTypes.StorageTypeDefault
-import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
 import com.argondesign.alogic.core.StorageTypes.StorageTypeSlices
 import com.argondesign.alogic.core.StorageTypes.StorageTypeWire
 import com.argondesign.alogic.core.enums.EntityVariant
@@ -34,8 +33,6 @@ import com.argondesign.alogic.util.unreachable
 import scala.collection.mutable
 
 final class SyntaxCheck(implicit cc: CompilerContext) extends StatelessTreeTransformer {
-
-  // TODO: Error for param in Singleton
 
   override val typed: Boolean = false
 
@@ -62,7 +59,7 @@ final class SyntaxCheck(implicit cc: CompilerContext) extends StatelessTreeTrans
     None
   }
 
-  private def entErr(node: Tree, content: String) = {
+  private def entErr(node: Tree, content: String): Unit = {
     val variant = variantStack.top match {
       case EntityVariant.Fsm => "fsm"
       case EntityVariant.Net => "network"
@@ -70,15 +67,12 @@ final class SyntaxCheck(implicit cc: CompilerContext) extends StatelessTreeTrans
       case _                 => unreachable
     }
     cc.error(node, s"'$variant' cannot contain $content")
-    Stump
   }
 
-  private def recErr(node: Tree, content: String) = {
+  private def recErr(node: Tree, content: String): Unit =
     cc.error(node, s"'struct' cannot contain $content")
-    Stump
-  }
 
-  private def notVariant(variant: EntityVariant.Type) =
+  private def notVariant(variant: EntityVariant.Type): Boolean =
     variantStack.nonEmpty && variantStack.top != variant
 
   private def checkEntityBody(ref: Ref, variant: EntityVariant.Type, body: List[Ent]): Unit = {
@@ -109,11 +103,9 @@ final class SyntaxCheck(implicit cc: CompilerContext) extends StatelessTreeTrans
     }
   }
 
-  override def transform(tree: Tree): Tree = tree match {
-
+  override def transform(tree: Tree): Tree = tree tap {
     case UsingOne(_: ExprIdent, None) =>
       cc.error(tree, "Redundant 'using' directive")
-      Stump
 
     case PkgSplice(desc: Desc) =>
       def err(hint: String): Unit = cc.error(desc, s"$hint definition cannot appear in file scope")
@@ -127,14 +119,12 @@ final class SyntaxCheck(implicit cc: CompilerContext) extends StatelessTreeTrans
         case _: DescVal                                  => unreachable
         case _                                           =>
       }
-      tree
 
     case PkgSplice(a: Assertion) =>
       a match {
         case _: AssertionStatic => // OK
         case _                  => cc.error(a, "Only static assertions are allowed in file scope")
       }
-      tree
 
     case node: EntConnect if notVariant(EntityVariant.Net) => entErr(node, "connections")
 
@@ -142,11 +132,9 @@ final class SyntaxCheck(implicit cc: CompilerContext) extends StatelessTreeTrans
 
     case EntSplice(_: DescParam) if singletonStack.top =>
       cc.error(tree, "Singleton entity cannot have parameters. Use a 'const' definition instead.")
-      Stump
 
     case EntSplice(_: DescParamType) if singletonStack.top =>
       cc.error(tree, "Singleton entity cannot have type parameters. Use a 'typedef' instead.")
-      Stump
 
     case EntSplice(desc: Desc) =>
       variantStack.top match {
@@ -156,7 +144,7 @@ final class SyntaxCheck(implicit cc: CompilerContext) extends StatelessTreeTrans
             case _: DescEntity    => entErr(desc, "nested entities")
             case _: DescInstance  => entErr(desc, "instantiations")
             case _: DescSingleton => entErr(desc, "singleton entities")
-            case _                => tree
+            case _                =>
           }
         case EntityVariant.Net =>
           desc match {
@@ -165,7 +153,7 @@ final class SyntaxCheck(implicit cc: CompilerContext) extends StatelessTreeTrans
             case _: DescSram                             => entErr(desc, "SRAM definitions")
             case DescFunc(_, _, funcVariant, _, _, _) if funcVariant != FuncVariant.Xeno =>
               entErr(desc, "function definitions")
-            case _ => tree
+            case _ =>
           }
         case EntityVariant.Ver =>
           desc match {
@@ -178,28 +166,24 @@ final class SyntaxCheck(implicit cc: CompilerContext) extends StatelessTreeTrans
             case _: DescInstance  => entErr(desc, "instantiations")
             case _: DescSingleton => entErr(desc, "singleton entities")
             case _: DescFunc      => entErr(desc, "function definitions")
-            case _                => tree
+            case _                =>
           }
         case _ => unreachable
       }
 
     case EntSplice(assertion: Assertion) =>
       assertion match {
-        case _: AssertionStatic => tree // OK
+        case _: AssertionStatic => // OK
         case _                  => entErr(assertion, "non-static assertions")
       }
 
     case _: DescEntity =>
-      tree tap { _ =>
-        variantStack.pop()
-        singletonStack.pop()
-      }
+      variantStack.pop()
+      singletonStack.pop()
 
     case _: DescSingleton =>
-      tree tap { _ =>
-        variantStack.pop()
-        singletonStack.pop()
-      }
+      variantStack.pop()
+      singletonStack.pop()
 
     case RecSplice(desc: Desc) =>
       desc match {
@@ -211,68 +195,46 @@ final class SyntaxCheck(implicit cc: CompilerContext) extends StatelessTreeTrans
         case _: DescEntity    => recErr(desc, "entity definitions")
         case _: DescSingleton => recErr(desc, "entity definitions")
         case _: DescInstance  => recErr(desc, "instance definitions")
-        case _                => tree
+        case _                =>
       }
 
-    case desc @ DescOut(_, _, _, fc, st, None) =>
-      val newSt = {
-        (fc, st) match {
-          case (FlowControlTypeNone, _: StorageTypeSlices) =>
-            cc.error(
-              tree,
-              s"Output port without flow control cannot use output slices"
-            )
-            StorageTypeReg
-          case (FlowControlTypeValid, _: StorageTypeSlices) =>
-            cc.error(
-              tree,
-              s"Output port with 'sync' flow control cannot use output slices"
-            )
-            StorageTypeReg
-          case _ => st
-        }
-      } tap { st =>
-        if ((variantStack.headOption contains EntityVariant.Ver) && st != StorageTypeDefault) {
-          cc.error(tree, "'verbatim entity' output ports cannot use a storage specifier")
-          StorageTypeDefault
-        } else {
-          st
-        }
+    case DescOut(_, _, _, fc, st, None) =>
+      (fc, st) match {
+        case (FlowControlTypeNone, _: StorageTypeSlices) =>
+          cc.error(tree, s"Output port without flow control cannot use output slices")
+        case (FlowControlTypeValid, _: StorageTypeSlices) =>
+          cc.error(tree, s"Output port with 'sync' flow control cannot use output slices")
+        case _ =>
       }
-      if (newSt eq st) {
-        tree
-      } else {
-        desc.copy(st = newSt) withLoc tree.loc
+      if (variantStack.headOption.contains(EntityVariant.Ver) && st != StorageTypeDefault) {
+        cc.error(tree, "'verbatim entity' output ports cannot use a storage specifier")
       }
 
-    case desc @ DescOut(_, _, _, fc, st, Some(init)) =>
+    case DescOut(_, _, _, fc, st, Some(init)) =>
       (fc, st) pipe {
         case (FlowControlTypeNone, StorageTypeWire) => Some("'wire' storage specifier")
         case (FlowControlTypeValid, _)              => Some("'sync' flow control")
         case (FlowControlTypeReady, _)              => Some("'sync ready' flow control")
         case _                                      => None
-      } map { hint =>
+      } foreach { hint =>
         cc.error(init, s"Output port with $hint cannot have an initializer")
-        desc.copy(initOpt = None) withLoc desc.loc
-      } getOrElse tree
+      }
 
     case _: DescPipeIn | _: DescPipeOut if variantStack.lengthIs <= 1 =>
       cc.error(tree, "Pipeline ports are only allowed inside nested entities")
-      tree
 
     case StmtSplice(desc: Desc) =>
       desc match {
-        case _: DescVar      => tree
-        case _: DescVal      => tree
-        case _: DescStatic   => tree
-        case _: DescGenIf    => tree
-        case _: DescGenFor   => tree
-        case _: DescGenRange => tree
-        case _: DescGenVar   => tree // After Elaboration
-        case _: DescFunc     => tree
+        case _: DescVar      =>
+        case _: DescVal      =>
+        case _: DescStatic   =>
+        case _: DescGenIf    =>
+        case _: DescGenFor   =>
+        case _: DescGenRange =>
+        case _: DescGenVar   => // After Elaboration
+        case _: DescFunc     =>
         case _ =>
           cc.error(tree, "Only variables can be defined in statement position")
-          StmtError() withLoc tree.loc
       }
 
     case StmtCase(_, cases) =>
@@ -287,50 +249,38 @@ final class SyntaxCheck(implicit cc: CompilerContext) extends StatelessTreeTrans
             cc.error(_, "Multiple 'default' clauses specified in case statement")
           }
       }
-      tree
 
     case StmtAssign(lhs, _) =>
-      if (lhs.isLValueExpr) {
-        tree
-      } else {
+      if (!lhs.isLValueExpr) {
         cc.error(lhs, "Invalid expression on left hand side of '='")
-        StmtError() withLoc tree.loc
       }
 
     case StmtUpdate(lhs, op, _) if !lhs.isLValueExpr =>
       cc.error(lhs, s"Invalid expression on left hand side of '$op='")
-      StmtError() withLoc tree.loc
 
     case StmtPost(lhs, op) if !lhs.isLValueExpr =>
       cc.error(lhs, s"Invalid expression on left hand side of '$op'")
-      StmtError() withLoc tree.loc
 
     case StmtGoto(expr) =>
       expr match {
-        case _: ExprCall => tree
+        case _: ExprCall =>
         case _ =>
           cc.error(expr, s"Target of 'goto' statement must be a function call expression")
-          StmtError() withLoc tree.loc
       }
 
     case ExprCat(List(_)) =>
       cc.warning(tree, "Single expression concatenation")
-      tree
 
     case _: StmtBreak if loopLevel == 0 =>
       cc.error(tree, "Break statements are only allowed inside looping statements")
-      StmtError() withLoc tree.loc
 
     case _: StmtContinue if loopLevel == 0 =>
       cc.error(tree, "Continue statements are only allowed inside looping statements")
-      StmtError() withLoc tree.loc
 
     case _: StmtLoop | _: StmtWhile | _: StmtFor | _: StmtDo =>
-      tree tap { _ =>
-        loopLevel -= 1
-      }
+      loopLevel -= 1
 
-    case _ => tree
+    case _ =>
   }
 
   override def finalCheck(tree: Tree): Unit = {

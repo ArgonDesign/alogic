@@ -585,7 +585,6 @@ abstract class TreeTransformer extends (Tree => Tree) with ChainingSyntax {
     case node: StmtWait =>
       val cond = walk(node.cond)
       TreeCopier(node)(cond)
-    case node: StmtError   => node
     case node: StmtComment => node
   }
 

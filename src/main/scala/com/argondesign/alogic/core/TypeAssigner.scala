@@ -133,7 +133,6 @@ object TypeAssigner {
     case node: StmtOutcall  => kind(node)
     case node: StmtExpr     => kind(node)
     case node: StmtWait     => kind(node)
-    case node: StmtError    => kind(node)
     case node: StmtComment  => kind(node)
   }
 
@@ -202,8 +201,6 @@ object TypeAssigner {
   }
 
   private def kind(tree: StmtWait) = TypeCombStmt
-
-  private def kind(tree: StmtError) = TypeError
 
   private def kind(tree: StmtComment) = TypeCombStmt
 
@@ -422,7 +419,6 @@ object TypeAssigner {
   def apply(tree: StmtOutcall): tree.type = assign(tree)(kind(tree))
   def apply(tree: StmtComment): tree.type = assign(tree)(kind(tree))
   def apply(tree: StmtWait): tree.type = assign(tree)(kind(tree))
-  def apply(tree: StmtError): tree.type = assign(tree)(kind(tree))
   def apply(tree: Case): tree.type = assign(tree)(kind(tree))
   def apply(tree: Expr): tree.type = assign(tree)(kind(tree))
   def apply(tree: ExprCall): tree.type = assign(tree)(kind(tree))

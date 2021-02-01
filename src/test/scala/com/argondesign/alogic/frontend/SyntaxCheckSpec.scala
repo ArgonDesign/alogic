@@ -12,37 +12,37 @@ package com.argondesign.alogic.frontend
 import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
-import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeValid
+import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Messages.Error
 import com.argondesign.alogic.core.Messages.Warning
-import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.SourceContext
-import com.argondesign.alogic.core.StorageTypes.StorageTypeReg
 import org.scalatest.freespec.AnyFreeSpec
 
 import scala.collection.immutable.ListMap
 
 final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
 
-  implicit val cc: CompilerContext = new CompilerContext
-  val checker = new SyntaxCheck
+  implicit private val cc: CompilerContext = new CompilerContext
+
+  private def check(tree: Tree): Unit = {
+    tree rewrite new SyntaxCheck should be theSameInstanceAs tree
+  }
 
   "SyntaxCheck should" - {
     "check usage of pipeline port definitions" - {
       "accepting them in nested entities" - {
         for (desc <- List("in pipeline", "out pipeline")) {
           desc in {
-            val tree = s"""network a {
-                          |  new fsm b {
-                          |    $desc;
-                          |    void main() {
-                          |      fence;
-                          |    }
-                          |  }
-                          |}""".stripMargin.asTree[Desc]()
-
-            tree rewrite checker shouldBe tree
+            check {
+              s"""network a {
+                 |  new fsm b {
+                 |    $desc;
+                 |    void main() {
+                 |      fence;
+                 |    }
+                 |  }
+                 |}""".stripMargin.asTree[Desc]()
+            }
 
             cc.messages shouldBe empty
           }
@@ -52,14 +52,14 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       "rejecting them in root entities" - {
         for (desc <- List("in pipeline", "out pipeline")) {
           desc in {
-            val tree = s"""fsm b {
-                          |  $desc;
-                          |  void main() {
-                          |    fence;
-                          |  }
-                          |}""".stripMargin.asTree[Desc]()
-
-            tree rewrite checker
+            check {
+              s"""fsm b {
+                 |  $desc;
+                 |  void main() {
+                 |    fence;
+                 |  }
+                 |}""".stripMargin.asTree[Desc]()
+            }
 
             cc.messages.loneElement should beThe[Error](
               s"Pipeline ports are only allowed inside nested entities"
@@ -72,9 +72,9 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
     "ensure definition statements" - {
       "do not declare" - {
         "input ports" in {
-          val tree = "in bool a;".asTree[Stmt]()
-
-          tree rewrite checker shouldBe StmtError()
+          check {
+            "in bool a;".asTree[Stmt]()
+          }
 
           cc.messages.loneElement should beThe[Error](
             "Only variables can be defined in statement position"
@@ -82,9 +82,9 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
         }
 
         "output ports" in {
-          val tree = "out bool a;".asTree[Stmt]()
-
-          tree rewrite checker shouldBe StmtError()
+          check {
+            "out bool a;".asTree[Stmt]()
+          }
 
           cc.messages.loneElement should beThe[Error](
             "Only variables can be defined in statement position"
@@ -92,9 +92,9 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
         }
 
         "parameters" in {
-          val tree = "param bool a = false;".asTree[Stmt]()
-
-          tree rewrite checker shouldBe StmtError()
+          check {
+            "param bool a = false;".asTree[Stmt]()
+          }
 
           cc.messages.loneElement should beThe[Error](
             "Only variables can be defined in statement position"
@@ -102,9 +102,9 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
         }
 
         "constants" in {
-          val tree = "bool a[2];".asTree[Stmt](SourceContext.FuncCtrl)
-
-          tree rewrite checker shouldBe StmtError()
+          check {
+            "bool a[2];".asTree[Stmt](SourceContext.FuncCtrl)
+          }
 
           cc.messages.loneElement should beThe[Error](
             "Only variables can be defined in statement position"
@@ -112,9 +112,9 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
         }
 
         "arrays" in {
-          val tree = "bool a[2];".asTree[Stmt]()
-
-          tree rewrite checker shouldBe StmtError()
+          check {
+            "bool a[2];".asTree[Stmt]()
+          }
 
           cc.messages.loneElement should beThe[Error](
             "Only variables can be defined in statement position"
@@ -122,9 +122,9 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
         }
 
         "pipeline variables" in {
-          val tree = "pipeline bool a;".asTree[Stmt]()
-
-          tree rewrite checker shouldBe StmtError()
+          check {
+            "pipeline bool a;".asTree[Stmt]()
+          }
 
           cc.messages.loneElement should beThe[Error](
             "Only variables can be defined in statement position"
@@ -132,9 +132,9 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
         }
 
         "srams" in {
-          val tree = "sram bool a[1];".asTree[Stmt]()
-
-          tree rewrite checker shouldBe StmtError()
+          check {
+            "sram bool a[1];".asTree[Stmt]()
+          }
 
           cc.messages.loneElement should beThe[Error](
             "Only variables can be defined in statement position"
@@ -144,32 +144,38 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
 
       "can declare" - {
         "variables" in {
-          val tree = "bool a;".asTree[Stmt]()
-          tree rewrite checker should not be StmtError()
+          check {
+            "bool a;".asTree[Stmt]()
+          }
+
           cc.messages shouldBe empty
         }
 
         "const" in {
-          val tree = "const bool a = true;".asTree[Stmt](SourceContext.FuncCtrl)
-          tree rewrite checker should not be StmtError()
+          check {
+            "const bool a = true;".asTree[Stmt](SourceContext.FuncCtrl)
+          }
+
           cc.messages shouldBe empty
         }
 
         "static" in {
-          val tree = "static bool a;".asTree[Stmt]()
-          tree rewrite checker should not be StmtError()
+          check {
+            "static bool a;".asTree[Stmt]()
+          }
+
           cc.messages shouldBe empty
         }
       }
     }
 
     "reject multiple fence blocks" in {
-      val tree = """fsm foo {
-                   |  fence {}
-                   |  fence {}
-                   |}""".stripMargin.asTree[Desc]()
-
-      tree rewrite checker
+      check {
+        """fsm foo {
+          |  fence {}
+          |  fence {}
+          |}""".stripMargin.asTree[Desc]()
+      }
 
       cc.messages should have length 2
       cc.messages(0) should beThe[Error]("Multiple fence blocks specified in entity")
@@ -180,19 +186,10 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
 
     "reject output slices on ports" - {
       "with no flow control" in {
-        val entity = """network a {
-                       |  out bubble i2 a;
-                       |}""".stripMargin.asTree[Desc]()
-
-        val tree = entity rewrite checker
-
-        inside(tree) {
-          case DescEntity(_, _, _, List(EntSplice(desc))) =>
-            inside(desc) {
-              case DescOut(_, _, _, fc, st, _) =>
-                fc shouldBe FlowControlTypeNone
-                st shouldBe StorageTypeReg
-            }
+        check {
+          """network a {
+            |  out bubble i2 a;
+            |}""".stripMargin.asTree[Desc]()
         }
 
         cc.messages.loneElement should {
@@ -201,19 +198,11 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       }
 
       "with valid flow control" in {
-        val entity = """network a {
-                       |  out sync bubble i2 a;
-                       |}""".stripMargin.asTree[Desc]()
+        check {
 
-        val tree = entity rewrite checker
-
-        inside(tree) {
-          case DescEntity(_, _, _, List(EntSplice(desc))) =>
-            inside(desc) {
-              case DescOut(_, _, _, fc, st, _) =>
-                fc shouldBe FlowControlTypeValid
-                st shouldBe StorageTypeReg
-            }
+          """network a {
+            |  out sync bubble i2 a;
+            |}""".stripMargin.asTree[Desc]()
         }
 
         cc.messages.loneElement should {
@@ -223,12 +212,12 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
     }
 
     "reject case statements with multiple defaults" in {
-      val tree = """case(1) {
-                   | default: a;
-                   | default: b;
-                   |}""".stripMargin.asTree[Stmt]()
-
-      tree rewrite checker
+      check {
+        """case(1) {
+          | default: a;
+          | default: b;
+          |}""".stripMargin.asTree[Stmt]()
+      }
 
       cc.messages should have length 2
       cc.messages(0) should beThe[Error]("Multiple 'default' clauses specified in case statement")
@@ -238,12 +227,12 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
     }
 
     "reject case statements with default clasue not in last position" in {
-      val tree = """case(1) {
-                   | default: a;
-                   | 1: b;
-                   |}""".stripMargin.asTree[Stmt]()
-
-      tree rewrite checker
+      check {
+        """case(1) {
+          | default: a;
+          | 1: b;
+          |}""".stripMargin.asTree[Stmt]()
+      }
 
       cc.messages.loneElement should beThe[Error](
         "'default' clause must come last in a case statement"
@@ -265,7 +254,9 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       ) foreach {
         case (text, hint) =>
           text in {
-            text.stripMargin.asTree[DescPackage]() rewrite checker
+            check {
+              text.stripMargin.asTree[DescPackage]()
+            }
             cc.messages.loneElement should beThe[Error](
               s"$hint definition cannot appear in file scope"
             )
@@ -273,7 +264,9 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       }
 
       "non-static assertion in" in {
-        "assert false;".stripMargin.asTree[DescPackage]() rewrite checker
+        check {
+          "assert false;".stripMargin.asTree[DescPackage]()
+        }
         cc.messages.loneElement should beThe[Error](
           s"Only static assertions are allowed in file scope"
         )
@@ -285,12 +278,10 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       "instantiations in" - {
         for (variant <- List("fsm", "verbatim entity")) {
           variant in {
-            val tree = s"""$variant a {
-                          |  c = new d();
-                          |}""".stripMargin.asTree[Desc]()
-
-            tree rewrite checker should matchPattern {
-              case DescEntity(_, _, _, Nil) =>
+            check {
+              s"""$variant a {
+                 |  c = new d();
+                 |}""".stripMargin.asTree[Desc]()
             }
 
             cc.messages.loneElement should beThe[Error](s"'$variant' cannot contain instantiations")
@@ -302,12 +293,10 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       "connections in" - {
         for (variant <- List("fsm", "verbatim entity")) {
           variant in {
-            val tree = s"""$variant a {
-                          |  a -> b;
-                          |}""".stripMargin.asTree[Desc]()
-
-            tree rewrite checker should matchPattern {
-              case DescEntity(_, _, _, Nil) =>
+            check {
+              s"""$variant a {
+                 |  a -> b;
+                 |}""".stripMargin.asTree[Desc]()
             }
 
             cc.messages.loneElement should beThe[Error](s"'$variant' cannot contain connections")
@@ -319,12 +308,10 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       "nested entitiy definition" - {
         for (variant <- List("fsm", "verbatim entity")) {
           variant in {
-            val tree = s"""$variant a {
-                          |  fsm d {}
-                          |}""".stripMargin.asTree[Desc]()
-
-            tree rewrite checker should matchPattern {
-              case DescEntity(_, _, _, Nil) =>
+            check {
+              s"""$variant a {
+                 |  fsm d {}
+                 |}""".stripMargin.asTree[Desc]()
             }
 
             cc.messages.loneElement should beThe[Error](
@@ -338,12 +325,10 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       "nested singleton definition" - {
         for (variant <- List("fsm", "verbatim entity")) {
           variant in {
-            val tree = s"""$variant a {
-                          |  new fsm d {}
-                          |}""".stripMargin.asTree[Desc]()
-
-            tree rewrite checker should matchPattern {
-              case DescEntity(_, _, _, Nil) =>
+            check {
+              s"""$variant a {
+                 |  new fsm d {}
+                 |}""".stripMargin.asTree[Desc]()
             }
 
             cc.messages.loneElement should beThe[Error](
@@ -357,12 +342,10 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       "functions in" - {
         for (variant <- List("network", "verbatim entity")) {
           variant in {
-            val tree = s"""$variant a {
-                          |  void main() {}
-                          |}""".stripMargin.asTree[Desc]()
-
-            tree rewrite checker should matchPattern {
-              case DescEntity(_, _, _, Nil) =>
+            check {
+              s"""$variant a {
+                 |  void main() {}
+                 |}""".stripMargin.asTree[Desc]()
             }
 
             cc.messages.loneElement should beThe[Error](
@@ -376,12 +359,10 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       s"fence blocks in" - {
         for (variant <- List("network", "verbatim entity")) {
           variant in {
-            val tree = s"""$variant a {
-                          |  fence {}
-                          |}""".stripMargin.asTree[Desc]()
-
-            tree rewrite checker should matchPattern {
-              case DescEntity(_, _, _, Nil) =>
+            check {
+              s"""$variant a {
+                 |  fence {}
+                 |}""".stripMargin.asTree[Desc]()
             }
 
             cc.messages.loneElement should beThe[Error](s"'$variant' cannot contain fence blocks")
@@ -397,18 +378,15 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
           )
         } {
           decl in {
-            val tree = s"""fsm a {
-                          |  $decl;
-                          |}""".stripMargin.asTree[Desc]()
-
-            tree rewrite checker should matchPattern {
-              case DescEntity(_, _, _, Nil) =>
+            check {
+              s"""fsm a {
+                 |  $decl;
+                 |}""".stripMargin.asTree[Desc]()
             }
 
             cc.messages.loneElement should beThe[Error](s"'fsm' cannot contain $msg definitions")
             cc.messages(0).loc.line shouldBe 2
           }
-
         }
       }
 
@@ -424,15 +402,15 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
           )
         } {
           decl in {
-            val tree = s"""struct s_t {
-                          |  bool s;
-                          |}
-                          |
-                          |network a {
-                          |  $decl;
-                          |}""".stripMargin.asTree[DescPackage]()
-
-            tree rewrite checker
+            check {
+              s"""struct s_t {
+                 |  bool s;
+                 |}
+                 |
+                 |network a {
+                 |  $decl;
+                 |}""".stripMargin.asTree[DescPackage]()
+            }
 
             cc.messages.loneElement should beThe[Error](
               s"'network' cannot contain $msg definitions"
@@ -454,15 +432,15 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
           )
         } {
           decl in {
-            val tree = s"""struct s_t {
-                          |  bool s;
-                          |}
-                          |
-                          |verbatim entity a {
-                          |  $decl;
-                          |}""".stripMargin.asTree[DescPackage]()
-
-            tree rewrite checker
+            check {
+              s"""struct s_t {
+                 |  bool s;
+                 |}
+                 |
+                 |verbatim entity a {
+                 |  $decl;
+                 |}""".stripMargin.asTree[DescPackage]()
+            }
 
             cc.messages.loneElement should beThe[Error](
               s"'verbatim entity' cannot contain $msg definitions"
@@ -475,12 +453,10 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       "non-static assertion in" - {
         for (variant <- List("network", "fsm", "verbatim entity")) {
           variant in {
-            val tree = s"""$variant a {
-                          |  assert 0;
-                          |}""".stripMargin.asTree[Desc]()
-
-            tree rewrite checker should matchPattern {
-              case DescEntity(_, _, _, Nil) =>
+            check {
+              s"""$variant a {
+                 |  assert 0;
+                 |}""".stripMargin.asTree[Desc]()
             }
 
             cc.messages.loneElement should beThe[Error](
@@ -497,14 +473,12 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       "parameters in" - {
         for (variant <- List("fsm", "network", "verbatim entity")) {
           variant in {
-            val tree = s"""network outer {
-                          |  new $variant inner {
-                          |    param u8 P = 0;
-                          |  }
-                          |}""".stripMargin.asTree[Desc]()
-
-            tree rewrite checker should matchPattern {
-              case DescEntity(_, _, _, EntSplice(DescSingleton(_, _, _, Nil)) :: Nil) =>
+            check {
+              s"""network outer {
+                 |  new $variant inner {
+                 |    param u8 P = 0;
+                 |  }
+                 |}""".stripMargin.asTree[Desc]()
             }
 
             cc.messages.loneElement should beThe[Error](
@@ -518,14 +492,12 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       "type parameters in" - {
         for (variant <- List("fsm", "network", "verbatim entity")) {
           variant in {
-            val tree = s"""network outer {
-                          |  new $variant inner {
-                          |    param type P = bool;
-                          |  }
-                          |}""".stripMargin.asTree[Desc]()
-
-            tree rewrite checker should matchPattern {
-              case DescEntity(_, _, _, EntSplice(DescSingleton(_, _, _, Nil)) :: Nil) =>
+            check {
+              s"""network outer {
+                 |  new $variant inner {
+                 |    param type P = bool;
+                 |  }
+                 |}""".stripMargin.asTree[Desc]()
             }
 
             cc.messages.loneElement should beThe[Error](
@@ -556,10 +528,11 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
           )
         } {
           decl in {
-            s"""struct a {
-               |  $decl
-               |}""".stripMargin.asTree[Desc]() rewrite checker should matchPattern {
-              case DescRecord(_, _, Nil) =>
+            check {
+              s"""struct a {
+                 |  $decl
+
+                 |}""".stripMargin.asTree[Desc]()
             }
 
             cc.messages.loneElement should beThe[Error] {
@@ -597,7 +570,10 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
             "simple invalid lvalues" - {
               for ((name, lval) <- badLvals) {
                 name in {
-                  s"$lval $assign;".asTree[Stmt]() rewrite checker shouldBe a[StmtError]
+                  check {
+                    s"$lval $assign;".asTree[Stmt]()
+                  }
+
                   cc.messages.loneElement should beThe[Error](
                     s"Invalid expression on left hand side of '$op'"
                   )
@@ -607,7 +583,10 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
             "invalid lvalues inside concatenation lvalue" - {
               for ((name, lval) <- badLvals) {
                 name in {
-                  s"{x, $lval} $assign;".asTree[Stmt]() rewrite checker shouldBe a[StmtError]
+                  check {
+                    s"{x, $lval} $assign;".asTree[Stmt]()
+                  }
+
                   cc.messages.loneElement should beThe[Error](
                     s"Invalid expression on left hand side of '$op'"
                   )
@@ -638,8 +617,10 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
             "simple valid lvalues" - {
               for ((name, lval) <- goodLvals) {
                 name in {
-                  val stmt = s"$lval $assign;".asTree[Stmt]()
-                  stmt rewrite checker should be theSameInstanceAs stmt
+                  check {
+                    s"$lval $assign;".asTree[Stmt]()
+                  }
+
                   cc.messages shouldBe empty
                 }
               }
@@ -647,8 +628,10 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
             "nested valid lvalues" - {
               for ((name, lval) <- goodLvals) {
                 name in {
-                  val stmt = s"{x, $lval} $assign;".asTree[Stmt]()
-                  stmt rewrite checker should be theSameInstanceAs stmt
+                  check {
+                    s"{x, $lval} $assign;".asTree[Stmt]()
+                  }
+
                   cc.messages shouldBe empty
                 }
               }
@@ -661,15 +644,17 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
     "warn for non-verbatim entities with only verbatim contents" - {
       for (entity <- List("fsm", "network")) {
         entity in {
-          val tree = s"""$entity a {
-                        | in bool b;
-                        | out bool c;
-                        | param i8 e = 2;
-                        | const i8 f = 2;
-                        |
-                        | verbatim verilog {}
-                        |}""".stripMargin.asTree[Desc]()
-          tree rewrite checker shouldBe a[Desc]
+          check {
+            s"""$entity a {
+               | in bool b;
+               | out bool c;
+               | param i8 e = 2;
+               | const i8 f = 2;
+               |
+               | verbatim verilog {}
+               |}""".stripMargin.asTree[Desc]()
+          }
+
           cc.messages.loneElement should beThe[Warning](
             s"Entity contains only verbatim blocks, use a 'verbatim entity' instead"
           )
@@ -690,18 +675,18 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
           )
         } {
           decl in {
-            val tree = s"""struct s {
-                          |  i8 b;
-                          |}
-                          |
-                          |$entity x {
-                          |  $decl;
-                          |}""".stripMargin.asTree[DescPackage]()
-            tree rewrite checker shouldBe a[DescPackage]
+            check {
+              s"""struct s {
+                 |  i8 b;
+                 |}
+                 |
+                 |$entity x {
+                 |  $decl;
+                 |}""".stripMargin.asTree[DescPackage]()
+            }
+
             if (msg.nonEmpty) {
-              cc.messages.loneElement should beThe[Error](
-                s"$msg cannot have an initializer"
-              )
+              cc.messages.loneElement should beThe[Error](s"$msg cannot have an initializer")
             } else {
               cc.messages shouldBe empty
             }
@@ -712,9 +697,9 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
 
     "warn for concatenations" - {
       "containing only a single expression" in {
-        val tree = "{1'b1}".asTree[Expr]()
-
-        tree rewrite checker shouldBe tree
+        check {
+          "{1'b1}".asTree[Expr]()
+        }
 
         cc.messages.loneElement should beThe[Warning](
           s"Single expression concatenation"
@@ -722,9 +707,9 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       }
 
       "but not for 2 or more expressions" in {
-        val tree = "{1'b1, 1'b1}".asTree[Expr]()
-
-        tree rewrite checker shouldBe tree
+        check {
+          "{1'b1, 1'b1}".asTree[Expr]()
+        }
 
         cc.messages shouldBe empty
       }
@@ -734,15 +719,15 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       "accepting them in looping statements" - {
         for (word <- List("break", "continue")) {
           word in {
-            val tree = s"""fsm b {
-                          |  void main() {
-                          |    loop {
-                          |      $word;
-                          |    }
-                          |  }
-                          |}""".stripMargin.asTree[Desc]()
-
-            tree rewrite checker shouldBe tree
+            check {
+              s"""fsm b {
+                 |  void main() {
+                 |    loop {
+                 |      $word;
+                 |    }
+                 |  }
+                 |}""".stripMargin.asTree[Desc]()
+            }
 
             cc.messages shouldBe empty
           }
@@ -752,21 +737,13 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       "rejecting them outside loops" - {
         for (word <- List("break", "continue")) {
           word in {
-            val tree = s"""fsm b {
-                          |  void main() {
-                          |    loop {}
-                          |    $word;
-                          |  }
-                          |}""".stripMargin.asTree[Desc]()
-
-            val node = tree rewrite checker
-
-            inside(node) {
-              case DescEntity(_, _, _, List(EntSplice(main))) =>
-                inside(main) {
-                  case DescFunc(_, _, _, _, _, List(_, stmt)) =>
-                    stmt shouldBe StmtError()
-                }
+            check {
+              s"""fsm b {
+                 |  void main() {
+                 |    loop {}
+                 |    $word;
+                 |  }
+                 |}""".stripMargin.asTree[Desc]()
             }
 
             cc.messages.loneElement should beThe[Error](
@@ -792,11 +769,12 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
         )
       } {
         decl in {
-          val tree = s"""verbatim entity a {
-                        |  $decl;
-                        |}""".stripMargin.asTree[Desc]()
+          check {
+            s"""verbatim entity a {
+               |  $decl;
+               |}""".stripMargin.asTree[Desc]()
+          }
 
-          tree rewrite checker
           if (ok) {
             cc.messages shouldBe empty
           } else {
@@ -820,13 +798,13 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
         )
       } {
         tgt in {
-          val tree = s"""fsm f {
-                        |  void main() {
-                        |    goto $tgt;
-                        |  }
-                        |}""".stripMargin.asTree[DescPackage]()
-
-          tree rewrite checker
+          check {
+            s"""fsm f {
+               |  void main() {
+               |    goto $tgt;
+               |  }
+               |}""".stripMargin.asTree[DescPackage]()
+          }
 
           if (ok) {
             cc.messages shouldBe empty
@@ -837,7 +815,6 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
           }
         }
       }
-
     }
   }
 }

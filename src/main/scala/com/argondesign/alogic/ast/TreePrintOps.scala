@@ -337,7 +337,6 @@ trait TreePrintOps {
     case StmtExpr(expr) => s"${v(expr)};"
     case StmtComment(str) => "// " + str
     case StmtWait(cond) => s"wait ${v(cond)};"
-    case StmtError() => "/* Error statement */"
   }
   // format: on
 

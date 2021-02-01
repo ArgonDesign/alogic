@@ -1519,7 +1519,6 @@ object Elaborate {
         elaborate(s.cond, symtab) map { c =>
           s.copy(cond = c) withLocOf s
         }
-      case _: StmtError   => unreachable
       case _: StmtComment => unreachable
     } tap assertProgressIsReal(stmt)
 

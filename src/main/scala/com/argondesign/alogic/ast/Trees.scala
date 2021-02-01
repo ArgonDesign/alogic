@@ -279,7 +279,6 @@ object Trees {
   case class StmtOutcall(output: Expr, func: Expr, inputs: List[Expr]) extends Stmt
   case class StmtExpr(expr: Expr) extends Stmt
   case class StmtWait(cond: Expr) extends Stmt
-  case class StmtError() extends Stmt
   case class StmtComment(str: String) extends Stmt
   // format: on
 
