@@ -54,19 +54,17 @@ object StaticEvaluation {
       newBindings.iterator.foldLeft(this) { case (ctx, (symbol, expr)) => ctx.add(symbol, expr) }
     }
 
-    def fastIntersect(f: Ctx => Option[IterableOnce[Ctx]]): Option[Ctx] = {
+    def fastIntersect(f: Ctx => IterableOnce[Ctx]): Ctx = {
       var acc: immutable.Set[Symbol] = Set.empty
-      val newBindingsOpt = bindings.fastIntersect { bindings =>
-        f(Ctx(bindings, used)) map {
-          _.iterator map { ctx =>
-            acc = acc union ctx.used
-            ctx.bindings
-          }
+      val newBindings = bindings.fastIntersect { bindings =>
+        f(Ctx(bindings, used)).iterator.map { ctx =>
+          acc = acc union ctx.used
+          ctx.bindings
         }
       }
 
       // Note: used set is approximate again, but is conservative.
-      newBindingsOpt map { Ctx(_, acc) }
+      Ctx(newBindings, acc)
     }
 
   }
@@ -201,39 +199,34 @@ object StaticEvaluation {
   private def inferFalseTransitive(curr: Ctx, expr: Expr): Ctx =
     inferTransitive(curr, inferFalse(expr))
 
-  private def overwrite(curr: Ctx, symbol: Symbol, expr: Expr): Option[Ctx] = {
+  private def overwrite(curr: Ctx, symbol: Symbol, expr: Expr): Ctx = {
     // Add the new binding for the symbol, but first substitute the new
     // expression using the current binding of symbol to remove self references
     val newValue = {
       val selfBinding = Bindings from { curr.bindings get symbol map { symbol -> _ } }
       (expr substitute selfBinding).withSignedness(symbol.kind.isSigned).simplify
     }
-    // TODO: Get rid of this Option by catching all errors currently reported
-    //       in SimplifyExpr in the TypeChecker
-    Option.unless(newValue.tpe.isError) {
-      val remaining = if (!curr.used(symbol)) {
-        // The written symbol is not used in the value of any of the current
-        // bindings, so there is no need to filter
-        curr
-      } else {
-        // Remove all bindings that reference the just added symbol,
-        // as these used the old value. Also update the 'used' set.
-        // TODO: use SSA form...
-        // TODO: Specialize 'uses' for single symbol
-        Ctx(curr.bindings filterNot { case (_, v) => uses(v, Set(symbol)) }, curr.used.excl(symbol))
-      }
-      // If the new expression is at this point still self referential, then
-      // the current bindings didn't cover the symbol, so we do not know the
-      // new value as we did not know the old value, so only add it to the
-      // binding if no self references and hence we might know the value.
-      // We also know that if the new value is self-referential, then remaining
-      // does not contain a binding for the symbol, because if it did, then
-      // the result could not be self referential due to the above substitution.
-      if (newValue exists { case ExprSym(`symbol`) => true }) {
-        remaining
-      } else {
-        remaining.add(symbol, newValue)
-      }
+    val remaining = if (!curr.used(symbol)) {
+      // The written symbol is not used in the value of any of the current
+      // bindings, so there is no need to filter
+      curr
+    } else {
+      // Remove all bindings that reference the just added symbol,
+      // as these used the old value. Also update the 'used' set.
+      // TODO: Specialize 'uses' for single symbol
+      Ctx(curr.bindings filterNot { case (_, v) => uses(v, Set(symbol)) }, curr.used.excl(symbol))
+    }
+    // If the new expression is at this point still self referential, then
+    // the current bindings didn't cover the symbol, so we do not know the
+    // new value as we did not know the old value, so only add it to the
+    // binding if no self references and hence we might know the value.
+    // We also know that if the new value is self-referential, then remaining
+    // does not contain a binding for the symbol, because if it did, then
+    // the result could not be self referential due to the above substitution.
+    if (newValue exists { case ExprSym(`symbol`) => true }) {
+      remaining
+    } else {
+      remaining.add(symbol, newValue)
     }
   }
 
@@ -259,7 +252,7 @@ object StaticEvaluation {
   def apply(
       stmt: Stmt,
       initialBindings: Bindings = Bindings.empty
-    ): Option[(Map[Int, Bindings], Bindings, Map[Symbol, Int], Map[Symbol, Int])] = {
+    ): (Map[Int, Bindings], Bindings, Map[Symbol, Int], Map[Symbol, Int]) = {
     val res = mutable.Map[Int, Bindings]()
 
     // We count read and write accesses to each symbol. We do this here to save
@@ -276,7 +269,7 @@ object StaticEvaluation {
     def countAccessesRValue(expr: Expr): Unit =
       ReadSymbols.rval(expr) foreach { readCount(_) += 1 }
 
-    def analyse(curr: Ctx, stmt: Stmt): Option[Ctx] = {
+    def analyse(curr: Ctx, stmt: Stmt): Ctx = {
       // Annotate the current statement right at the beginning,
       // this side-effect builds the final map we are returning
       res(stmt.id) = curr.bindings
@@ -309,10 +302,6 @@ object StaticEvaluation {
           }
       }
 
-      //
-      def analyseOpt(ctxOpt: Option[Ctx], stmt: Stmt): Option[Ctx] =
-        ctxOpt.flatMap(analyse(_, stmt))
-
       // Compute the new bindings after this statement
       stmt match {
         // Simple assignment
@@ -328,40 +317,35 @@ object StaticEvaluation {
         // inlining combinational functions. As the symbol is being introduced
         // by this statement, and in statements definitions must precede use,
         // we know that the symbol is not in the bindings, so just add it
-        case StmtSplice(DefnVal(symbol, init))       => Some(curr.add(symbol, init))
-        case StmtSplice(DefnVar(symbol, Some(init))) => Some(curr.add(symbol, init))
-        case StmtSplice(DefnVar(_, None))            => Some(curr)
+        case StmtSplice(DefnVal(symbol, init))       => curr.add(symbol, init)
+        case StmtSplice(DefnVar(symbol, Some(init))) => curr.add(symbol, init)
+        case StmtSplice(DefnVar(_, None))            => curr
 
         // Constant definitions can be created in statement position during
         // elaboration of 'gen' loops as loop variable instances. These however
         // can be directly folded by SimplifyExpr so we need not track them
         // explicitly through the static evaluation.
-        case StmtSplice(_: DefnConst) => Some(curr)
+        case StmtSplice(_: DefnConst) => curr
 
         // TODO: these could be improved by computing new bindings
         // Assignments with complex left hand side
-        case StmtAssign(lhs, _) => Some(removeWritten(curr, lhs))
+        case StmtAssign(lhs, _) => removeWritten(curr, lhs)
         // Update with complex left hand side
-        case StmtUpdate(lhs, _, _) => Some(removeWritten(curr, lhs))
+        case StmtUpdate(lhs, _, _) => removeWritten(curr, lhs)
         // Postfix with complex argument
-        case StmtPost(expr, _) => Some(removeWritten(curr, expr))
+        case StmtPost(expr, _) => removeWritten(curr, expr)
 
         // Outcall
-        case StmtOutcall(output, _, _) => Some(removeWritten(curr, output))
+        case StmtOutcall(output, _, _) => removeWritten(curr, output)
 
-        case StmtBlock(body) => body.foldLeft(Option(curr))(analyseOpt)
+        case StmtBlock(body) => body.foldLeft(curr)(analyse)
 
         case StmtIf(cond, thenStmts, elseStmts) =>
           // At the end, keep only the bindings that are the same across all branches
           curr fastIntersect { curr =>
-            val afterThen = thenStmts.foldLeft(Option(inferTrueTransitive(curr, cond)))(analyseOpt)
-            val afterElse = elseStmts.foldLeft(Option(inferFalseTransitive(curr, cond)))(analyseOpt)
-
-            afterThen flatMap { at =>
-              afterElse map { ae =>
-                Iterator(at, ae)
-              }
-            }
+            val afterThen = thenStmts.foldLeft(inferTrueTransitive(curr, cond))(analyse)
+            val afterElse = elseStmts.foldLeft(inferFalseTransitive(curr, cond))(analyse)
+            Iterator(afterThen, afterElse)
           }
 
         case StmtCase(value, cases) =>
@@ -400,36 +384,34 @@ object StaticEvaluation {
               loop(curr, constraints)
             }
 
-            val afters = for ((before, stmt) <- befores zip stmts) yield analyse(before, stmt)
-
-            Option.when(afters forall { _.isDefined })(afters.map(_.get))
+            (befores lazyZip stmts) map { case (before, stmt) => analyse(before, stmt) }
           }
 
         // Infer assertion/assumption is true
-        case StmtSplice(AssertionAssert(cond, _)) => Some(inferTrueTransitive(curr, cond))
-        case StmtSplice(AssertionAssume(cond, _)) => Some(inferTrueTransitive(curr, cond))
+        case StmtSplice(AssertionAssert(cond, _)) => inferTrueTransitive(curr, cond)
+        case StmtSplice(AssertionAssume(cond, _)) => inferTrueTransitive(curr, cond)
 
         // Infer stall condition will be true (by the time subsequent statements execute
-        case StmtWait(cond) => Some(inferTrueTransitive(curr, cond))
+        case StmtWait(cond) => inferTrueTransitive(curr, cond)
 
-        case _: StmtExpr             => Some(curr)
-        case _: StmtComment          => Some(curr)
-        case StmtSplice(_: Decl)     => Some(curr)
-        case StmtSplice(_: DefnFunc) => Some(curr)
+        case _: StmtExpr             => curr
+        case _: StmtComment          => curr
+        case StmtSplice(_: Decl)     => curr
+        case StmtSplice(_: DefnFunc) => curr
 
         // TODO: This could be improved by indicating this branch does not join
         //       hence shouldn't constrain subsequent statements.
-        case _: StmtReturn                       => Some(curr)
-        case _: StmtGoto                         => Some(curr)
-        case StmtSplice(_: AssertionUnreachable) => Some(curr)
+        case _: StmtReturn                       => curr
+        case _: StmtGoto                         => curr
+        case StmtSplice(_: AssertionUnreachable) => curr
 
         case _ => unreachable
       }
     }
 
-    analyse(Ctx.from(initialBindings), stmt) map { finalCtx =>
-      (res.toMap, finalCtx.bindings, writeCount.toMap, readCount.toMap)
-    }
+    val finalCtx = analyse(Ctx.from(initialBindings), stmt)
+
+    (res.toMap, finalCtx.bindings, writeCount.toMap, readCount.toMap)
   }
 
 }

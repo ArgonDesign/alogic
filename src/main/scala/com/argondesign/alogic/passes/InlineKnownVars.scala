@@ -29,16 +29,15 @@ final class InlineKnownVars(combOnly: Boolean = true) extends StatelessTreeTrans
 
   private val bindings = mutable.Stack[Bindings]()
 
-  def computeEvaluation(stmt: Stmt): Unit = StaticEvaluation(stmt, Bindings.empty) match {
-    case None =>
-    case Some(evaluation) =>
-      stmtBindings = evaluation._1
-      endOfCycleBindings = if (combOnly) Bindings.empty else evaluation._2
-      bindings.push(endOfCycleBindings)
-      val readCount = evaluation._4
-      temporariesToDrop = Set from { // Drop temporaries read once
-        readCount.iterator.collect { case (symbol, 1) if symbol.attr.tmp.isSet => symbol }
-      }
+  def computeEvaluation(stmt: Stmt): Unit = {
+    val evaluation = StaticEvaluation(stmt, Bindings.empty)
+    stmtBindings = evaluation._1
+    endOfCycleBindings = if (combOnly) Bindings.empty else evaluation._2
+    bindings.push(endOfCycleBindings)
+    val readCount = evaluation._4
+    temporariesToDrop = Set from { // Drop temporaries read once
+      readCount.iterator.collect { case (symbol, 1) if symbol.attr.tmp.isSet => symbol }
+    }
   }
 
   override def start(tree: Tree): Unit = tree match {

@@ -308,11 +308,6 @@ object SimplifyExpr extends StatelessTreeTransformer {
   }
 
   override def transform(tree: Tree): Tree = tree pipe {
-    //////////////////////////////////////////////////////////////////////////
-    // Don't fold anything with errors
-    //////////////////////////////////////////////////////////////////////////
-
-    case tree if tree.children collect { case t: Tree => t } exists { _.tpe.isError } => tree
 
     //////////////////////////////////////////////////////////////////////////
     // Everything else, dispatch based on the root node to speed things up
@@ -347,7 +342,6 @@ object SimplifyExpr extends StatelessTreeTransformer {
     case result: ExprNum          => result
     case result: ExprType         => result
     case result: ExprStr          => result
-    case result: ExprError        => result
     case result: ExprSym          => result
     case result if result ne tree => walk(result) // Recursively fold the resulting expression
     case result                   => result
@@ -371,7 +365,6 @@ object SimplifyExpr extends StatelessTreeTransformer {
         throw Ice(tree, s"SimplifyExpr changed packedness." :: hints: _*)
       }
       if (result.tpe.isSigned != tree.tpe.isSigned) {
-        s"SimplifyExpr changed signedness." :: hints foreach println
         throw Ice(tree, s"SimplifyExpr changed signedness." :: hints: _*)
       }
       if (result.tpe.isPacked && result.tpe.width != tree.tpe.width) {

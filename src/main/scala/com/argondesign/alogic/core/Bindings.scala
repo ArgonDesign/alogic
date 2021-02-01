@@ -26,44 +26,42 @@ sealed abstract class Bindings extends Iterable[(Symbol, Expr)] {
   def removedAll(iterable: Set[Symbol]): Bindings
   def valuesIterator: Iterator[Expr] = iterator map { _._2 }
 
-  def fastIntersect(f: Bindings => Option[IterableOnce[Bindings]]): Option[Bindings] = {
-    val itOpt: Option[Iterator[FastIntersectBindings]] = {
+  def fastIntersect(f: Bindings => IterableOnce[Bindings]): Bindings = {
+    val it: Iterator[FastIntersectBindings] = {
       val fib = FastIntersectBindings(this, Map.empty, Set.empty)
-      f(fib).map(_.iterator.map(_.asInstanceOf[FastIntersectBindings]))
+      f(fib).iterator.map(_.asInstanceOf[FastIntersectBindings])
     }
 
-    itOpt map { it =>
-      if (it.isEmpty) {
-        Bindings.empty
-      } else {
-        it.reduceLeft[FastIntersectBindings] {
-          case (a: FastIntersectBindings, b: FastIntersectBindings) =>
-            val FastIntersectBindings(oldA, addA, remA) = a
-            val FastIntersectBindings(oldB, addB, remB) = b
-            assert(oldA eq this)
-            assert(oldB eq this)
-            val newAdd = {
-              // Intersection of 'add' Maps, using filter on the shorter
-              val (addS, remS, addL, remL) = if (addA.knownSize <= addB.knownSize) {
-                (addA, remA, addB, remB)
-              } else {
-                (addB, remB, addA, remA)
-              }
-              addS filter { case (k, v) => !remS(k) && (addL.get(k) contains v) && !remL(k) }
+    if (it.isEmpty) {
+      Bindings.empty
+    } else {
+      it.reduceLeft[FastIntersectBindings] {
+        case (a: FastIntersectBindings, b: FastIntersectBindings) =>
+          val FastIntersectBindings(oldA, addA, remA) = a
+          val FastIntersectBindings(oldB, addB, remB) = b
+          assert(oldA eq this)
+          assert(oldB eq this)
+          val newAdd = {
+            // Intersection of 'add' Maps, using filter on the shorter
+            val (addS, remS, addL, remL) = if (addA.knownSize <= addB.knownSize) {
+              (addA, remA, addB, remB)
+            } else {
+              (addB, remB, addA, remA)
             }
-            FastIntersectBindings(
-              this,
-              newAdd,
-              remA ++ remB ++ addA.keysIterator ++ addB.keysIterator -- newAdd.keysIterator
-            )
-        } match {
-          case FastIntersectBindings(BasicBindings(underlying), add, rem) =>
-            BasicBindings((underlying.iterator concat add).filterNot {
-              case (k, _) => rem(k)
-            }.toMap)
-          case FastIntersectBindings(FastIntersectBindings(old, add, rem), add2, rem2) =>
-            FastIntersectBindings(old, add concat add2, rem -- add2.keysIterator ++ rem2)
-        }
+            addS filter { case (k, v) => !remS(k) && (addL.get(k) contains v) && !remL(k) }
+          }
+          FastIntersectBindings(
+            this,
+            newAdd,
+            remA ++ remB ++ addA.keysIterator ++ addB.keysIterator -- newAdd.keysIterator
+          )
+      } match {
+        case FastIntersectBindings(BasicBindings(underlying), add, rem) =>
+          BasicBindings((underlying.iterator concat add).filterNot {
+            case (k, _) => rem(k)
+          }.toMap)
+        case FastIntersectBindings(FastIntersectBindings(old, add, rem), add2, rem2) =>
+          FastIntersectBindings(old, add concat add2, rem -- add2.keysIterator ++ rem2)
       }
     }
   }
