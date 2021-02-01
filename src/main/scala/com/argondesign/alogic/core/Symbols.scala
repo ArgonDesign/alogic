@@ -268,12 +268,7 @@ object Symbols {
         if (compare1 != 0) {
           compare1
         } else {
-          val compare2 = x.name compare y.name
-          if (compare2 != 0) {
-            compare2
-          } else {
-            x.id compare y.id
-          }
+          x.name compare y.name
         }
       }
 
