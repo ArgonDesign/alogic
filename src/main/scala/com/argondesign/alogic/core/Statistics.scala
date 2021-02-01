@@ -40,7 +40,7 @@ final class Statistics {
               dict
                 .groupMap(_._1._1) { case ((_, name), value) => (name, value) }
                 .toSeq
-                .sortBy(_._1.loc)
+                .sortBy { case (symbol, _) => (symbol.loc, symbol.hierName) }
                 .map {
                   case (symbol, dict) =>
                     symbol.hierName -> ListMap.from {
