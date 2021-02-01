@@ -31,13 +31,8 @@ object TypeAssigner {
   private def kind(tree: Tree): Type = tree match {
     case node: Ref       => kind(node)
     case node: Desc      => kind(node)
-    case node: Attr      => kind(node)
-    case _: GenCase      => throw Ice(tree, "TypeAssigner called on GenCase node")
     case node: Decl      => kind(node)
     case node: Defn      => kind(node)
-    case _: Import       => throw Ice(tree, "TypeAssigner called on Import node")
-    case _: Using        => throw Ice(tree, "TypeAssigner called on Using node")
-    case _: From         => throw Ice(tree, "TypeAssigner called on From node")
     case node: Assertion => kind(node)
     case node: Pkg       => kind(node)
     case node: Ent       => kind(node)
@@ -46,6 +41,11 @@ object TypeAssigner {
     case node: Case      => kind(node)
     case node: Expr      => kind(node)
     case node: Arg       => kind(node)
+    case _: Attr         => throw Ice(tree, "TypeAssigner called on Attr node")
+    case _: GenCase      => throw Ice(tree, "TypeAssigner called on GenCase node")
+    case _: Import       => throw Ice(tree, "TypeAssigner called on Import node")
+    case _: Using        => throw Ice(tree, "TypeAssigner called on Using node")
+    case _: From         => throw Ice(tree, "TypeAssigner called on From node")
     case _: Thicket      => throw Ice(tree, "TypeAssigner called on Thicket")
     case Stump           => throw Ice(tree, "TypeAssigner called on Stump")
   }
@@ -64,12 +64,6 @@ object TypeAssigner {
   //////////////////////////////////////////////////////////////////////////////
 
   private def kind(tree: Desc) = TypeMisc
-
-  //////////////////////////////////////////////////////////////////////////////
-  // Attr
-  //////////////////////////////////////////////////////////////////////////////
-
-  private def kind(tree: Attr) = TypeMisc
 
   //////////////////////////////////////////////////////////////////////////////
   // Decl
@@ -390,7 +384,6 @@ object TypeAssigner {
   // format: off
   def apply(tree: Tree): tree.type = assign(tree)(kind(tree))
   def apply(tree: Desc): tree.type = assign(tree)(kind(tree))
-  def apply(tree: Attr): tree.type = assign(tree)(kind(tree))
   def apply(tree: Decl): tree.type = assign(tree)(kind(tree))
   def apply(tree: Defn): tree.type = assign(tree)(kind(tree))
   def apply(tree: Assertion): tree.type = assign(tree)(kind(tree))
