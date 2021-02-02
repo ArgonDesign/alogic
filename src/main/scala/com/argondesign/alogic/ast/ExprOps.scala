@@ -167,6 +167,7 @@ trait ExprOps { this: Expr =>
 
   final def isPure: Boolean = {
     def p(expr: Expr): Boolean = expr match {
+      // $COVERAGE-OFF$ Trivial to keep full
       case _: ExprCall             => false // Assume all calls are impure
       case ExprBuiltin(b, as)      => b.isPure && as.forall(_.expr.isPure)
       case ExprUnary(_, e)         => p(e)
@@ -180,16 +181,11 @@ trait ExprOps { this: Expr =>
       case ExprDot(e, _, _)        => p(e)
       case ExprSel(e, _)           => p(e)
       case ExprSymSel(e, _)        => p(e)
-      case _: ExprIdent            => true
-      case _: ExprSym              => true
-      case _: ExprOld              => true
-      case _: ExprThis             => true
-      case _: ExprType             => true
       case ExprCast(_, e)          => p(e)
-      case _: ExprInt              => true
-      case _: ExprNum              => true
-      case _: ExprStr              => true
-      case _: ExprError            => true
+      case _: ExprIdent | _: ExprSym | _: ExprOld | _: ExprThis | _: ExprType | _: ExprInt |
+          _: ExprNum | _: ExprStr | _: ExprError =>
+        true
+      // $COVERAGE-ON$
     }
     p(this)
   }
@@ -289,8 +285,7 @@ trait ExprOps { this: Expr =>
 
 trait ExprObjOps { self: Expr.type =>
   // Helpers to easily create ExprNum from integers
-  final def apply(n: Long): ExprNum = ExprNum(false, n)
-  final def apply(n: BigInt): ExprNum = ExprNum(false, n)
+  final def apply[T: Numeric](n: T): ExprNum = ExprNum(false, implicitly[Numeric[T]].toLong(n))
 
   object ImplicitConversions {
     // Implicit conversion for Int to ExprNum
@@ -299,79 +294,6 @@ trait ExprObjOps { self: Expr.type =>
 
   // And extractor so we can match against the the same as above
   final def unapply(num: ExprNum): Option[Int] = if (!num.signed) Some(num.value.toInt) else None
-
-  // Extractors to match operators naturally
-  object * {
-    def unapply(expr: ExprBinary) = if (expr.op == "*") Some((expr.lhs, expr.rhs)) else None
-  }
-
-  object / {
-    def unapply(expr: ExprBinary) = if (expr.op == "/") Some((expr.lhs, expr.rhs)) else None
-  }
-
-  object % {
-    def unapply(expr: ExprBinary) = if (expr.op == "%") Some((expr.lhs, expr.rhs)) else None
-  }
-
-  object + {
-    def unapply(expr: ExprBinary) = if (expr.op == "+") Some((expr.lhs, expr.rhs)) else None
-  }
-
-  object - {
-    def unapply(expr: ExprBinary) = if (expr.op == "-") Some((expr.lhs, expr.rhs)) else None
-  }
-
-  object << {
-    def unapply(expr: ExprBinary) = if (expr.op == "<<") Some((expr.lhs, expr.rhs)) else None
-  }
-
-  object >> {
-    def unapply(expr: ExprBinary) = if (expr.op == ">>") Some((expr.lhs, expr.rhs)) else None
-  }
-
-  object <<< {
-    def unapply(expr: ExprBinary) = if (expr.op == "<<<") Some((expr.lhs, expr.rhs)) else None
-  }
-
-  object >>> {
-    def unapply(expr: ExprBinary) = if (expr.op == ">>>") Some((expr.lhs, expr.rhs)) else None
-  }
-
-  object & {
-    def unapply(expr: ExprBinary) = if (expr.op == "&") Some((expr.lhs, expr.rhs)) else None
-  }
-
-  object ^ {
-    def unapply(expr: ExprBinary) = if (expr.op == "^") Some((expr.lhs, expr.rhs)) else None
-  }
-
-  object | {
-    def unapply(expr: ExprBinary) = if (expr.op == "|") Some((expr.lhs, expr.rhs)) else None
-  }
-
-  object && {
-    def unapply(expr: ExprBinary) = if (expr.op == "&&") Some((expr.lhs, expr.rhs)) else None
-  }
-
-  object || {
-    def unapply(expr: ExprBinary) = if (expr.op == "||") Some((expr.lhs, expr.rhs)) else None
-  }
-
-  object < {
-    def unapply(expr: ExprBinary) = if (expr.op == "<") Some((expr.lhs, expr.rhs)) else None
-  }
-
-  object <= {
-    def unapply(expr: ExprBinary) = if (expr.op == "<=") Some((expr.lhs, expr.rhs)) else None
-  }
-
-  object > {
-    def unapply(expr: ExprBinary) = if (expr.op == ">") Some((expr.lhs, expr.rhs)) else None
-  }
-
-  object >= {
-    def unapply(expr: ExprBinary) = if (expr.op == ">=") Some((expr.lhs, expr.rhs)) else None
-  }
 
   // Extractor for instance port selects
   object InstancePortSel {
