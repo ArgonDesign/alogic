@@ -24,16 +24,12 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
 
   implicit private val cc: CompilerContext = new CompilerContext
 
-  private def check(tree: Tree): Unit = {
-    tree rewrite new SyntaxCheck should be theSameInstanceAs tree
-  }
-
   "SyntaxCheck should" - {
-    "check usage of pipeline port definitions" - {
+    "SyntaxCheck usage of pipeline port definitions" - {
       "accepting them in nested entities" - {
         for (desc <- List("in pipeline", "out pipeline")) {
           desc in {
-            check {
+            SyntaxCheck {
               s"""network a {
                  |  new fsm b {
                  |    $desc;
@@ -42,9 +38,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
                  |    }
                  |  }
                  |}""".stripMargin.asTree[Desc]()
-            }
-
-            cc.messages shouldBe empty
+            } shouldBe empty
           }
         }
       }
@@ -52,16 +46,14 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       "rejecting them in root entities" - {
         for (desc <- List("in pipeline", "out pipeline")) {
           desc in {
-            check {
+            SyntaxCheck {
               s"""fsm b {
                  |  $desc;
                  |  void main() {
                  |    fence;
                  |  }
                  |}""".stripMargin.asTree[Desc]()
-            }
-
-            cc.messages.loneElement should beThe[Error](
+            }.loneElement should beThe[Error](
               s"Pipeline ports are only allowed inside nested entities"
             )
           }
@@ -72,71 +64,57 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
     "ensure definition statements" - {
       "do not declare" - {
         "input ports" in {
-          check {
+          SyntaxCheck {
             "in bool a;".asTree[Stmt]()
-          }
-
-          cc.messages.loneElement should beThe[Error](
+          }.loneElement should beThe[Error](
             "Only variables can be defined in statement position"
           )
         }
 
         "output ports" in {
-          check {
+          SyntaxCheck {
             "out bool a;".asTree[Stmt]()
-          }
-
-          cc.messages.loneElement should beThe[Error](
+          }.loneElement should beThe[Error](
             "Only variables can be defined in statement position"
           )
         }
 
         "parameters" in {
-          check {
+          SyntaxCheck {
             "param bool a = false;".asTree[Stmt]()
-          }
-
-          cc.messages.loneElement should beThe[Error](
+          }.loneElement should beThe[Error](
             "Only variables can be defined in statement position"
           )
         }
 
         "constants" in {
-          check {
+          SyntaxCheck {
             "bool a[2];".asTree[Stmt](SourceContext.FuncCtrl)
-          }
-
-          cc.messages.loneElement should beThe[Error](
+          }.loneElement should beThe[Error](
             "Only variables can be defined in statement position"
           )
         }
 
         "arrays" in {
-          check {
+          SyntaxCheck {
             "bool a[2];".asTree[Stmt]()
-          }
-
-          cc.messages.loneElement should beThe[Error](
+          }.loneElement should beThe[Error](
             "Only variables can be defined in statement position"
           )
         }
 
         "pipeline variables" in {
-          check {
+          SyntaxCheck {
             "pipeline bool a;".asTree[Stmt]()
-          }
-
-          cc.messages.loneElement should beThe[Error](
+          }.loneElement should beThe[Error](
             "Only variables can be defined in statement position"
           )
         }
 
         "srams" in {
-          check {
+          SyntaxCheck {
             "sram bool a[1];".asTree[Stmt]()
-          }
-
-          cc.messages.loneElement should beThe[Error](
+          }.loneElement should beThe[Error](
             "Only variables can be defined in statement position"
           )
         }
@@ -144,100 +122,86 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
 
       "can declare" - {
         "variables" in {
-          check {
+          SyntaxCheck {
             "bool a;".asTree[Stmt]()
-          }
-
-          cc.messages shouldBe empty
+          } shouldBe empty
         }
 
         "const" in {
-          check {
+          SyntaxCheck {
             "const bool a = true;".asTree[Stmt](SourceContext.FuncCtrl)
-          }
-
-          cc.messages shouldBe empty
+          } shouldBe empty
         }
 
         "static" in {
-          check {
+          SyntaxCheck {
             "static bool a;".asTree[Stmt]()
-          }
-
-          cc.messages shouldBe empty
+          } shouldBe empty
         }
       }
     }
 
     "reject multiple fence blocks" in {
-      check {
+      val messages = SyntaxCheck {
         """fsm foo {
           |  fence {}
           |  fence {}
           |}""".stripMargin.asTree[Desc]()
       }
 
-      cc.messages should have length 2
-      cc.messages(0) should beThe[Error]("Multiple fence blocks specified in entity")
-      cc.messages(0).loc.line shouldBe 2
-      cc.messages(1) should beThe[Error]("Multiple fence blocks specified in entity")
-      cc.messages(1).loc.line shouldBe 3
+      messages should have length 2
+      messages(0) should beThe[Error]("Multiple fence blocks specified in entity")
+      messages(0).loc.line shouldBe 2
+      messages(1) should beThe[Error]("Multiple fence blocks specified in entity")
+      messages(1).loc.line shouldBe 3
     }
 
     "reject output slices on ports" - {
       "with no flow control" in {
-        check {
+        SyntaxCheck {
           """network a {
             |  out bubble i2 a;
             |}""".stripMargin.asTree[Desc]()
-        }
-
-        cc.messages.loneElement should {
+        }.loneElement should {
           beThe[Error]("Output port without flow control cannot use output slices")
         }
       }
 
       "with valid flow control" in {
-        check {
-
+        SyntaxCheck {
           """network a {
             |  out sync bubble i2 a;
             |}""".stripMargin.asTree[Desc]()
-        }
-
-        cc.messages.loneElement should {
+        }.loneElement should {
           beThe[Error]("Output port with 'sync' flow control cannot use output slices")
         }
       }
     }
 
     "reject case statements with multiple defaults" in {
-      check {
+      val messages = SyntaxCheck {
         """case(1) {
           | default: a;
           | default: b;
           |}""".stripMargin.asTree[Stmt]()
       }
 
-      cc.messages should have length 2
-      cc.messages(0) should beThe[Error]("Multiple 'default' clauses specified in case statement")
-      cc.messages(0).loc.line shouldBe 2
-      cc.messages(1) should beThe[Error]("Multiple 'default' clauses specified in case statement")
-      cc.messages(1).loc.line shouldBe 3
+      messages should have length 2
+      messages(0) should beThe[Error]("Multiple 'default' clauses specified in case statement")
+      messages(0).loc.line shouldBe 2
+      messages(1) should beThe[Error]("Multiple 'default' clauses specified in case statement")
+      messages(1).loc.line shouldBe 3
     }
 
     "reject case statements with default clasue not in last position" in {
-      check {
+      SyntaxCheck {
         """case(1) {
           | default: a;
           | 1: b;
           |}""".stripMargin.asTree[Stmt]()
-      }
-
-      cc.messages.loneElement should beThe[Error](
+      }.loneElement should beThe[Error](
         "'default' clause must come last in a case statement"
       )
-      cc.messages.loneElement.loc.line shouldBe 2
     }
 
     "reject disallowed package contents" - {
@@ -254,20 +218,18 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       ) foreach {
         case (text, hint) =>
           text in {
-            check {
+            SyntaxCheck {
               text.stripMargin.asTree[DescPackage]()
-            }
-            cc.messages.loneElement should beThe[Error](
+            }.loneElement should beThe[Error](
               s"$hint definition cannot appear in file scope"
             )
           }
       }
 
       "non-static assertion in" in {
-        check {
+        SyntaxCheck {
           "assert false;".stripMargin.asTree[DescPackage]()
-        }
-        cc.messages.loneElement should beThe[Error](
+        }.loneElement should beThe[Error](
           s"Only static assertions are allowed in file scope"
         )
       }
@@ -278,14 +240,11 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       "instantiations in" - {
         for (variant <- List("fsm", "verbatim entity")) {
           variant in {
-            check {
+            SyntaxCheck {
               s"""$variant a {
                  |  c = new d();
                  |}""".stripMargin.asTree[Desc]()
-            }
-
-            cc.messages.loneElement should beThe[Error](s"'$variant' cannot contain instantiations")
-            cc.messages(0).loc.line shouldBe 2
+            }.loneElement should beThe[Error](s"'$variant' cannot contain instantiations")
           }
         }
       }
@@ -293,14 +252,11 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       "connections in" - {
         for (variant <- List("fsm", "verbatim entity")) {
           variant in {
-            check {
+            SyntaxCheck {
               s"""$variant a {
                  |  a -> b;
                  |}""".stripMargin.asTree[Desc]()
-            }
-
-            cc.messages.loneElement should beThe[Error](s"'$variant' cannot contain connections")
-            cc.messages(0).loc.line shouldBe 2
+            }.loneElement should beThe[Error](s"'$variant' cannot contain connections")
           }
         }
       }
@@ -308,16 +264,13 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       "nested entitiy definition" - {
         for (variant <- List("fsm", "verbatim entity")) {
           variant in {
-            check {
+            SyntaxCheck {
               s"""$variant a {
                  |  fsm d {}
                  |}""".stripMargin.asTree[Desc]()
-            }
-
-            cc.messages.loneElement should beThe[Error](
+            }.loneElement should beThe[Error](
               s"'$variant' cannot contain nested entities"
             )
-            cc.messages(0).loc.line shouldBe 2
           }
         }
       }
@@ -325,16 +278,13 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       "nested singleton definition" - {
         for (variant <- List("fsm", "verbatim entity")) {
           variant in {
-            check {
+            SyntaxCheck {
               s"""$variant a {
                  |  new fsm d {}
                  |}""".stripMargin.asTree[Desc]()
-            }
-
-            cc.messages.loneElement should beThe[Error](
+            }.loneElement should beThe[Error](
               s"'$variant' cannot contain singleton entities"
             )
-            cc.messages.loneElement.loc.line shouldBe 2
           }
         }
       }
@@ -342,16 +292,13 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       "functions in" - {
         for (variant <- List("network", "verbatim entity")) {
           variant in {
-            check {
+            SyntaxCheck {
               s"""$variant a {
                  |  void main() {}
                  |}""".stripMargin.asTree[Desc]()
-            }
-
-            cc.messages.loneElement should beThe[Error](
+            }.loneElement should beThe[Error](
               s"'$variant' cannot contain function definitions"
             )
-            cc.messages(0).loc.line shouldBe 2
           }
         }
       }
@@ -359,14 +306,11 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       s"fence blocks in" - {
         for (variant <- List("network", "verbatim entity")) {
           variant in {
-            check {
+            SyntaxCheck {
               s"""$variant a {
                  |  fence {}
                  |}""".stripMargin.asTree[Desc]()
-            }
-
-            cc.messages.loneElement should beThe[Error](s"'$variant' cannot contain fence blocks")
-            cc.messages(0).loc.line shouldBe 2
+            }.loneElement should beThe[Error](s"'$variant' cannot contain fence blocks")
           }
         }
       }
@@ -378,14 +322,11 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
           )
         } {
           decl in {
-            check {
+            SyntaxCheck {
               s"""fsm a {
                  |  $decl;
                  |}""".stripMargin.asTree[Desc]()
-            }
-
-            cc.messages.loneElement should beThe[Error](s"'fsm' cannot contain $msg definitions")
-            cc.messages(0).loc.line shouldBe 2
+            }.loneElement should beThe[Error](s"'fsm' cannot contain $msg definitions")
           }
         }
       }
@@ -402,7 +343,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
           )
         } {
           decl in {
-            check {
+            SyntaxCheck {
               s"""struct s_t {
                  |  bool s;
                  |}
@@ -410,14 +351,10 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
                  |network a {
                  |  $decl;
                  |}""".stripMargin.asTree[DescPackage]()
-            }
-
-            cc.messages.loneElement should beThe[Error](
+            }.loneElement should beThe[Error](
               s"'network' cannot contain $msg definitions"
             )
-            cc.messages(0).loc.line shouldBe 6
           }
-
         }
       }
 
@@ -432,7 +369,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
           )
         } {
           decl in {
-            check {
+            SyntaxCheck {
               s"""struct s_t {
                  |  bool s;
                  |}
@@ -440,12 +377,9 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
                  |verbatim entity a {
                  |  $decl;
                  |}""".stripMargin.asTree[DescPackage]()
-            }
-
-            cc.messages.loneElement should beThe[Error](
+            }.loneElement should beThe[Error](
               s"'verbatim entity' cannot contain $msg definitions"
             )
-            cc.messages(0).loc.line shouldBe 6
           }
         }
       }
@@ -453,16 +387,13 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       "non-static assertion in" - {
         for (variant <- List("network", "fsm", "verbatim entity")) {
           variant in {
-            check {
+            SyntaxCheck {
               s"""$variant a {
                  |  assert 0;
                  |}""".stripMargin.asTree[Desc]()
-            }
-
-            cc.messages.loneElement should beThe[Error](
+            }.loneElement should beThe[Error](
               s"'$variant' cannot contain non-static assertions"
             )
-            cc.messages(0).loc.line shouldBe 2
           }
         }
       }
@@ -473,18 +404,15 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       "parameters in" - {
         for (variant <- List("fsm", "network", "verbatim entity")) {
           variant in {
-            check {
+            SyntaxCheck {
               s"""network outer {
                  |  new $variant inner {
                  |    param u8 P = 0;
                  |  }
                  |}""".stripMargin.asTree[Desc]()
-            }
-
-            cc.messages.loneElement should beThe[Error](
+            }.loneElement should beThe[Error](
               s"Singleton entity cannot have parameters. Use a 'const' definition instead."
             )
-            cc.messages.loneElement.loc.line shouldBe 3
           }
         }
       }
@@ -492,18 +420,15 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       "type parameters in" - {
         for (variant <- List("fsm", "network", "verbatim entity")) {
           variant in {
-            check {
+            SyntaxCheck {
               s"""network outer {
                  |  new $variant inner {
                  |    param type P = bool;
                  |  }
                  |}""".stripMargin.asTree[Desc]()
-            }
-
-            cc.messages.loneElement should beThe[Error](
+            }.loneElement should beThe[Error](
               s"Singleton entity cannot have type parameters. Use a 'typedef' instead."
             )
-            cc.messages.loneElement.loc.line shouldBe 3
           }
         }
       }
@@ -528,23 +453,20 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
           )
         } {
           decl in {
-            check {
+            SyntaxCheck {
               s"""struct a {
                  |  $decl
 
                  |}""".stripMargin.asTree[Desc]()
-            }
-
-            cc.messages.loneElement should beThe[Error] {
+            }.loneElement should beThe[Error] {
               s"'struct' cannot contain $hint definitions"
             }
-            cc.messages(0).loc.line shouldBe 2
           }
         }
       }
     }
 
-    "check lvalue expressions and" - {
+    "SyntaxCheck lvalue expressions and" - {
       "reject" - {
         val badLvals = ListMap(
           "call" -> "a()",
@@ -570,11 +492,9 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
             "simple invalid lvalues" - {
               for ((name, lval) <- badLvals) {
                 name in {
-                  check {
+                  SyntaxCheck {
                     s"$lval $assign;".asTree[Stmt]()
-                  }
-
-                  cc.messages.loneElement should beThe[Error](
+                  }.loneElement should beThe[Error](
                     s"Invalid expression on left hand side of '$op'"
                   )
                 }
@@ -583,11 +503,9 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
             "invalid lvalues inside concatenation lvalue" - {
               for ((name, lval) <- badLvals) {
                 name in {
-                  check {
+                  SyntaxCheck {
                     s"{x, $lval} $assign;".asTree[Stmt]()
-                  }
-
-                  cc.messages.loneElement should beThe[Error](
+                  }.loneElement should beThe[Error](
                     s"Invalid expression on left hand side of '$op'"
                   )
                 }
@@ -617,22 +535,18 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
             "simple valid lvalues" - {
               for ((name, lval) <- goodLvals) {
                 name in {
-                  check {
+                  SyntaxCheck {
                     s"$lval $assign;".asTree[Stmt]()
-                  }
-
-                  cc.messages shouldBe empty
+                  } shouldBe empty
                 }
               }
             }
             "nested valid lvalues" - {
               for ((name, lval) <- goodLvals) {
                 name in {
-                  check {
+                  SyntaxCheck {
                     s"{x, $lval} $assign;".asTree[Stmt]()
-                  }
-
-                  cc.messages shouldBe empty
+                  } shouldBe empty
                 }
               }
             }
@@ -644,7 +558,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
     "warn for non-verbatim entities with only verbatim contents" - {
       for (entity <- List("fsm", "network")) {
         entity in {
-          check {
+          SyntaxCheck {
             s"""$entity a {
                | in bool b;
                | out bool c;
@@ -653,9 +567,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
                |
                | verbatim verilog {}
                |}""".stripMargin.asTree[Desc]()
-          }
-
-          cc.messages.loneElement should beThe[Warning](
+          }.loneElement should beThe[Warning](
             s"Entity contains only verbatim blocks, use a 'verbatim entity' instead"
           )
         }
@@ -675,7 +587,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
           )
         } {
           decl in {
-            check {
+            val messages = SyntaxCheck {
               s"""struct s {
                  |  i8 b;
                  |}
@@ -686,9 +598,9 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
             }
 
             if (msg.nonEmpty) {
-              cc.messages.loneElement should beThe[Error](s"$msg cannot have an initializer")
+              messages.loneElement should beThe[Error](s"$msg cannot have an initializer")
             } else {
-              cc.messages shouldBe empty
+              messages shouldBe empty
             }
           }
         }
@@ -697,29 +609,25 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
 
     "warn for concatenations" - {
       "containing only a single expression" in {
-        check {
+        SyntaxCheck {
           "{1'b1}".asTree[Expr]()
-        }
-
-        cc.messages.loneElement should beThe[Warning](
+        }.loneElement should beThe[Warning](
           s"Single expression concatenation"
         )
       }
 
       "but not for 2 or more expressions" in {
-        check {
+        SyntaxCheck {
           "{1'b1, 1'b1}".asTree[Expr]()
-        }
-
-        cc.messages shouldBe empty
+        } shouldBe empty
       }
     }
 
-    "check usage of break/continue statements" - {
+    "SyntaxCheck usage of break/continue statements" - {
       "accepting them in looping statements" - {
         for (word <- List("break", "continue")) {
           word in {
-            check {
+            SyntaxCheck {
               s"""fsm b {
                  |  void main() {
                  |    loop {
@@ -727,9 +635,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
                  |    }
                  |  }
                  |}""".stripMargin.asTree[Desc]()
-            }
-
-            cc.messages shouldBe empty
+            } shouldBe empty
           }
         }
       }
@@ -737,16 +643,14 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       "rejecting them outside loops" - {
         for (word <- List("break", "continue")) {
           word in {
-            check {
+            SyntaxCheck {
               s"""fsm b {
                  |  void main() {
                  |    loop {}
                  |    $word;
                  |  }
                  |}""".stripMargin.asTree[Desc]()
-            }
-
-            cc.messages.loneElement should beThe[Error](
+            }.loneElement should beThe[Error](
               s"${word.capitalize} statements are only allowed inside looping statements"
             )
           }
@@ -769,16 +673,16 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
         )
       } {
         decl in {
-          check {
+          val messages = SyntaxCheck {
             s"""verbatim entity a {
                |  $decl;
                |}""".stripMargin.asTree[Desc]()
           }
 
           if (ok) {
-            cc.messages shouldBe empty
+            messages shouldBe empty
           } else {
-            cc.messages.loneElement should beThe[Error] {
+            messages.loneElement should beThe[Error] {
               "'verbatim entity' output ports cannot use a storage specifier"
             }
           }
@@ -787,7 +691,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       }
     }
 
-    "check goto is to a call expression" - {
+    "SyntaxCheck goto is to a call expression" - {
       for {
         (tgt, ok) <- List(
           ("a()", true),
@@ -798,7 +702,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
         )
       } {
         tgt in {
-          check {
+          val messages = SyntaxCheck {
             s"""fsm f {
                |  void main() {
                |    goto $tgt;
@@ -807,9 +711,9 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
           }
 
           if (ok) {
-            cc.messages shouldBe empty
+            messages shouldBe empty
           } else {
-            cc.messages.loneElement should beThe[Error](
+            messages.loneElement should beThe[Error](
               s"Target of 'goto' statement must be a function call expression"
             )
           }

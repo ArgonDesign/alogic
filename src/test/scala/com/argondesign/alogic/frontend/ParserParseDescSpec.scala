@@ -315,13 +315,8 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
         }
 
         "with initializer" in {
-          "out pipeline a = 0;".asTree[Desc]() shouldBe {
-            DescPipeOut(
-              Ident("a", Nil),
-              Nil,
-              FlowControlTypeNone,
-              StorageTypeDefault
-            )
+          an[AsTreeSyntaxErrorException] shouldBe thrownBy {
+            "out pipeline a = 0;".asTree[Desc]()
           }
           cc.messages.loneElement should beThe[Error](
             "Pipeline output port cannot have an initializer"
@@ -673,7 +668,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
           """gen if (i) {
             |  fence;
             |} else if (j) {
-            |  return;
+            |  continue;
             |} else {
             |  break;
             |}""".stripMargin.asTree[Desc](SourceContext.Entity) shouldBe {
@@ -682,7 +677,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
               Nil,
               List(
                 GenCase(ExprIdent("i", Nil), List(StmtFence())),
-                GenCase(ExprIdent("j", Nil), List(StmtReturn(comb = false, None)))
+                GenCase(ExprIdent("j", Nil), List(StmtContinue()))
               ),
               List(StmtBreak())
             )
@@ -693,7 +688,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
           """gen if (i) {
             |  fence;
             |} else if (j) {
-            |  return;
+            |  continue;
             |} else if (k) {
             |  f();
             |} else {
@@ -704,7 +699,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
               Nil,
               List(
                 GenCase(ExprIdent("i", Nil), List(StmtFence())),
-                GenCase(ExprIdent("j", Nil), List(StmtReturn(comb = false, None))),
+                GenCase(ExprIdent("j", Nil), List(StmtContinue())),
                 GenCase(
                   ExprIdent("k", Nil),
                   List(StmtExpr(ExprCall(ExprIdent("f", Nil), Nil)))

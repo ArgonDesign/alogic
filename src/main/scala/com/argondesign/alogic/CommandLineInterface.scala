@@ -89,7 +89,7 @@ object CommandLineInterface {
     val ps: List[Arg] = params flatMap { param =>
       val start = cliText.indexOf(s"-P $param") + 3
       assert(start >= 0)
-      Parser[Arg](cliSource, SourceContext.Unknown, start, start + param.length)
+      Parser[Arg](cliSource, SourceContext.Unknown, mb, start, start + param.length)
     }
 
     Option.unless(mb.hasError) {

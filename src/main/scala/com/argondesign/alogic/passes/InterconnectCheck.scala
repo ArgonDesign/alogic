@@ -134,14 +134,12 @@ object InterconnectCheck extends PairTransformerPass(parallel = true) {
               case (assigns, bits) => (-assigns.length, bits.min)
             } map {
               case (assigns, bits) => (assigns.sortBy(_.loc), ranges(bits))
-            } flatMap {
+            } map {
               case (Nil, ranges) =>
-                Iterator.single(Error(where, s"Bits $ranges of '$what' are undriven"))
+                Error(where, s"Bits $ranges of '$what' are undriven")
               case (assigns, ranges) =>
-                Iterator.single(
-                  Error(where, s"Bits $ranges of '$what' have multiple drivers")
-                ) concat {
-                  assigns.iterator.zipWithIndex map {
+                Error(where, s"Bits $ranges of '$what' have multiple drivers") withNotes {
+                  assigns.iterator.zipWithIndex.map {
                     case (assign, idx) => Note(assign, s"The ${Ordinal(idx + 1)} driver is here")
                   }
                 }

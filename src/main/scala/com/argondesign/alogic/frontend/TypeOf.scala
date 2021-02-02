@@ -170,10 +170,10 @@ private[frontend] object TypeOf {
                 Failure(init, "Type parameter default initializer does not name a type")
               } else {
                 Failure(
-                  Seq(
-                    Error(init, s"Actual value of parameter '${symbol.name}' does not name a type"),
-                    Note.definedHere(symbol.desc)
-                  )
+                  Error(
+                    init,
+                    s"Actual value of parameter '${symbol.name}' does not name a type"
+                  ) withNote Note.definedHere(symbol.desc)
                 )
               }
           }

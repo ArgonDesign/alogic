@@ -93,6 +93,11 @@ final class ParOrSeqIterable[T] private (
     case Right(parIterable) => wrap(parIterable.collect(pf))
   }
 
+  def exists[U](f: T => Boolean): Boolean = eitherIterable match {
+    case Left(iterable)     => iterable.exists(f)
+    case Right(parIterable) => parIterable.exists(f)
+  }
+
   def groupBy[K](f: T => K): ParOrSeqMap[K, ParOrSeqIterable[T]] = eitherIterable match {
     case Left(iterable) =>
       new ParOrSeqMap(iterable.groupBy(f).map { case (k, v) => k -> wrap(v) }, forceSeq)
@@ -108,6 +113,11 @@ final class ParOrSeqIterable[T] private (
   def ++(that: IterableOnce[T]): ParOrSeqIterable[T] = eitherIterable match {
     case Left(iterable)     => wrap(iterable ++ that)
     case Right(parIterable) => wrap(parIterable ++ that)
+  }
+
+  def ++(that: ParOrSeqIterable[T]): ParOrSeqIterable[T] = eitherIterable match {
+    case Left(iterable)     => wrap(iterable ++ that.iterator)
+    case Right(parIterable) => wrap(parIterable ++ that.iterator)
   }
 
   def +(item: T): ParOrSeqIterable[T] = ++(Iterator.single(item))

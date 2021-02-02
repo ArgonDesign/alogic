@@ -58,7 +58,7 @@ trait AlogicTest
     }
 
     val reply = s"""--- Message
-                   |${message.render}
+                   |${message.render(Map.empty)}
                    |--- $hint ---
                    |${lines.mkString("  ", "\n  ", "")}
                    |---""".stripMargin

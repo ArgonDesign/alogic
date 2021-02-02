@@ -170,7 +170,7 @@ class OptionParser(args: Seq[String], messageBuffer: MessageBuffer, sandboxPathO
   banner("Alogic compiler")
 
   errorMessageHandler = { message =>
-    messageBuffer.error(Loc.unknown, Seq(message))
+    messageBuffer.error(Loc.unknown, message)
   }
 
   val ydir = opt[List[Path]](

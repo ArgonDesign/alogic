@@ -18,3 +18,4 @@ network dictident_port_2 {
 // :16: ERROR: No port named 'i#\[1\]' on singleton instance 'inner'
 // :7: NOTE: 'inner' is defined here
 // :16: ERROR: No port named 'o#\[1\]' on singleton instance 'inner'
+// :7: NOTE: 'inner' is defined here

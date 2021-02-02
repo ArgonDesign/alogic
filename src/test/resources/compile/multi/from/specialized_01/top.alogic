@@ -1,2 +1,2 @@
 from "a" import S(7);
-// :1: ERROR: from import requires 'as' clause
+// :1: ERROR: 'from' requires 'as' clause

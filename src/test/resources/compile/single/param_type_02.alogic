@@ -15,3 +15,4 @@ fsm param_type_02 {
 // :7: ERROR: Actual value of parameter 'T' does not name a type
 // :2: NOTE: 'T' is defined here
 // :8: ERROR: Actual value of parameter 'T' does not name a type
+// :2: NOTE: 'T' is defined here

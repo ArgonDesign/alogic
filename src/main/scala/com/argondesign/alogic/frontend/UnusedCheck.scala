@@ -11,15 +11,20 @@ package com.argondesign.alogic.frontend
 
 import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FuncVariant
 import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.core.enums.EntityVariant
+import com.argondesign.alogic.core.MessageBuffer
+import com.argondesign.alogic.core.Messages.Message
 import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
 
-final class UnusedCheck(implicit cc: CompilerContext) extends StatelessTreeTransformer {
+final class UnusedCheck extends StatelessTreeTransformer {
+
+  private val mb = new MessageBuffer
+
+  def messages: List[Message] = mb.messages
 
   // Set of declared symbols, keyed by entity containing the definition
   private val declared =
@@ -181,7 +186,7 @@ final class UnusedCheck(implicit cc: CompilerContext) extends StatelessTreeTrans
         case DescParametrized(_, _, desc: Desc, _)   => s"Parametrized ${hint(desc)}"
         case _: DescAlias                            => unreachable // Removed by Finalize
       }
-      cc.warning(symbol, s"${hint(symbol.desc)} '${symbol.origName}' is unused")
+      mb.warning(symbol, s"${hint(symbol.desc)} '${symbol.origName}' is unused")
     }
   }
 
@@ -193,5 +198,11 @@ final class UnusedCheck(implicit cc: CompilerContext) extends StatelessTreeTrans
 }
 
 object UnusedCheck {
-  def apply(desc: Desc)(implicit cc: CompilerContext): Unit = desc rewrite new UnusedCheck
+
+  def apply(desc: Desc): List[Message] = {
+    val check = new UnusedCheck
+    check(desc)
+    check.messages
+  }
+
 }

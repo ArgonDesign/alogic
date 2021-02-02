@@ -27,12 +27,13 @@ final class ElaborationSpec extends AnyFreeSpec with AlogicTest {
 
   implicit private val cc: CompilerContext = new CompilerContext
 
-  private val fe = new Frontend
+  implicit private val fe: Frontend = new Frontend
 
   private def elaborate(text: String): Option[Desc] =
-    fe.elaborate(Source("TyperCheckerExprSpec", text)) pipe {
-      case Left(ms)      => ms foreach cc.addMessage; None
-      case Right(result) => Some(result)
+    fe.elaborate(Source("", text)) pipe {
+      case Complete(result) => Some(result)
+      case Failure(ms)      => ms foreach cc.addMessage; None
+      case Unknown(rs)      => rs.map(_.toMessage) foreach cc.addMessage; None
     }
 
   "Elaboration should " - {

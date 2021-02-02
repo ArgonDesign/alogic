@@ -131,6 +131,14 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
   private def error(msgHead: String, msgRest: String*)(implicit tree: Tree): Unit =
     error(tree, msgHead, msgRest: _*)
 
+  private def addNote(note: Note): Unit = {
+    val newLast = mAcc.last match {
+      case error: Error => error withNote note
+      case _            => unreachable
+    }
+    mAcc.update(mAcc.size - 1, newLast)
+  }
+
   // Check whether the Tree 'tree' currently being analyzed has been determined
   // to have a type error yet
   private def okSoFar(implicit tree: Tree): Boolean = {
@@ -692,7 +700,7 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
               error(init, "Type parameter default initializer does not name a type")
             } else {
               error(init, "Actual type parameter does not name a type")
-              mAcc.addOne(Note.definedHere(desc))
+              addNote(Note.definedHere(desc))
             }
           }
 
@@ -705,11 +713,8 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
           } else if (!symbol.kind.underlying.isNum && !init.tpe.underlying.isNum) {
             checkWidth(symbol.kind.width, init, "Parameter value")
           }
-          if (desc.hasTpe) {
-            assert(desc.tpe.isError)
-            if (!(desc.loc contains init.loc)) {
-              mAcc.addOne(Note.definedHere(desc))
-            }
+          if (!okSoFar && !(desc.loc contains init.loc)) {
+            addNote(Note.definedHere(desc))
           }
 
         case desc: Desc =>
@@ -924,7 +929,7 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
                 case _ => unreachable
               }
               error(msg)
-              mAcc addOne Note.definedHere(symbol.desc)
+              addNote(Note.definedHere(symbol.desc))
             case kind =>
               error(s"No member named '$sel' in value of type '${kind.toSource}'")
           }

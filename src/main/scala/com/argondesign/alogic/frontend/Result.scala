@@ -77,7 +77,28 @@ object Failure {
 }
 
 // Reasons for Unknown result
-sealed trait Reason
+sealed trait Reason {
+
+  def toMessage(implicit fe: Frontend): Message = this match {
+    case ReasonUnresolved(t) =>
+      fe.nameFor(t.base, t.idxs) match {
+        case Complete(name) => Error(t, s"'$name' is undefined")
+        case _              => Error(t, s"identifier is undefined")
+      }
+
+    case ReasonNeedsParamValue(symbol, loc) =>
+      Error(loc, s"'${symbol.name}' requires actual parameter value") withNote
+        Note.definedHere(symbol.desc)
+
+    // $COVERAGE-OFF$ should not have ICE
+    case ReasonUnelaborated(t)     => Ice(t, s"Not elaborated")
+    case ReasonEarlierTypeError(t) => Ice(t, s"Earlier type error")
+    case ReasonImportPending(t)    => Ice(t, s"Import pending")
+    // $COVERAGE-ON$
+  }
+
+}
+
 case class ReasonUnresolved(expr: ExprIdent) // Name not in symbol table
     extends Reason
 case class ReasonUnelaborated(tree: Tree) // Tree is not elaborated yet
@@ -181,45 +202,6 @@ trait FinalResultOps[+T] { self: FinalResult[T] =>
     case Complete(value) => value
     case _: Unknown      => throw Ice(".get on Unknown result")
     case _: Failure      => throw Ice(".get on Failure result")
-  }
-
-  final def toEither(implicit fe: Frontend): Either[Seq[Message], T] = self match {
-    case Complete(r) => Right(r)
-    case Unknown(rs) =>
-      Left {
-        val (userReasons, nonUserReasons) = rs partition {
-          case _: ReasonUnelaborated => false
-          case _                     => true
-        }
-
-        val reasons = if (userReasons.nonEmpty) {
-          userReasons
-        } else {
-          // $COVERAGE-OFF$ There should not be internal compiler errors
-          nonUserReasons
-          // $COVERAGE-ON$
-        }
-
-        reasons flatMap {
-          case ReasonUnresolved(t) =>
-            fe.nameFor(t.base, t.idxs) match {
-              case Complete(name) => Iterator.single(Error(t, s"'$name' is undefined"))
-              case _              => Iterator.single(Error(t, s"identifier is undefined"))
-            }
-
-          case ReasonNeedsParamValue(symbol, loc) =>
-            Iterator(
-              Error(loc, s"'${symbol.name}' requires actual parameter value"),
-              Note.definedHere(symbol.desc)
-            )
-          // $COVERAGE-OFF$ ICEs should not be hit..
-          case ReasonUnelaborated(t)     => Iterator.single(Ice(t, s"Not elaborated"))
-          case ReasonEarlierTypeError(t) => Iterator.single(Ice(t, s"Earlier type error"))
-          case ReasonImportPending(t)    => Iterator.single(Ice(t, s"Import pending"))
-          // $COVERAGE-ON$
-        }
-      }
-    case Failure(ms) => Left(ms.distinct)
   }
 
 }

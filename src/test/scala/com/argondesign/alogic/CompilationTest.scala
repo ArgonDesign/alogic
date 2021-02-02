@@ -950,7 +950,7 @@ abstract class CompilationTest(val parallel: Boolean)
         // Cancel here if coverageEnabled as we have all the coverage we want,
         // and this speeds up running the test suite up considerably.
         if (BuildInfo.coverageEnabled) {
-          messages foreach { _.render } // Render messages still to fill coverage
+          messages foreach { _.render(Map.empty) } // Render messages still to fill coverage
           cancel("Cancel CompilationTest checks because coverageEnabled")
         }
 
@@ -970,10 +970,10 @@ abstract class CompilationTest(val parallel: Boolean)
                   println("Mismatched message, expected:")
                   println(spec.render)
                   println("actual:")
-                  println(message.render)
+                  println(message.render(Map.empty))
                 case (Some(message), None) =>
                   println("Unexpected message:")
-                  println(message.render)
+                  println(message.render(Map.empty))
                 case (None, Some(spec)) =>
                   println("Missing message:")
                   println(spec.render)

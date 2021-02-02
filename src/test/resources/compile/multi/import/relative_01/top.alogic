@@ -11,6 +11,7 @@ fsm top {
 }
 
 // .*/top.alogic:1: ERROR: Cannot find relative import target "../a"
-// .*/top.alogic:1: NOTE: Path does not exist or is not a regular file: .*/import/a
+// .*/top.alogic:1: NOTE: Path: .*/import/a
 // .*/top.alogic:1: NOTE: ... or: .*/import/a\.alogic
+// .*/top.alogic:1: NOTE: ... does not exist or is not a regular file
 

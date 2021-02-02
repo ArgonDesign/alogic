@@ -95,10 +95,10 @@ private[frontend] object Specialize {
         assert(desc.isParametrized)
         if (desc.hasGeneratedParam && posParams.nonEmpty) {
           Failure(
-            Seq(
-              Error(loc, "Type with generated parameters requires named parameter assignment"),
-              Note.definedHere(symbol.desc)
-            )
+            Error(
+              loc,
+              "Type with generated parameters requires named parameter assignment"
+            ) withNote Note.definedHere(symbol.desc)
           )
         } else {
           Complete((desc, symtab, posParams concat namParams))

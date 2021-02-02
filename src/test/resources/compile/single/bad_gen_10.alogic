@@ -5,4 +5,3 @@ fsm bad_gen_10 {
 }
 
 // :3: ERROR: Multiple fence blocks specified in entity
-// :3: ERROR: Multiple fence blocks specified in entity

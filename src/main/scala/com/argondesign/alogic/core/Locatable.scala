@@ -10,8 +10,8 @@
 package com.argondesign.alogic.core
 
 import com.argondesign.alogic.antlr.{AlogicParserRuleContext => AlogicPRC}
+import com.argondesign.alogic.antlr.AlogicToken
 import com.argondesign.alogic.ast.Trees.Tree
-import com.argondesign.alogic.core.Symbol
 
 abstract class Locatable[T] {
   def apply(item: T): Loc // Extract location from item
@@ -24,6 +24,8 @@ object Locatable {
   implicit def locatableTree[T <: Tree]: Locatable[T] = _.loc
 
   implicit val locatableSymbol: Locatable[Symbol] = _.loc
+
+  implicit val locatableAlogicToken: Locatable[AlogicToken] = _.loc
 
   implicit def locatableAPRC[T <: AlogicPRC]: Locatable[T] = _.loc
 

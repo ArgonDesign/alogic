@@ -14,6 +14,8 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.ast.Trees.Expr.InstancePortSel
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeReady
+import com.argondesign.alogic.core.Messages.Error
+import com.argondesign.alogic.core.Messages.Note
 import com.argondesign.alogic.core.StorageTypes.StorageTypeWire
 import com.argondesign.alogic.core.Types.TypeIn
 import com.argondesign.alogic.core.Types.TypeOut
@@ -54,9 +56,15 @@ final class PortCheck(implicit cc: CompilerContext) extends StatelessTreeTransfo
           case InstancePortSel(i, _) => i.loc
           case _                     => unreachable
         }
-        cc.error(where, s"Port '$what' with 'sync ready' flow control has multiple sinks")
-        conns.sortBy(_.loc).iterator.zipWithIndex foreach {
-          case (conn, idx) => cc.note(conn, s"The ${Ordinal(idx + 1)} sink is here")
+        cc.addMessage {
+          Error(
+            where,
+            s"Port '$what' with 'sync ready' flow control has multiple sinks"
+          ) withNotes {
+            conns.sortBy(_.loc).iterator.zipWithIndex.map {
+              case (conn, idx) => Note(conn, s"The ${Ordinal(idx + 1)} sink is here")
+            }
+          }
         }
     }
   }
@@ -79,9 +87,12 @@ final class PortCheck(implicit cc: CompilerContext) extends StatelessTreeTransfo
           case InstancePortSel(i, _) => i.loc
           case _                     => unreachable
         }
-        cc.error(where, s"Port '$what' has multiple drivers")
-        conns.sortBy(_.loc).iterator.zipWithIndex foreach {
-          case (conn, idx) => cc.note(conn, s"The ${Ordinal(idx + 1)} driver is here")
+        cc.addMessage {
+          Error(where, s"Port '$what' has multiple drivers") withNotes {
+            conns.sortBy(_.loc).iterator.zipWithIndex.map {
+              case (conn, idx) => Note(conn, s"The ${Ordinal(idx + 1)} driver is here")
+            }
+          }
         }
     }
   }

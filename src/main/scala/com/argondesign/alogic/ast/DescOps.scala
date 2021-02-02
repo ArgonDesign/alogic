@@ -33,11 +33,8 @@ trait DescOps { this: Desc =>
 
   private def hasParamDesc(body: IterableOnce[Tree], inGenOnly: Boolean): Boolean =
     body.iterator map {
-      case PkgSplice(tree)  => tree
-      case EntSplice(tree)  => tree
-      case RecSplice(tree)  => tree
-      case StmtSplice(tree) => tree
-      case other            => other
+      case Splice(tree) => tree
+      case other        => other
     } exists {
       case _: DescParam     => !inGenOnly
       case _: DescParamType => !inGenOnly

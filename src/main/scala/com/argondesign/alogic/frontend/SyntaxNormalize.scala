@@ -11,13 +11,10 @@ package com.argondesign.alogic.frontend
 
 import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.util.unreachable
 
-import scala.util.chaining._
-
-final class SyntaxNormalize(implicit cc: CompilerContext) extends StatelessTreeTransformer {
+final class SyntaxNormalize extends StatelessTreeTransformer {
   override val typed: Boolean = false
 
   private val tmpNames: Iterator[String] = LazyList.from(0).iterator.map(n => s"`tmp_$n")
@@ -57,15 +54,12 @@ final class SyntaxNormalize(implicit cc: CompilerContext) extends StatelessTreeT
     DescParametrized(desc.ref, Nil, newDesc, SymbolTable.empty) withLocOf desc
   }
 
-  private def localName(expr: Expr): Option[Ident] = expr match {
-    case e @ ExprIdent(base, idxs) => Some(Ident(base, idxs) withLocOf e)
+  private def localName(expr: Expr): Ident = expr match {
+    case e @ ExprIdent(base, idxs) => Ident(base, idxs) withLocOf e
     case e @ ExprDot(_, selector, idxs) =>
-      Some {
-        val locStart = e.loc.point + 1
-        Ident(selector, idxs) withLoc e.loc.copy(start = locStart, point = locStart)
-      }
-    case _: ExprCall => None
-    case _           => unreachable
+      val locStart = e.loc.point + 1
+      Ident(selector, idxs) withLoc e.loc.copy(start = locStart, point = locStart)
+    case _ => unreachable // checked in SyntaxCheck
   }
 
   override def transform(tree: Tree): Tree = tree match {
@@ -98,37 +92,31 @@ final class SyntaxNormalize(implicit cc: CompilerContext) extends StatelessTreeT
     ////////////////////////////////////////////////////////////////////////////
 
     case usng @ UsingOne(expr, None) =>
-      localName(expr) match {
-        case some: Some[_] => usng.copy(identOpt = some) withLocOf tree
-        case None          => cc.error(usng, "'using' requires 'as' clause"); tree
-      }
+      usng.copy(identOpt = Some(localName(expr))) withLocOf tree
 
     ////////////////////////////////////////////////////////////////////////////
     // Turn From instances to Import + Using
     ////////////////////////////////////////////////////////////////////////////
 
-    case from @ FromOne(path, name, identOpt) =>
-      identOpt orElse localName(name) match {
-        case some: Some[_] =>
-          val tmpName = tmpNames.next()
-          val selected = {
-            def reselect(stem: Expr, name: Expr): Expr = name match {
-              case ExprIdent(base, idxs) =>
-                ExprDot(stem, base, idxs) withLocOf name
-              case ExprDot(expr, selector, idxs) =>
-                ExprDot(reselect(stem, expr), selector, idxs) withLocOf name
-              case ExprCall(expr, args) =>
-                ExprCall(reselect(stem, expr), args) withLocOf name
-              case _ => unreachable // TODO: sytnaxcheck
-            }
-            reselect(ExprIdent(tmpName, Nil) withLocOf name, name)
-          }
-          Thicket(
-            ImportOne(path, Ident(tmpName, Nil) withLocOf tree) withLocOf tree,
-            UsingOne(selected, some) withLocOf tree
-          )
-        case None => cc.error(from, "from import requires 'as' clause"); tree
+    case FromOne(path, name, identOpt) =>
+      val localIdent = identOpt.getOrElse(localName(name))
+      val tmpName = tmpNames.next()
+      val selected = {
+        def reselect(stem: Expr, name: Expr): Expr = name match {
+          case ExprIdent(base, idxs) =>
+            ExprDot(stem, base, idxs) withLocOf name
+          case ExprDot(expr, selector, idxs) =>
+            ExprDot(reselect(stem, expr), selector, idxs) withLocOf name
+          case ExprCall(expr, args) =>
+            ExprCall(reselect(stem, expr), args) withLocOf name
+          case _ => unreachable // Checked in SytnaxCheck
+        }
+        reselect(ExprIdent(tmpName, Nil) withLocOf name, name)
       }
+      Thicket(
+        ImportOne(path, Ident(tmpName, Nil) withLocOf tree) withLocOf tree,
+        UsingOne(selected, Some(localIdent)) withLocOf tree
+      )
 
     case FromAll(path) =>
       val tmpName = tmpNames.next()
@@ -137,17 +125,6 @@ final class SyntaxNormalize(implicit cc: CompilerContext) extends StatelessTreeT
         UsingAll(ExprIdent(tmpName, Nil) withLocOf tree, exprt = false) withLocOf tree
       )
 
-    ////////////////////////////////////////////////////////////////////////////
-    // Ensure PkgCompile instances have explicit name when required
-    ////////////////////////////////////////////////////////////////////////////
-
-    case PkgCompile(expr, None) =>
-      expr match {
-        case ExprIdent(_, Nil)             => tree
-        case ExprDot(_: ExprIdent, _, Nil) => tree
-        case _                             => cc.error(tree, "'compile' requires 'as' clause"); tree
-      }
-
     //
     case _ => tree
   }
@@ -155,9 +132,5 @@ final class SyntaxNormalize(implicit cc: CompilerContext) extends StatelessTreeT
 }
 
 object SyntaxNormalize {
-
-  def apply(tree: Desc)(implicit cc: CompilerContext): Option[Desc] = {
-    tree rewrite new SyntaxNormalize pipe { Option.unless(cc.hasError)(_) }
-  }
-
+  def apply(tree: Desc): Desc = tree rewrite new SyntaxNormalize
 }

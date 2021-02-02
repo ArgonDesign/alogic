@@ -16,7 +16,7 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.MessageBuffer
 import com.argondesign.alogic.core.Messages.Error
-import com.argondesign.alogic.core.Messages.Message
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Messages.Note
 import com.argondesign.alogic.core.ParOrSeqIterable
 import com.argondesign.alogic.core.Source
@@ -64,10 +64,9 @@ final class Frontend private (
       f: => Either[FinalResult[T], Future[FinalResult[T]]]
     ): Either[FinalResult[T], Future[FinalResult[T]]] = {
     if (pendingSet contains op) {
-      val ms = new ListBuffer[Message]()
-      def addNote(op: PendingFrontendOp, loc: Loc, initial: Boolean): Unit = {
-        ms addOne {
-          op pipe {
+      Left {
+        Failure {
+          def msg(op: PendingFrontendOp): String = op match {
             case PendingTypeOf(symbol)   => s"type of symbol '${symbol.name}'"
             case PendingEvaluate(symbol) => s"value of symbol '${symbol.name}'"
             case PendingSpecialzie(symbol, params) =>
@@ -75,39 +74,34 @@ final class Frontend private (
                 case ArgP(expr)       => expr.toSource
                 case ArgN(name, expr) => s"$name = ${expr.toSource}"
                 case ArgD(base, idxs, expr) =>
-                  s"$base#[${idxs map { _.toSource } mkString ","}] = ${expr.toSource}"
+                  s"$base#[${idxs.map(_.toSource) mkString ","}] = ${expr.toSource}"
               } mkString ", "
               s"specialization of symbol '${symbol.name}' with parameters: $paramString"
             case PendingImport(path) => s"""imported file "$path""""
-          } pipe { msg =>
-            if (initial) {
-              Error(loc, s"Circular definition: $msg")
-            } else {
-              Note(loc, s"Depends on $msg")
+          }
+
+          val (cycle, rest) = pendingStack.toList.span(_._1 != op)
+          val error = Error(rest.head._2, s"Circular definition: ${msg(op)}")
+
+          val trimmedCycle = cycle.filterNot {
+            _._1 pipe {
+              case PendingTypeOf(symbol)        => Some(symbol)
+              case PendingEvaluate(symbol)      => Some(symbol)
+              case PendingSpecialzie(symbol, _) => Some(symbol)
+              case _: PendingImport             => None
+            } exists {
+              _.desc match {
+                case _: DescGenIf | _: DescGenFor | _: DescGenRange | _: DescGenScope => true
+                case _                                                                => false
+              }
             }
           }
+
+          error withNotes {
+            trimmedCycle.reverse.map { case (op, loc) => Note(loc, s"Depends on ${msg(op)}") }
+          } withNote Note(loc, s"Depends on ${msg(op)}")
         }
       }
-      val (cycle, rest) = pendingStack.toList.span(_._1 != op)
-      addNote(op, rest.head._2, true)
-      cycle
-        .filterNot {
-          _._1 pipe {
-            case PendingTypeOf(symbol)        => Some(symbol)
-            case PendingEvaluate(symbol)      => Some(symbol)
-            case PendingSpecialzie(symbol, _) => Some(symbol)
-            case _: PendingImport             => None
-          } exists {
-            _.desc match {
-              case _: DescGenIf | _: DescGenFor | _: DescGenRange | _: DescGenScope => true
-              case _                                                                => false
-            }
-          }
-        }
-        .reverse
-        .foreach { case (op, loc) => addNote(op, loc, false) }
-      addNote(op, loc, false)
-      Left(Failure(ms.toSeq))
     } else {
       pendingSet.add(op)
       pendingStack.push((op, loc))
@@ -132,11 +126,8 @@ final class Frontend private (
       case Right(content) =>
         file.getName.dropWhile(_ != '.') match {
           case ".alogic" =>
-            fe.elaborate(Source(file, content)) pipe {
-              case Left(ms)    => Failure(ms)
-              case Right(desc) => Complete(desc)
-            } flatMap { desc =>
-              fe.typeCheck(desc) map { _ => desc.symbol }
+            elaborate(Source(file, content)) flatMap { desc =>
+              typeCheck(desc) map { _ => desc.symbol }
             }
           case _ =>
             Failure(
@@ -179,17 +170,23 @@ final class Frontend private (
             Left {
               Failure {
                 if (absolute) {
-                  Error(loc, s"""Cannot find absolute import target "$path"""") :: {
-                    searchPaths map { path => Note(loc, s"Looked in: $path") }
+                  Error(loc, s"""Cannot find absolute import target "$path"""") withNotes {
+                    searchPaths.map(path => Note(loc, s"Looked in: $path"))
                   }
                 } else {
-                  Error(loc, s"""Cannot find relative import target "$path"""") :: {
-                    val expected = searchPaths.head.resolve(path).toFile.getCanonicalPath
-                    val msg = s"Path does not exist or is not a regular file: $expected" :: {
-                      if (path endsWith ".alogic") Nil else List(s"or: $expected.alogic")
-                    }
-                    Note(loc, msg) :: Nil
-                  }
+                  Error(loc, s"""Cannot find relative import target "$path"""") withNote
+                    Note(
+                      loc, {
+                        val expected = searchPaths.head.resolve(path).toFile.getCanonicalPath
+                        val lb = new ListBuffer[String]
+                        lb.addOne(s"Path: $expected")
+                        if (!path.endsWith(".alogic")) {
+                          lb.addOne(s"or: $expected.alogic")
+                        }
+                        lb.addOne("does not exist or is not a regular file")
+                        lb.toList
+                      }
+                    )
                 }
               }
             }
@@ -264,58 +261,43 @@ final class Frontend private (
     )(
       implicit
       cc: CompilerContext
-    ): Either[Seq[Message], Desc] =
-    Some(source) flatMap {
-      implicit val mb: MessageBuffer = cc.messageBuffer
-      Parser[DescPackage](_, SourceContext.Package) // Parse the file
+    ): FinalResult[Desc] = {
+    // Parse the file
+    val mb = new MessageBuffer
+    Parser[DescPackage](source, SourceContext.Package, mb) pipe {
+      case Some(desc) =>
+        mb.messages foreach cc.addMessage
+        Complete(desc)
+      case None => Failure(mb.messages)
+    } flatMap { desc => // Run SyntaxCheck
+      val messages = SyntaxCheck(desc)
+      if (messages.exists(_.isInstanceOf[Error])) {
+        Failure(messages)
+      } else {
+        messages foreach cc.addMessage
+        Complete(desc)
+      }
+    } map { desc => // Normalize some constructs for easier elaboration
+      SyntaxNormalize(desc)
     } flatMap {
-      SyntaxCheck(_) // Run SyntaxChecks
-//    } map { t =>
-//      println(t.toSource); t
-    } flatMap {
-      SyntaxNormalize(_) // Normalize some constructs for easier elaboration
-//    } map { t =>
-//      println(t.toSource); t
-    } map {
       case desc: DescPackage =>
         // Elaborate the package definition
         @tailrec
         def loop(desc: Desc): FinalResult[Desc] = Elaborate(desc, Builtins.symbolTable) match {
-          case Finished(_)            => unreachable
-          case Partial(d, _)          => loop(d)
-          case complete @ Complete(_) => complete
-          case unknown: Unknown       => unknown
-          case failure: Failure       => failure
+          case result: FinalResult[Desc] => result
+          case Finished(_)               => unreachable
+          case Partial(d, _)             => loop(d)
         }
-        loop(desc).toEither
+        loop(desc)
       case desc @ DescParametrized(_, _, _: DescPackage, _) =>
         // Parametrized package, will definitely not need to iterate just yet
         Elaborate(desc, Builtins.symbolTable) match {
-          case Complete(value) => Right(value)
-          case _               => unreachable
+          case result: FinalResult[Desc] => result
+          case Finished(_)               => unreachable
+          case Partial(_, _)             => unreachable
         }
       case _ => unreachable
-    } pipe {
-      case None        => Left(Nil)
-      case Some(other) => other
     }
-
-  def finalize(
-      desc: DescPackage
-    )(
-      implicit
-      cc: CompilerContext
-    ): Option[(DescPackage, ParOrSeqIterable[DescPackage])] = {
-    // Apply Finalize
-    val finalized @ (input, dependencies) = Finalize(desc)
-    //
-    val iterable = (dependencies + input).asPar
-    // Apply a secondary SyntaxCheck to ensure 'gen' yielded well formed trees
-    iterable foreach { SyntaxCheck(_) }
-    // Apply UnusedCheck
-    iterable foreach UnusedCheck.apply
-    //
-    Some(finalized)
   }
 
   def apply(
@@ -326,12 +308,11 @@ final class Frontend private (
       implicit
       cc: CompilerContext
     ): Option[(DescPackage, ParOrSeqIterable[DescPackage])] =
-    elaborate(source) flatMap { desc =>
-      typeCheck(desc).toEither map { _ => desc }
-    } pipe {
-      case Left(ms)    => ms foreach cc.addMessage; None
-      case Right(desc) => Some(desc)
-    } flatMap {
+    Complete(source) flatMap { source => // Elaborate
+      elaborate(source)
+    } flatMap { desc => // Type check
+      typeCheck(desc) map { _ => desc }
+    } flatMap { // Specialize if parametrized
       case desc @ DescParametrized(_, _, _: DescPackage, _) =>
         elaborate(params, Builtins.symbolTable, None)
           .pipe {
@@ -342,23 +323,47 @@ final class Frontend private (
           .flatMap { params =>
             specialize(desc.symbol, params, loc)
           }
-          .toEither
-          .pipe {
-            case Left(ms)      => ms foreach cc.addMessage; None
-            case Right(symbol) => Some(symbol.desc.asInstanceOf[DescPackage])
+          .map {
+            _.desc.asInstanceOf[DescPackage]
           }
       case desc: DescPackage =>
         if (params.isEmpty) {
-          Some(desc)
+          Complete(desc)
         } else {
-          val msg =
-            s"Package defined in input file '${source.path}' does not take any parameters."
-          params foreach {
-            cc.error(_, msg)
-          }
-          None
+          val msg = s"Package defined in input file '${source.path}' does not take any parameters."
+          Failure(params.map(Error(_, msg)))
         }
       case _ => unreachable
-    } flatMap finalize
+    } flatMap { desc =>
+      // Apply Finalize
+      val finalized @ (input, dependencies) = Finalize(desc)
+      //
+      val iterable = (dependencies + input).asPar
+      // Apply a secondary SyntaxCheck to ensure 'gen' yielded well formed
+      // trees. Also apply UnusedCheck
+      val messages = iterable.flatMap(SyntaxCheck.apply) ++ iterable.flatMap(UnusedCheck.apply)
+      //
+      if (messages.exists(_.isInstanceOf[Error])) {
+        Failure(messages.iterator.toSeq)
+      } else {
+        messages.iterator.toSeq.sortBy(_.loc) foreach cc.addMessage
+        Complete(finalized)
+      }
+    } match {
+      case Complete(result) => Some(result)
+      case Failure(ms) =>
+        ms foreach cc.addMessage
+        None
+      case Unknown(rs) =>
+        val messages = rs.map(_.toMessage)
+        // If there is a user error, ignore all internal errors, as they might
+        // have been caused by the presence of the user error
+        if (!messages.forall(_.isInstanceOf[Ice])) {
+          messages.filterNot(_.isInstanceOf[Ice]) foreach cc.addMessage
+        } else {
+          messages foreach cc.addMessage
+        }
+        None
+    }
 
 }

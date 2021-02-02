@@ -11,7 +11,6 @@ package com.argondesign.alogic
 
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.MessageBuffer
 import com.argondesign.alogic.core.Source
 import com.argondesign.alogic.core.SourceContext
 import com.argondesign.alogic.frontend.Parser
@@ -19,22 +18,21 @@ import com.argondesign.alogic.frontend.Parser.Parseable
 
 object SourceTextConverters {
 
-  case class AsTreeSyntaxErrorException(cc: CompilerContext) extends Exception
+  class AsTreeSyntaxErrorException extends Exception
 
   implicit class String2Repr(val string: String) {
 
     val source: Source = Source("<asTree>", string)
 
-    def asTree[T <: Tree](
+    def asTree[T <: Tree: Parseable](
         sc: SourceContext = SourceContext.Unknown
       )(
         implicit
-        cc: CompilerContext,
-        parseable: Parseable[T]
-      ): T = {
-      implicit val mb: MessageBuffer = cc.messageBuffer
-      Parser[T](source, sc) getOrElse { throw AsTreeSyntaxErrorException(cc) }
-    }
+        cc: CompilerContext
+      ): T =
+      Parser[T](source, sc, cc.messageBuffer) getOrElse {
+        throw new AsTreeSyntaxErrorException()
+      }
 
   }
 

@@ -18,17 +18,13 @@ import com.argondesign.alogic.core.StorageTypes.StorageTypeDefault
 import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.unreachable
+import com.argondesign.alogic.util.IteratorOps._
 
 object ConnectChecks {
 
   // Just for local convenience
   implicit private class IteratorOps[T](val self: Iterator[T]) extends AnyVal {
     def ifEmpty(other: => Iterator[T]): Iterator[T] = if (self.nonEmpty) self else other
-  }
-
-  implicit private class IteratorObjOps(val obj: Iterator.type) extends AnyVal {
-    def when[T](cond: Boolean)(value: => T): Iterator[T] =
-      if (cond) Iterator.single(value) else Iterator.empty
   }
 
   // Return true if this is a well formed and typed Connect instance
@@ -121,9 +117,9 @@ object ConnectChecks {
 
     def checkValidLhs(expr: Expr): Iterator[Message] = {
       def checkValidSource(expr: Expr): Iterator[Message] = {
-        def error(extra: String*): Iterator[Error] = Iterator single {
+        def error(extra: String*): Iterator[Error] = Iterator.single(
           Error(expr.loc, "Expression on left hand side of '->' is not a valid source." +: extra)
-        }
+        )
 
         expr match {
           case ExprSym(symbol) =>
@@ -131,13 +127,14 @@ object ConnectChecks {
             symbol.kind match {
               case _: TypeIn | _: TypePipeIn | _: TypeConst | _: TypeParam => Iterator.empty // OK
               case kind: TypeEntity =>
-                if (kind("out").isDefined) {
-                  Iterator.empty // Ok
-                } else {
-                  error(s"'$n' has no cardinal output port.") ++
-                    Iterator.when(!kind.symbol.desc.isInstanceOf[DescSingleton]) {
-                      Note(kind.symbol, s"'$n' is an instance of:")
+                Iterator.when(kind("out").isEmpty) thenIterator {
+                  error(s"'$n' has no cardinal output port.") map {
+                    _ withNotes {
+                      Iterator.when(!kind.symbol.desc.isInstanceOf[DescSingleton]) thenSingle {
+                        Note(kind.symbol, s"'$n' is an instance of:")
+                      }
                     }
+                  }
                 }
               case _: TypeOut | _: TypePipeOut =>
                 error(s"'$n' is an output of an enclosing entity.")
@@ -186,13 +183,14 @@ object ConnectChecks {
             symbol.kind match {
               case _: TypeOut | _: TypePipeOut => Iterator.empty // OK
               case kind: TypeEntity =>
-                if (kind("in").isDefined) {
-                  Iterator.empty // Ok
-                } else {
-                  error(s"'$n' has no cardinal input port.") ++
-                    Iterator.when(!kind.symbol.desc.isInstanceOf[DescSingleton]) {
-                      Note(kind.symbol, s"'$n' is an instance of:")
+                Iterator.when(kind("in").isEmpty) thenIterator {
+                  error(s"'$n' has no cardinal input port.") map {
+                    _ withNotes {
+                      Iterator.when(!kind.symbol.desc.isInstanceOf[DescSingleton]) thenSingle {
+                        Note(kind.symbol, s"'$n' is an instance of:")
+                      }
                     }
+                  }
                 }
               case _: TypeIn | _: TypePipeIn => error(s"'$n' is an input of an enclosing entity.")
               case _                         => error()
@@ -250,7 +248,7 @@ object ConnectChecks {
         case _ =>
           val lWidth = lKind.width
           val rWidth = rKind.width
-          Iterator.when(lWidth != rWidth) {
+          Iterator.when(lWidth != rWidth) thenSingle {
             val loc = rhs.loc.copy(start = lhs.loc.start)
             Error(loc, s"Connected ports have mismatched widths: $lWidth -> $rWidth")
           }
@@ -265,9 +263,9 @@ object ConnectChecks {
       }
       rhs flatCollect {
         case expr @ ExprSym(symbol) if outWithNonDefaultStorage(symbol) =>
-          Iterator(
-            Error(symbol, "Output port driven by '->' cannot have a storage specifier"),
-            Note(expr, s"'${symbol.name}' is driven here")
+          Iterator.single(
+            Error(symbol, "Output port driven by '->' cannot have a storage specifier") withNote
+              Note(expr, s"'${symbol.name}' is driven here")
           )
       }
     }
@@ -275,16 +273,16 @@ object ConnectChecks {
     def checkNoInitializer(rhs: Expr): Iterator[Message] =
       rhs flatCollect {
         case expr @ ExprSym(symbol) if symbol.kind.isOut && symbol.desc.initializer.isDefined =>
-          Iterator(
-            Error(symbol, "Output port driven by '->' cannot have an initializer"),
-            Note(expr, s"'${symbol.name}' is driven here")
+          Iterator.single(
+            Error(symbol, "Output port driven by '->' cannot have an initializer") withNote
+              Note(expr, s"'${symbol.name}' is driven here")
           )
       }
 
     def checkFlowControlCompatible(lhs: Expr)(rhs: Expr): Iterator[Message] = {
       val fctl = flowControlType(lhs.tpe, onLhs = true)
       val fctr = flowControlType(rhs.tpe, onLhs = false)
-      Iterator.when(fctl != fctr) {
+      Iterator.when(fctl != fctr) thenSingle {
         val loc = rhs.loc.copy(start = lhs.loc.start)
         def txt(fct: Option[FlowControlType]): String = fct match {
           case None                       => "none"
@@ -302,7 +300,7 @@ object ConnectChecks {
         case Some(FlowControlTypeNone)  => unreachable
         case Some(FlowControlTypeValid) => Iterator.empty
         case Some(FlowControlTypeReady) =>
-          Iterator.when(rhss.lengthIs > 1) {
+          Iterator.when(rhss.lengthIs > 1) thenSingle {
             val loc = lhs.loc.copy(end = rhss.last.loc.end)
             Error(loc, s"Port with 'sync ready' flow control cannot have multiple sinks")
           }

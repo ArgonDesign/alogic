@@ -281,11 +281,11 @@ final class ParserParseExprSpec extends AnyFreeSpec with AlogicTest {
           )
         } {
           literal in {
-            literal.asTree[Expr]() shouldBe result
             if (msg.nonEmpty) {
+              an[AsTreeSyntaxErrorException] shouldBe thrownBy(literal.asTree[Expr]())
               cc.messages.loneElement should beThe[Error]((msg split '\n').toSeq: _*)
             } else {
-              cc.messages shouldBe empty
+              literal.asTree[Expr]() shouldBe result
             }
           }
         }
@@ -431,14 +431,17 @@ final class ParserParseExprSpec extends AnyFreeSpec with AlogicTest {
           )
         } {
           literal in {
-            literal.asTree[Expr]() shouldBe result
             if (msg.nonEmpty) {
               result match {
-                case _: ExprError => cc.messages.loneElement should beThe[Error](msg)
-                case _            => cc.messages.loneElement should beThe[Warning](msg)
+                case _: ExprError =>
+                  an[AsTreeSyntaxErrorException] shouldBe thrownBy(literal.asTree[Expr]())
+                  cc.messages.loneElement should beThe[Error](msg)
+                case _ =>
+                  literal.asTree[Expr]() shouldBe result
+                  cc.messages.loneElement should beThe[Warning](msg)
               }
             } else {
-              cc.messages shouldBe empty
+              literal.asTree[Expr]() shouldBe result
             }
           }
 
@@ -764,7 +767,7 @@ final class ParserParseExprSpec extends AnyFreeSpec with AlogicTest {
     }
 
     "this" in {
-      "this".asTree[Expr]() shouldBe ExprError()
+      an[AsTreeSyntaxErrorException] shouldBe thrownBy("this".asTree[Expr]())
       cc.messages.loneElement should beThe[Error] {
         "'this' reference is not user accessible"
       }

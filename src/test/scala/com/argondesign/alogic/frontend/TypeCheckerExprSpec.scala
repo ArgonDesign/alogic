@@ -24,16 +24,17 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
   private val fe = new Frontend
 
   private def elaborate(text: String): Option[Desc] =
-    fe.elaborate(Source("TyperCheckerExprSpec", text)) pipe {
-      case Left(ms)      => ms foreach cc.addMessage; None
-      case Right(result) => Some(result)
+    fe.elaborate(Source("", text)) pipe {
+      case Complete(result) => Some(result)
+      case Failure(ms)      => ms foreach cc.addMessage; None
+      case Unknown(rs)      => rs foreach println; fail()
     }
 
   private def typeCheck(tree: Tree): Unit =
     fe.typeCheck(tree) match {
       case Complete(_) =>
-      case Unknown(_)  => fail()
       case Failure(ms) => ms foreach cc.addMessage
+      case Unknown(_)  => fail()
     }
 
   private def typeCheck(text: String): Tree =

@@ -17,11 +17,9 @@ import org.antlr.v4.runtime.Token
 import org.antlr.v4.runtime.TokenFactory
 import org.antlr.v4.runtime.TokenSource
 
-import scala.util.ChainingSyntax
+import scala.util.chaining.scalaUtilChainingOps
 
-class AlogicTokenFactory(val alogicSource: Source)(implicit mb: MessageBuffer)
-    extends TokenFactory //[AlogicToken]
-    with ChainingSyntax {
+class AlogicTokenFactory(val alogicSource: Source, mb: MessageBuffer) extends TokenFactory {
 
   // Used to implement #line
   private var fileName: String = alogicSource.path
@@ -42,13 +40,6 @@ class AlogicTokenFactory(val alogicSource: Source)(implicit mb: MessageBuffer)
   private def adjustLine(line: Int): Int = line - lineOffset
 
   private def eol(kind: Int): Boolean = kind == AlogicLexer.NL
-
-  var hadError: Boolean = false
-
-  private def error(token: AlogicToken, msg: String): Unit = {
-    hadError = true
-    mb.error(token.loc, msg)
-  }
 
   // New line offset and file name only committed at end of line
   private var newLineOffset: Int = _
@@ -114,7 +105,7 @@ class AlogicTokenFactory(val alogicSource: Source)(implicit mb: MessageBuffer)
             } else {
               // Unexpected token, skip rest of line
               ppState = PPSkipLine
-              error(token, "'#line' requires a positive decimal integer as first argument")
+              mb.error(token, "'#line' requires a positive decimal integer as first argument")
             }
           }
         case PPExpectLineName =>
@@ -130,7 +121,7 @@ class AlogicTokenFactory(val alogicSource: Source)(implicit mb: MessageBuffer)
             } else {
               // Unexpected token, skip rest of line
               ppState = PPSkipLine
-              error(token, "Second argument to '#line' must be a string literal")
+              mb.error(token, "Second argument to '#line' must be a string literal")
             }
           }
         case PPSkipLine =>
@@ -142,7 +133,7 @@ class AlogicTokenFactory(val alogicSource: Source)(implicit mb: MessageBuffer)
               fileName = newFileName
             } else {
               // Stray input at end of line
-              error(token, "Extraneous arguments to '#line'")
+              mb.error(token, "Extraneous arguments to '#line'")
             }
           }
       }

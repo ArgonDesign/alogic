@@ -17,7 +17,10 @@ import com.argondesign.alogic.core.StorageTypes._
 import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.enums.EntityVariant
+import com.argondesign.alogic.frontend.Complete
+import com.argondesign.alogic.frontend.Failure
 import com.argondesign.alogic.frontend.Frontend
+import com.argondesign.alogic.frontend.Unknown
 import org.scalatest.freespec.AnyFreeSpec
 
 final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
@@ -27,9 +30,10 @@ final class TypeAssignerSpec extends AnyFreeSpec with AlogicTest {
   private val fe = new Frontend
 
   private def elaborate(text: String): Tree =
-    fe.elaborate(Source("TypeAssignerSpec", text)) pipe {
-      case Left(ms)      => ms foreach cc.addMessage; None
-      case Right(result) => Some(result)
+    fe.elaborate(Source("", text)) pipe {
+      case Complete(result) => Some(result)
+      case Failure(ms)      => ms foreach cc.addMessage; None
+      case Unknown(rs)      => rs foreach println; fail()
     } tap { _ =>
       cc.messages foreach println
       cc.messages shouldBe empty

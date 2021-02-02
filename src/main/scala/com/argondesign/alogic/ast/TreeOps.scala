@@ -35,8 +35,6 @@ trait TreeOps extends TreePrintOps { this: Tree =>
 
   final def tpe: Type = if (hasTpe) _tpe else unreachable
 
-  final def tpeOpt: Option[Type] = Option(_tpe)
-
   final def withTpe(kind: Type): this.type = {
     if (hasTpe) {
       unreachable

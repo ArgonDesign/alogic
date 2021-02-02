@@ -44,7 +44,6 @@ private[frontend] object Finalize {
         desc: DescPackage
       )(
         implicit
-        cc: CompilerContext,
         fe: Frontend
       ): (DescPackage, Set[DescPackage]) = {
 
@@ -79,7 +78,7 @@ private[frontend] object Finalize {
           val frontend = fe.fork
           lazy val recursiveResult = Future {
             val (self, transitiveDependencies) =
-              process(symbol.desc.asInstanceOf[DescPackage])(cc, frontend)
+              process(symbol.desc.asInstanceOf[DescPackage])(frontend)
             transitiveDependencies + self
           }
           processedParallel.putIfAbsent(symbol, () => recursiveResult) match {
@@ -96,7 +95,7 @@ private[frontend] object Finalize {
         referencedPackageSymbols flatMap { symbol =>
           lazy val recursiveResult = {
             val (self, transitiveDependencies) =
-              process(symbol.desc.asInstanceOf[DescPackage])(cc, fe)
+              process(symbol.desc.asInstanceOf[DescPackage])(fe)
             transitiveDependencies + self
           }
           processedSerial.putIfAbsent(symbol, ()) match {

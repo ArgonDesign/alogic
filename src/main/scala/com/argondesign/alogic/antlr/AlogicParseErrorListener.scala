@@ -14,7 +14,7 @@ import org.antlr.v4.runtime.RecognitionException
 import org.antlr.v4.runtime.Recognizer
 import org.antlr.v4.runtime.Token
 
-class AlogicParseErrorListener(implicit mb: MessageBuffer) extends BaseErrorListener {
+class AlogicParseErrorListener(mb: MessageBuffer) extends BaseErrorListener {
 
   override def syntaxError[T <: Token](
       recogniser: Recognizer[T, _],

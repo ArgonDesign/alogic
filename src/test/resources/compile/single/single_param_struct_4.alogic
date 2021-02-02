@@ -14,3 +14,4 @@ network single_param_struct_4 {
 // :10: ERROR: Type with generated parameters requires named parameter assignment
 // :2: NOTE: 's_t' is defined here
 // :11: ERROR: Type with generated parameters requires named parameter assignment
+// :2: NOTE: 's_t' is defined here

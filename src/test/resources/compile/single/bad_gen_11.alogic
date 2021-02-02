@@ -9,4 +9,3 @@ fsm bad_gen_11 {
   }
 }
 // :5: ERROR: Multiple 'default' clauses specified in case statement
-// :5: ERROR: Multiple 'default' clauses specified in case statement

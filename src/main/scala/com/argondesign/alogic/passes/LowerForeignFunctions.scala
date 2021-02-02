@@ -14,6 +14,8 @@ import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FuncVariant
+import com.argondesign.alogic.core.Messages.Error
+import com.argondesign.alogic.core.Messages.Note
 import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Types._
@@ -49,8 +51,10 @@ final class LowerForeignFunctions(
             if (kind.retType != newKind.retType || kind.argTypes != newKind.argTypes) {
               val (a, b) =
                 if (kind.symbol < symbol) (kind.symbol, symbol) else (symbol, kind.symbol)
-              cc.error(b, "Foreign function imported with different signatures.")
-              cc.note(a, "Conflicting 'import' is here")
+              cc.addMessage(
+                Error(b, "Foreign function imported with different signatures.") withNote
+                  Note(a, "Conflicting 'import' is here")
+              )
             }
         }
       }

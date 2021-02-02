@@ -741,12 +741,12 @@ object Elaborate {
           fe.nameFor(base, idxs) flatMap { name =>
             symtab.get(name) match {
               case SymbolTable.Outer(symbol) =>
-                val err = Error(
-                  desc.ref,
-                  "Dictionary identifier hides definition with same name in outer scope"
-                )
-                val note = Note(symbol, "Outer definition is here:")
-                Failure(Seq(err, note))
+                Failure {
+                  Error(
+                    desc.ref,
+                    "Dictionary identifier hides definition with same name in outer scope"
+                  ) withNote Note(symbol, "Outer definition is here:")
+                }
               case _ => Complete(name)
             }
           } map { name =>

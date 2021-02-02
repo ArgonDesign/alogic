@@ -36,11 +36,9 @@ object Parser {
   def apply[T <: Tree: Parseable](
       source: Source,
       sc: SourceContext,
+      mb: MessageBuffer,
       start: Int = 0,
       end: Int = -1
-    )(
-      implicit
-      mb: MessageBuffer
     ): Option[T] = {
     require(start >= 0)
     require(end < 0 || end >= start)
@@ -48,7 +46,7 @@ object Parser {
     val dispatcher = implicitly[Parseable[T]]
 
     // Create Antlr4 parser
-    val tokenFactory = new AlogicTokenFactory(source)
+    val tokenFactory = new AlogicTokenFactory(source, mb)
     val parser = {
       val text = if (end >= 0) source.contents.take(end) else source.contents
       val stream = CharStreams.fromString(text, source.path)
@@ -57,21 +55,23 @@ object Parser {
       lexer.setTokenFactory(tokenFactory)
       new AlogicParser(new CommonTokenStream(lexer)) tap { parser =>
         parser.removeErrorListeners()
-        parser.addErrorListener(new AlogicParseErrorListener)
+        parser.addErrorListener(new AlogicParseErrorListener(mb))
       }
     }
 
     // Build Antlr4 parse tree
     val ctx = dispatcher.parse(parser)
 
-    // Build the Abstract Syntax Tree from the Parse Tree (assuming no syntax)
-    Option.when(parser.getNumberOfSyntaxErrors == 0 && !tokenFactory.hadError) {
-      dispatcher.build(ctx)(mb, sc) tap {
-        // $COVERAGE-OFF$ Debug code
-        // Ensure all nodes have locations TODO: Make optional
-        _ visitAll { case tree: Tree if !tree.hasLoc => throw Ice(s"Tree has no location $tree") }
-        // $COVERAGE-ON$
-      }
+    if (mb.hasError) {
+      None
+    } else {
+      // Build the Abstract Syntax Tree from the Parse Tree
+      val tree = dispatcher.build(ctx)(mb, sc)
+      // Ensure all nodes have locations
+      // $COVERAGE-OFF$ Debug code
+      tree visitAll { case tree: Tree if !tree.hasLoc => throw Ice(s"Tree has no location $tree") }
+      // $COVERAGE-ON$
+      Option.unless(mb.hasError)(tree)
     }
   }
 
