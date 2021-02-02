@@ -184,7 +184,6 @@ final class RemoveStructuralSharing extends StatelessTreeTransformer {
         case node: ExprInt     => node.copy()
         case node: ExprNum     => node.copy()
         case node: ExprStr     => node.copy()
-        case _: ExprError      => ExprError()
 
         case node: ArgP => node.copy()
         case node: ArgN => node.copy()

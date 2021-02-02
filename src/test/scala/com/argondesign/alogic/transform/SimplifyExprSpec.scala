@@ -2626,21 +2626,21 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
 
     "cast" - {
       for {
-        (exprSrc, kindSrc, pattern, err) <-
-          List[(String, String, PartialFunction[Any, Unit], List[String])](
+        (exprSrc, kindSrc, errorOrPattern) <-
+          List[(String, String, Either[String, PartialFunction[Any, Unit]])](
             // format: off
-            ("32", "u8", { case ExprInt(false, 8, v) if v == 32 => }, Nil),
-            ("32s", "i8", { case ExprInt(true, 8, v) if v == 32=> }, Nil),
-            ("-1s", "i8", { case ExprInt(true, 8, v) if v == -1 => }, Nil),
-            ("32", "u4", { case ExprError() => }, "Value 32 cannot be represented with 4 unsigned bits" :: Nil),
-            ("32s", "i4", { case ExprError() => }, "Value 32 cannot be represented with 4 signed bits" :: Nil),
-            ("31", "u5", { case ExprInt(false, 5, v) if v == 31 => }, Nil),
-            ("31s", "i5", { case ExprError() => }, "Value 31 cannot be represented with 5 signed bits" :: Nil),
-            ("10'sd12",  "int", { case ExprNum(true, v) if v == 12 => }, Nil),
-            ("10'd12",  "uint", { case ExprNum(false, v) if v == 12 => }, Nil),
-            ("-10'sd1",  "int", { case ExprNum(true, v) if v == -1 => }, Nil),
-            ("a",  "u10", { case ExprCat(List(ExprInt(false, 2, z), ExprSym(Symbol("a")))) if z == 0  => }, Nil),
-            ("b",  "i10", { case Signed(
+            ("32", "u8", Right({ case ExprInt(false, 8, v) if v == 32 => })),
+            ("32s", "i8",Right({ case ExprInt(true,  8, v) if v == 32 => })),
+            ("-1s", "i8",Right({ case ExprInt(true,  8, v) if v == -1 => })),
+            ("32", "u4", Left("Value 32 cannot be represented with 4 unsigned bits")),
+            ("32s", "i4", Left("Value 32 cannot be represented with 4 signed bits")),
+            ("31", "u5", Right({ case ExprInt(false, 5, v) if v == 31 => })),
+            ("31s", "i5",Left("Value 31 cannot be represented with 5 signed bits")),
+            ("10'sd12",  "int", Right({ case ExprNum(true, v) if v == 12 => })),
+            ("10'd12",  "uint", Right({ case ExprNum(false, v) if v == 12 => })),
+            ("-10'sd1",  "int", Right({ case ExprNum(true, v) if v == -1 => })),
+            ("a",  "u10", Right({ case ExprCat(List(ExprInt(false, 2, z), ExprSym(Symbol("a")))) if z == 0  => })),
+            ("b",  "i10", Right({ case Signed(
                                   ExprCat(List(
                                         ExprRep(
                                           Expr(3),
@@ -2648,13 +2648,13 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
                                             ExprSym(Symbol("b")),
                                             ExprInt(false, 3, i))),
                                         ExprSym(Symbol("b"))))) if i == 6 =>
-            }, Nil),
-            ("a",  "u8", { case ExprSym(Symbol("a")) => }, Nil),
-            ("b",  "i7", { case ExprSym(Symbol("b")) => }, Nil),
-            ("c",  "u10", { case ExprInt(false, 10, v) if v == 7 => }, Nil),
-            ("c", "uint", { case ExprNum(false, v) if v == 7 => }, Nil),
-            ("d",  "i10", { case ExprInt(true, 10, v) if v == -3 => }, Nil),
-            ("d",  "int", { case ExprNum(true, v) if v == -3 => }, Nil)
+            })),
+            ("a",  "u8", Right({ case ExprSym(Symbol("a")) => })),
+            ("b",  "i7", Right({ case ExprSym(Symbol("b")) => })),
+            ("c",  "u10", Right({ case ExprInt(false, 10, v) if v == 7 => })),
+            ("c", "uint", Right({ case ExprNum(false, v) if v == 7 => })),
+            ("d",  "i10", Right({ case ExprInt(true, 10, v) if v == -3 => })),
+            ("d",  "int", Right({ case ExprNum(true, v) if v == -3 => }))
             // format: on
           )
       } {
@@ -2674,18 +2674,15 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
           } getFirst {
             case ExprBuiltin(_, List(_, ArgP(e))) => e
           } tap { expr =>
-            cc.messages filterNot {
-              _.isInstanceOf[Warning]
-            } shouldBe empty
+            cc.messages.filterNot(_.isInstanceOf[Warning]) shouldBe empty
             val kind = kindSrc.asTree[Expr]() match {
               case ExprType(kind) => kind
               case _              => fail()
             }
             val call = TypeAssigner(ExprCast(kind, expr) withLoc Loc.synthetic)
-            if (err.isEmpty) {
-              SimplifyExpr(call) should matchPattern(pattern)
-            } else {
-              (the[Fatal] thrownBy SimplifyExpr(call)).msg shouldBe err
+            errorOrPattern match {
+              case Left(error)    => (the[Fatal] thrownBy SimplifyExpr(call)).msg shouldBe Seq(error)
+              case Right(pattern) => SimplifyExpr(call) should matchPattern(pattern)
             }
           }
         }

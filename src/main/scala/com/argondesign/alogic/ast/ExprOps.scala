@@ -183,7 +183,7 @@ trait ExprOps { this: Expr =>
       case ExprSymSel(e, _)        => p(e)
       case ExprCast(_, e)          => p(e)
       case _: ExprIdent | _: ExprSym | _: ExprOld | _: ExprThis | _: ExprType | _: ExprInt |
-          _: ExprNum | _: ExprStr | _: ExprError =>
+          _: ExprNum | _: ExprStr =>
         true
       // $COVERAGE-ON$
     }
@@ -277,7 +277,6 @@ trait ExprOps { this: Expr =>
     case expr: ExprInt     => expr.copy()
     case expr: ExprNum     => expr.copy()
     case expr: ExprStr     => expr.copy()
-    case _: ExprError      => ExprError()
     // $COVERAGE-ON$
   }
 

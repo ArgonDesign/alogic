@@ -231,7 +231,6 @@ object TypeAssigner {
     case node: ExprInt     => kind(node)
     case node: ExprNum     => kind(node)
     case node: ExprStr     => kind(node)
-    case node: ExprError   => kind(node)
   }
 
   private def kind(tree: ExprCall) = tree.expr.tpe match {
@@ -365,8 +364,6 @@ object TypeAssigner {
 
   private def kind(tree: ExprStr) = TypeStr
 
-  private def kind(tree: ExprError) = TypeError
-
   //////////////////////////////////////////////////////////////////////////////
   // Arg
   //////////////////////////////////////////////////////////////////////////////
@@ -435,7 +432,6 @@ object TypeAssigner {
   def apply(tree: ExprInt): tree.type = assign(tree)(kind(tree))
   def apply(tree: ExprNum): tree.type = assign(tree)(kind(tree))
   def apply(tree: ExprStr): tree.type = assign(tree)(kind(tree))
-  def apply(tree: ExprError): tree.type = assign(tree)(kind(tree))
   def apply(tree: Arg): tree.type = assign(tree)(kind(tree))
   // format: on
   // $COVERAGE-ON$

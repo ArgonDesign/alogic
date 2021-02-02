@@ -77,23 +77,21 @@ object StaticEvaluation {
   // Same as "expr exists { case ExprSym(symbol) => set(symbol) }" but faster
   private def uses(expr: Expr, set: Set[Symbol]): Boolean = {
     def p(expr: Expr): Boolean = expr match {
-      case _: ExprInt            => false
-      case _: ExprNum            => false
-      case ExprSym(symbol)       => set(symbol)
-      case ExprBinary(l, _, r)   => p(l) || p(r)
-      case ExprUnary(_, e)       => p(e)
-      case ExprCond(c, ts, es)   => p(c) || p(ts) || p(es)
-      case ExprCall(e, as)       => p(e) || (as exists { a => p(a.expr) })
-      case ExprBuiltin(_, as)    => as exists { a => p(a.expr) }
-      case ExprIndex(e, i)       => p(e) || p(i)
-      case ExprSlice(e, l, _, r) => p(e) || p(l) || p(r)
-      case ExprCat(ps)           => ps exists p
-      case ExprRep(c, e)         => p(e) || p(c)
-      case ExprSel(e, _)         => p(e)
-      case ExprCast(_, e)        => p(e)
-      case ExprOld(e)            => p(e)
-      case _: ExprType | _: ExprStr | _: ExprError =>
-        false
+      case _: ExprInt | _: ExprNum  => false
+      case ExprSym(symbol)          => set(symbol)
+      case ExprBinary(l, _, r)      => p(l) || p(r)
+      case ExprUnary(_, e)          => p(e)
+      case ExprCond(c, ts, es)      => p(c) || p(ts) || p(es)
+      case ExprCall(e, as)          => p(e) || (as exists { a => p(a.expr) })
+      case ExprBuiltin(_, as)       => as exists { a => p(a.expr) }
+      case ExprIndex(e, i)          => p(e) || p(i)
+      case ExprSlice(e, l, _, r)    => p(e) || p(l) || p(r)
+      case ExprCat(ps)              => ps exists p
+      case ExprRep(c, e)            => p(e) || p(c)
+      case ExprSel(e, _)            => p(e)
+      case ExprCast(_, e)           => p(e)
+      case ExprOld(e)               => p(e)
+      case _: ExprType | _: ExprStr => false
       case _: ExprDot | _: ExprSymSel | _: ExprIdent | _: ExprThis =>
         unreachable
     }

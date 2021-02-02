@@ -663,10 +663,9 @@ abstract class TreeTransformer extends (Tree => Tree) with ChainingSyntax {
     case node: ExprCast =>
       val expr = walk(node.expr)
       TreeCopier(node)(expr)
-    case node: ExprInt   => node
-    case node: ExprNum   => node
-    case node: ExprStr   => node
-    case node: ExprError => node
+    case node: ExprInt => node
+    case node: ExprNum => node
+    case node: ExprStr => node
   }
 
   final private def walkChildrenArg(tree: Arg): Tree = tree match {

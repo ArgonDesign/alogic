@@ -372,7 +372,9 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatefulTreeTran
       inlineBody(fSymbol, args, getReceiver(tgt), Some(rSymbol), tree.loc) map { extra =>
         extraStmts.top.addAll(extra)
         TypeAssigner(ExprSym(rSymbol) withLoc tree.loc)
-      } getOrElse TypeAssigner(ExprError() withLoc tree.loc)
+      } getOrElse {
+        tree // Only used if reached recursion limit. Leave it be, will stop due to error.
+      }
 
     case stmt: Stmt =>
       val extra = extraStmts.pop()

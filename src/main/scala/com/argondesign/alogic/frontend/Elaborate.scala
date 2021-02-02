@@ -1628,7 +1628,7 @@ object Elaborate {
       }
     case _: ExprSym | _: ExprSymSel | _: ExprType | _: ExprInt | _: ExprNum | _: ExprStr =>
       Finished(expr)
-    case _: ExprSel | _: ExprOld | _: ExprThis | _: ExprError =>
+    case _: ExprSel | _: ExprOld | _: ExprThis =>
       unreachable // Introduced later
   } pipe {
     case Complete(result) if result == expr => Finished(expr)

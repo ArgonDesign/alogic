@@ -373,7 +373,6 @@ trait TreePrintOps {
     case ExprNum(true, value) => s"'sd$value"
     case ExprNum(false, value) => s"$value"
     case ExprStr(value) => s""""$value""""
-    case ExprError() => "ExprError"
   }
   // format: on
 

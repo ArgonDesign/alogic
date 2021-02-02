@@ -61,8 +61,7 @@ object ConnectChecks {
           if (op == ":" || lIdx.isKnown) activeLogic(tgt) else Iterator.single(expr)
         case ExprDot(tgt, _, _)                                              => activeLogic(tgt)
         case _: ExprSym | _: ExprType | _: ExprInt | _: ExprNum | _: ExprStr => Iterator.empty
-        case _: ExprSel | _: ExprSymSel | _: ExprIdent | _: ExprOld | _: ExprThis | _: ExprCast |
-            _: ExprError =>
+        case _: ExprSel | _: ExprSymSel | _: ExprIdent | _: ExprOld | _: ExprThis | _: ExprCast =>
           unreachable
       }
     }

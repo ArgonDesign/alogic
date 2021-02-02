@@ -47,7 +47,7 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
         val width = widthDigits.toInt
         if (width == 0) {
           mb.error(ctx, "0 width integer literal")
-          ExprError() withLoc ctx.loc
+          ExprIdent("<error>", Nil) withLoc ctx.loc
         } else {
           val signed = tickRest(1) == 's'
           val baseRest = if (signed) tickRest drop 2 else tickRest drop 1
@@ -63,10 +63,10 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
             val reqWidth = Math.clog2(abs + 1)
             if (reqWidth > width) {
               mb.error(ctx, s"Value specifier for $width bit literal requires $reqWidth bits")
-              ExprError() withLoc ctx.loc
+              ExprIdent("<error>", Nil) withLoc ctx.loc
             } else if (neg && abs > 0 && !signed) {
               mb.error(ctx, "Negative unsigned literal")
-              ExprError() withLoc ctx.loc
+              ExprIdent("<error>", Nil) withLoc ctx.loc
             } else {
               val mask = (BigInt(1) << width) - 1
               val bits = (if (neg) -abs else abs) & mask
@@ -86,7 +86,7 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
           } catch {
             case _: NumberFormatException =>
               mb.error(ctx, s"Invalid digit for base $base value")
-              ExprError() withLoc ctx.loc
+              ExprIdent("<error>", Nil) withLoc ctx.loc
           }
         }
       }
@@ -100,7 +100,7 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
             s"Invalid literal '$text',",
             "use prefix '0o' for octal or '0d' for decimal with leading zeros"
           )
-          ExprError() withLoc ctx.loc
+          ExprIdent("<error>", Nil) withLoc ctx.loc
         } else {
           val signed = text.last == 's'
           val rest = if (signed || text.last == 'u') text.init else text
@@ -121,7 +121,7 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
             val abs = BigInt(digits, base)
             if (neg && abs > 0 && !signed) {
               mb.error(ctx, "Negative unsigned literal")
-              ExprError() withLoc ctx.loc
+              ExprIdent("<error>", Nil) withLoc ctx.loc
             } else {
               val value = if (neg) -abs else abs
               ExprNum(signed, value) withLoc ctx.loc
@@ -129,7 +129,7 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
           } catch {
             case _: NumberFormatException =>
               mb.error(ctx, s"Invalid digit for base $base value")
-              ExprError() withLoc ctx.loc
+              ExprIdent("<error>", Nil) withLoc ctx.loc
           }
         }
       }
@@ -168,7 +168,7 @@ object ExprBuilder extends BaseBuilder[ExprContext, Expr] {
 
       override def visitExprThis(ctx: ExprThisContext): Expr = {
         mb.error(ctx.loc, "'this' reference is not user accessible")
-        ExprError() withLoc ctx.loc
+        ExprIdent("<error>", Nil) withLoc ctx.loc
       }
 
       //////////////////////////////////////////////////////////////////////////

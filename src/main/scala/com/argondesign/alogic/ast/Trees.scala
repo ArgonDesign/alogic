@@ -322,7 +322,6 @@ object Trees {
   case class ExprInt(signed: Boolean, width: Int, override val value: BigInt) extends Expr with ExprIntImpl
   case class ExprNum(signed: Boolean,  override val value: BigInt) extends Expr with ExprNumImpl
   case class ExprStr(v: String) extends Expr
-  case class ExprError() extends Expr
   // format: on
 
   //////////////////////////////////////////////////////////////////////////////
