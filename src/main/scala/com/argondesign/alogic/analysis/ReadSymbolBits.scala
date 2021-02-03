@@ -2,9 +2,6 @@
 // Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
-//
-// DESCRIPTION:
-// Compute symbol bits that are read in expressions
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.analysis
@@ -48,7 +45,7 @@ object ReadSymbolBits {
 
   // Given an expression, return a SymbolBitSet that holds bits that might be
   // read if this expression is not used on the left hand side of an assignment
-  def rval(expr: Expr): SymbolBitSet =
+  def possiblyRVal(expr: Expr): SymbolBitSet =
     usedRvalPairs(expr).foldLeft(Map.empty[Symbol, BitSet]) {
       case (acc, (symbol, bits)) =>
         acc.updatedWith(symbol) {
@@ -59,7 +56,7 @@ object ReadSymbolBits {
 
   // Given an expression, return a SymbolBitSet that holds bits that might be
   // read if this expression is used on the left hand side of an assignment
-  def lval(lval: Expr): SymbolBitSet = {
+  def possiblyLVal(lval: Expr): SymbolBitSet = {
     def gather(expr: Expr): Iterator[(Symbol, BitSet)] = expr match {
       case _: ExprSym                           => Iterator.empty
       case ExprIndex(_: ExprSym, idx)           => usedRvalPairs(idx)

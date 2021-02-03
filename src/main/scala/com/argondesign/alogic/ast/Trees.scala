@@ -261,7 +261,7 @@ object Trees {
   case class StmtSplice(tree: Spliceable) extends Stmt with Splice
   case class StmtBlock(body: List[Stmt]) extends Stmt
   case class StmtIf(cond: Expr, thenStmts: List[Stmt], elseStmts: List[Stmt]) extends Stmt
-  case class StmtCase(expr: Expr, cases: List[Case]) extends Stmt
+  case class StmtCase(expr: Expr, cases: List[Case]) extends Stmt with StmtCaseOps
   case class StmtLoop(body: List[Stmt]) extends Stmt
   case class StmtWhile(cond: Expr, body: List[Stmt]) extends Stmt
   case class StmtFor(inits: List[Stmt], condOpt: Option[Expr], steps: List[Stmt], body: List[Stmt]) extends Stmt

@@ -1,5 +1,3 @@
-
-
 fsm prune_unused_flops_0 {
 
     in       u8 i;

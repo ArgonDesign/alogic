@@ -1,5 +1,3 @@
-
-
 fsm prune_unused_flops_1 {
 
     in  u8 i;
@@ -45,5 +43,4 @@ fsm prune_unused_flops_1 {
 //   end
 //
 // endmodule
-//
 // }}}

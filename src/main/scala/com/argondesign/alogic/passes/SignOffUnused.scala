@@ -118,20 +118,20 @@ object SignOffUnused extends PairsTransformerPass {
                 .concat {
                   defn collect {
                     case EntAssign(lhs, _: ExprSel) =>
-                      ReadSymbolBits.lval(lhs)
+                      ReadSymbolBits.possiblyLVal(lhs)
                     case EntAssign(_: ExprSel, rhs) =>
-                      ReadSymbolBits.rval(rhs)
+                      ReadSymbolBits.possiblyRVal(rhs)
                     case EntAssign(lhs, rhs) =>
-                      ReadSymbolBits.lval(lhs) union ReadSymbolBits.rval(rhs)
+                      ReadSymbolBits.possiblyLVal(lhs) union ReadSymbolBits.possiblyRVal(rhs)
                     case StmtAssign(lhs, rhs) =>
-                      ReadSymbolBits.lval(lhs) union ReadSymbolBits.rval(rhs)
+                      ReadSymbolBits.possiblyLVal(lhs) union ReadSymbolBits.possiblyRVal(rhs)
                     case StmtDelayed(lhs, rhs) =>
-                      ReadSymbolBits.lval(lhs) union ReadSymbolBits.rval(rhs)
+                      ReadSymbolBits.possiblyLVal(lhs) union ReadSymbolBits.possiblyRVal(rhs)
                     case StmtOutcall(lhs, f, rhss) =>
-                      (f :: rhss).foldLeft(ReadSymbolBits.lval(lhs))(
-                        _ union ReadSymbolBits.rval(_)
+                      (f :: rhss).foldLeft(ReadSymbolBits.possiblyLVal(lhs))(
+                        _ union ReadSymbolBits.possiblyRVal(_)
                       )
-                    case expr: Expr => ReadSymbolBits.rval(expr)
+                    case expr: Expr => ReadSymbolBits.possiblyRVal(expr)
                   }
                 }
                 .foldLeft(SymbolBitSet.empty)(_ union _)

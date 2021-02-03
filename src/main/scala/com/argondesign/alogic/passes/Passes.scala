@@ -89,6 +89,7 @@ object Passes extends ChainingSyntax {
         OptimizeClearOnStall andThen
         LowerWait andThen
         RemoveAssume andThen
+        RemoveRedundantAssignments andThen
         CreateTemporaries andThen
         DefaultAssignments andThen
         TieOffInputs andThen
