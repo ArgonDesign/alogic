@@ -102,7 +102,7 @@ be connected using the `->` operator:
 a.p_out -> b.p_in;
 ```
 
-This creates a combinatorial connection between the left and right hand sides
+This creates a combinational connection between the left and right hand sides
 of the `->`, with the left hand side port being the driver of the right hand
 side port. Alogic takes care of connecting flow control signals in the
 appropriate direction.

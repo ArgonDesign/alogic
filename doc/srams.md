@@ -13,7 +13,7 @@ has native language support for working with SRAMs.
 
 The language supports 2 different variants of SRAMs:
   - SRAMs driven from registers
-  - SRAMs driven from combinatorial signals
+  - SRAMs driven from combinational signals
 
 SRAMs can be declared with the following syntax:
 
@@ -21,7 +21,7 @@ SRAMs can be declared with the following syntax:
 // SRAM driven by registers
 sram <type> <identifier>[<depth>];
 
-// SRAM driven combinatorially
+// SRAM driven combinationally
 sram wire <type> <identifier>[<depth>];
 ```
 
@@ -29,7 +29,7 @@ The `type` of an SRAM determines the element type, and therefore the width,
 of the SRAM. The `type` of an SRAM can be either a sized integer type, or a
 `struct` type. The `depth` of the SRAM is given by a constant expression.
 
-A combinatorially driven 1024 entry deep SRAM of 16 bit unsigned integers
+A combinationally driven 1024 entry deep SRAM of 16 bit unsigned integers
 called `storage` could be declared as:
 
 ```
@@ -119,7 +119,7 @@ A simple read from the `storage` SRAM could be performed like this:
   // Issue read access
   storage.read(10'd87);
   fence;
-  // Given that storage was declared as combinatorially driven, storage.rdata
+  // Given that storage was declared as combinationally driven, storage.rdata
   // is available on the following cycle. x should now be incremented by
   // whatever value is in the SRAM at address 87
   x += storage.rdata;
@@ -129,14 +129,14 @@ A simple read from the `storage` SRAM could be performed like this:
 
 ### Combinatorially driven vs registered SRAMs
 
-The difference between combinatorially driven SRAMs and registered SRAMs is
+The difference between combinationally driven SRAMs and registered SRAMs is
 important.
 
 Combinatorially driven SRAMs have their inputs (that is the `ce`, `we`, `addr`
-and `wdata` signals) potentially driven from combinatorial circuits based on
+and `wdata` signals) potentially driven from combinational circuits based on
 local entity state. Whether this is acceptable from a timing perspective is
 dependent on the design and the physical SRAM implementation. The `.read` and
-`.write` methods of combinatorially driven SRAMs drive the input signals of the
+`.write` methods of combinationally driven SRAMs drive the input signals of the
 SRAM directly.
 
 Inputs to registered SRAMs are driven from a set of local registers, and the
@@ -146,7 +146,7 @@ accesses take effect.
 
 ### Generated SRAM models and instances
 
-To implement combinatorially driven SRAMs, the compiler does the following:
+To implement combinationally driven SRAMs, the compiler does the following:
   1. Construct an SRAM model similar to the one described previously, but with
      specific width and depth values. If an SRAM of the same shape already
      exists anywhere in the design, that model is reused.

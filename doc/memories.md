@@ -7,7 +7,7 @@
 # Distributed memories
 
 Alogic has native language support for working with distributed memories. Alogic
-distributed memories support immediate, combinatorial reading of an arbitrary
+distributed memories support immediate, combinational reading of an arbitrary
 number of entries, and sequential writing of a single entry in a single clock
 cycle.
 
@@ -40,7 +40,7 @@ To get the value at a memory location, use the indexing syntax:
   u16 sum = storage[1] + storage[0];
 ```
 
-Reading a distributed memory by indexing is a combinatorial operation and the
+Reading a distributed memory by indexing is a combinational operation and the
 index expression evaluates to the value stored at the addressed location. There
 is no limit imposed by Alogic on the number of look-ups that can be performed
 simultaneously. However, the designer should keep in mind the implications of

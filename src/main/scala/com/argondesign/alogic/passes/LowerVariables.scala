@@ -4,7 +4,7 @@
 // See the LICENSE file for the precise wording of the license.
 //
 // DESCRIPTION:
-// Lower variables into flops and combinatorial nets. At this stage, anything
+// Lower variables into flops and combinational nets. At this stage, anything
 // that is of TypeInt is a flop, unless it is driven through a connect, or is
 // one of the control signals of a memory, in which case it is a net.
 ////////////////////////////////////////////////////////////////////////////////

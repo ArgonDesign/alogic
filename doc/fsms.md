@@ -102,8 +102,8 @@ be the same as the current state. The control unit will consist of a list of
 imperative-style statements. Statements execute sequentially, according to their
 execution semantics, which are analogous to similar statements in common
 imperative programming languages. Statements can be classed either as
-combinatorial statements, or control statements. In a single control unit, there will be a
-series of combinatorial statements (such as `a += 3'b1;`) followed by a single
+combinational statements, or control statements. In a single control unit, there will be a
+series of combinational statements (such as `a += 3'b1;`) followed by a single
 control statement (such as `fence`). For a comprehensive list of statements, see
 the [statements](statements.md) section of the documentation.
 
@@ -112,7 +112,7 @@ the [statements](statements.md) section of the documentation.
 In this section, we will not go into the details of where the precise control
 unit boundaries are, but we will mention the `fence` statement to aid with the
 examples. For now, let it suffice to say that the `fence` statement is used to
-delimit control unit boundaries in straight line code, so any combinatorial
+delimit control unit boundaries in straight line code, so any combinational
 statement between two `fence` statements executes in one clock cycle. For the
 details of where control unit boundaries are, see the section on [control flow
 conversion](control.md).
@@ -188,7 +188,7 @@ copy of local variables.
 ### The `fence` block
 
 FSMs definitions can contain a single `fence` block. The `fence` block may only
-contain combinatorial statements, and is executed at the beginning of every
+contain combinational statements, and is executed at the beginning of every
 cycle, before any of the statements of the control unit corresponding to the
 current state are considered. For example (<a href="http://afiddle.argondesign.com/?example=fsms_fence.alogic">fiddle here</a>):
 
@@ -247,10 +247,10 @@ fsm nofencefunc {
 
 ```
 
-The `fence` block is particularly useful for computing combinatorial signals
+The `fence` block is particularly useful for computing combinational signals
 dependent on local state. In the above example, as variable `s` is always
 assigned at the beginning of every cycle (it is assigned in the `fence` block
-and is not under a conditional), it can be implemented as a combinatorial
+and is not under a conditional), it can be implemented as a combinational
 signal, with no flip-flop allocated for storing it's value.
 
 <p align="center">

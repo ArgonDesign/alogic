@@ -18,7 +18,7 @@ code to the state system.
 ### Summary of statement types
 
 As described in the documentation of [statements](statements.md), every Alogic
-statement can be one of two types: A control statement, or a combinatorial
+statement can be one of two types: A control statement, or a combinational
 statement.
 
 Some statements are unambiguously control statements. These are listed here for
@@ -37,7 +37,7 @@ reference:
 Loops with a `let` clause are control statements in the same way as the loops
 themselves.
 
-Some statements are unambiguously combinatorial statements. These are listed
+Some statements are unambiguously combinational statements. These are listed
 here:
 
 - Assignment statement
@@ -46,12 +46,12 @@ here:
 - Pipeline `read` statement
 - Pipeline `write` statement
 
-The remaining statements can be either of a combinatorial or control type,
+The remaining statements can be either of a combinational or control type,
 depending on circumstance.
 
 Within an entity, a function call to another control function is always a
 control statement. Any other expression when used in a statement position is a
-combinatorial statement, including calls to built-in functions, port methods and
+combinational statement, including calls to built-in functions, port methods and
 similar accessors:
 
 <a href="http://afiddle.argondesign.com/?example=control_summary.alogic">Fiddle with this code here.</a>
@@ -61,7 +61,7 @@ fsm a {
   in sync bool b;
 
   void main() {
-    b.read(); // This is a combinatorial statement
+    b.read(); // This is a combinational statement
     other();  // This is a control statement
   }
 
@@ -116,7 +116,7 @@ void main() {
 #### Blocks
 
 If you followed the basic procedure above, and you encountered a naked `{}`
-block, simply keep going inside the block. If the block is a combinatorial
+block, simply keep going inside the block. If the block is a combinational
 block, you will arrive at the bottom within the same cycle:
 
 <a href="http://afiddle.argondesign.com/?example=control_comb_blocks.alogic">Fiddle with this code here.</a>
@@ -166,7 +166,7 @@ void main() {
 
 If the basic procedure takes you to a branching `if` or `case` statement,
 continue down across all branches in parallel. If the branching statement is a
-combinatorial statement, you will arrive at the statement following this
+combinational statement, you will arrive at the statement following this
 branching statement within the same cycle:
 
 <a href="http://afiddle.argondesign.com/?example=control_comb_branch.alogic">Fiddle with this code here.</a>
@@ -234,7 +234,7 @@ by the compiler](statements.md#branching-statements) for an omitted `else`, or
 
 If the basic procedure took you to a looping statement, then the decision
 whether or not to enter the loop is performed together with the preceding
-combinatorial statements, but the current cycle always ends at the loop
+combinational statements, but the current cycle always ends at the loop
 header (<a href="http://afiddle.argondesign.com/?example=control_loop.alogic">fiddle here</a>):
 
 ```
@@ -309,7 +309,7 @@ executes twice (<a href="http://afiddle.argondesign.com/?example=control_opt_do.
 For non-front-testing loops (i.e.: for `do` and `loop` loops), an optimization
 is possible if the statement immediately preceding the loop is a control
 statement. In this case, the loopback can target the state beginning after the
-preceding control statement, as there are no combinatorial statements in that
+preceding control statement, as there are no combinational statements in that
 sate at that point. The Alogic compiler performs this optimization, meaning that
 the following executes in 3 cycles, rather than 4 (<a href="http://afiddle.argondesign.com/?example=control_opt_for.alogic">fiddle here</a>):
 
@@ -346,7 +346,7 @@ void main() {
 }
 ```
 
-This optimization is not possible if there is any combinatorial statement
+This optimization is not possible if there is any combinational statement
 between the loop statement and the preceding control statement, so the `fence`
 in this is executed, and the new cycle then ends on loop entry (<a href="http://afiddle.argondesign.com/?example=control_no_opt.alogic">fiddle here</a>).
 
@@ -366,7 +366,7 @@ void main() {
 ```
 
 For front-testing loops, this optimization is never possible, as they require
-combinatorial statements before the loop header in order to perform conditional
+combinational statements before the loop header in order to perform conditional
 entry.
 
 <p align="center">

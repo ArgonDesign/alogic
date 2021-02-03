@@ -89,7 +89,7 @@ class SymbolAttributes {
   // If this is an interconnect signal, the corresponding instance symbol and port name
   val interconnect = new Attribute[Boolean]()
 
-  // If this signal is a combinatorically driven local signal
+  // If this signal is a combinationally driven local signal
   val combSignal = new Attribute[Boolean]()
 
   // The field offset if this symbol was split from a struct

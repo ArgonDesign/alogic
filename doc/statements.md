@@ -11,30 +11,30 @@ functions.
 
 ### Combinatorial vs Control statements
 
-Statements can broadly be categorized as either combinatorial statements, or
+Statements can broadly be categorized as either combinational statements, or
 control statements. This distinction is used to determine control unit
 boundaries for the purposes of determining which statements execute together in
 a single clock cycle. Let it suffice for now that a linear sequence of
-combinatorial statements, followed by a single control statement is executed in
+combinational statements, followed by a single control statement is executed in
 a single clock cycle. See the section on [control flow conversion](control.md)
 for details.
 
 - Simple statements (i.e. statements that do not contain nested statements) can
-be lexically classed either as control statements or combinatorial statements.
+be lexically classed either as control statements or combinational statements.
 
 - Compound statements (i.e. statements containing other nested statements) can
-be either combinatorial or control statements.
+be either combinational or control statements.
 
-    - If they only contain other combinatorial statements they will be
-    combinatorial statements.
+    - If they only contain other combinational statements they will be
+    combinational statements.
     
-    - If they contain a mix of combinatorial and control statements, they will
+    - If they contain a mix of combinational and control statements, they will
     be control statements. In this case, the last nested statement must be a
     control statement.
 
 FSM function bodies must end with a control statement.
 
-### Declaration statement (combinatorial)
+### Declaration statement (combinational)
 
 A declaration statement can be used to introduce a new variable to be used
 within the surrounding lexical scope. It could be declared in the entity scope
@@ -67,7 +67,7 @@ of variable _b_ above is:
 Array variables cannot be declared using declarations statements, they must be
 declared in the design entity scope.
 
-Declaration statements are always combinatorial statements.
+Declaration statements are always combinational statements.
 
 A declaration statement can be qualified with the `const` keyword.
 `const` qualified declaration statements behave exactly the same as those
@@ -80,7 +80,7 @@ run-time for every evaluation of the declaration statement. They will also
 require storage if their value is used in a control unit other than the one
 introducing the declaration.
 
-### Block statement (combinatorial or control)
+### Block statement (combinational or control)
 
 A `{}` block can be used to introduce a new lexical scope at any time. This can
 be useful to scope local variable declarations, of group statements together for
@@ -95,10 +95,10 @@ clarity.
   c = b;
 ```
 
-A block statement is either a combinatorial statement or a control statement,
+A block statement is either a combinational statement or a control statement,
 depending on its contents.
 
-### Expression statements (combinatorial)
+### Expression statements (combinational)
 
 Expressions can be used as statements when ending in `;`. Since expression
 statements do not return a value, they should only be used for their
@@ -117,16 +117,16 @@ expression (i.e. one with no side-effects) is used in statement position.
                       // side-effects.
 ```
 
-Expression statements are always combinatorial statements. Note that function
+Expression statements are always combinational statements. Note that function
 calls in statement positions are not expression statements and are described
 below.
 
 ### Assignment statements
 
 An assignment statement updates the value of some storage location. All
-assignment statements are combinatorial statements.
+assignment statements are combinational statements.
 
-#### Simple assignments (combinatorial)
+#### Simple assignments (combinational)
 
 The simplest assignment statements have the usual form, using the `=` sign to
 delimit the target of the assignment (lvalue), and the expression that yields
@@ -152,7 +152,7 @@ of an assignment can be either one of:
     {a, b[1], c[3]} = 13'h1abc; // 10 bits + 2 bits + 1 bit
     ```
 
-#### Shorthand assignments (combinatorial)
+#### Shorthand assignments (combinational)
 
 All binary operators are available in the shorthand assignment form, including
 when the target is a concatenation or other compound lvalue (<a href="http://afiddle.argondesign.com/?example=statements_shorthand.alogic">fiddle here</a>):
@@ -163,7 +163,7 @@ when the target is a concatenation or other compound lvalue (<a href="http://afi
   {sign, abs} += 1;
 ```
 
-#### Increment/Decrement statements (combinatorial)
+#### Increment/Decrement statements (combinational)
 
 As a further shorthand, increment or decrement by 1 can be expressed using the
 `++` and `--` notation. Note however that these operations are not expressions,
@@ -216,7 +216,7 @@ The following however will raise a compile time error;
 ### The `fence` statement (control)
 
 The `fence` statement is the simplest control statement, and is used to indicate
-the end of a control unit. All combinatorial statements before a `fence`
+the end of a control unit. All combinational statements before a `fence`
 statement will belong to the current control unit (which also includes the
 `fence` statement itself), and will execute in the current clock cycle. On the
 next clock cycle, control is transferred to the statements following the `fence`
@@ -232,13 +232,13 @@ statement. The following example takes 2 cycles to execute (<a href="http://afid
 ### Branching statements
 
 Control flow branches can be achieved with the `if` and `case` statements. These
-branching statements are combinatorial statements if all branches contain only
-combinatorial statements, and they are control statements if all branches
+branching statements are combinational statements if all branches contain only
+combinational statements, and they are control statements if all branches
 contain (and in particular, end in) control statements. If one or more branches
 contains a control statement, but not all branches end in a control statement,
 the branch statement is invalid and yields a compile time error.
 
-#### `if` statement (combinatorial or control)
+#### `if` statement (combinational or control)
 
 The common `if` statement can be used to perform a 2-way branch:
 
@@ -324,7 +324,7 @@ Some legal examples are (<a href="http://afiddle.argondesign.com/?example=statem
 Some invalid examples are (<a href="http://afiddle.argondesign.com/?example=statements_invalid.alogic">fiddle here</a>):
 
 ```
-  // Invalid because 'if' is control and 'else' is combinatorial
+  // Invalid because 'if' is control and 'else' is combinational
   if (a) {
     b = 2;
     fence;
@@ -340,7 +340,7 @@ Some invalid examples are (<a href="http://afiddle.argondesign.com/?example=stat
   }
 ```
 
-#### `case` statement (combinatorial or control)
+#### `case` statement (combinational or control)
 
 Multi-way branches can be constructed using the `case` statement. This multi-way
 branch is more similar to the analogous Verilog `case` statement, and less
@@ -397,7 +397,7 @@ The case statement can either have an explicit or implicit `default` case to
 catch remaining cases. If used explicitly, it can be placed anywhere in the
 selector list and is always evaluated last (this is the same as verilog). If
 used implicitly, it can be omitted and the compiler will insert a default empty
-combinatorial block or `fence;` control block, as appropriate. For example 
+combinational block or `fence;` control block, as appropriate. For example 
 (<a href="http://afiddle.argondesign.com/?example=statements_case_fence.alogic">fiddle here</a>):
 
 ```

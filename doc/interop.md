@@ -83,7 +83,7 @@ procedural assignment. The Alogic compiler takes care of deriving the required
 form.
 
 The clock and reset signals are omitted from output modules that are purely
-combinatorial.
+combinational.
 
 The storage specifier of output ports has no effect on the interface of the
 emitted output.
@@ -368,7 +368,7 @@ restrictions.
 
 One use of verbatim entities is to implement Alogic entities, whose behaviour is
 more easily described using the target language. A good example is a purely
-combinatorial arbiter (<a href="http://afiddle.argondesign.com/?example=interop_verilog.alogic">fiddle here</a>):
+combinational arbiter (<a href="http://afiddle.argondesign.com/?example=interop_verilog.alogic">fiddle here</a>):
 
 ```
 verbatim entity arb {
@@ -415,7 +415,7 @@ module arb(
 endmodule
 ```
 
-Note that even though the output module is purely combinatorial, the Alogic
+Note that even though the output module is purely combinational, the Alogic
 compiler still provided the clock and reset signals, as it has no understanding
 of the contents of `verbatim` blocks.
 

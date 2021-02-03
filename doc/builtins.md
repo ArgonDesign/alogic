@@ -25,7 +25,7 @@ arguments.
 Built-in functions whose name starts with an `@` are provided by Alogic and
 their semantics are defined below.
 
-All built-in function calls are combinatorial statements when used in statement
+All built-in function calls are combinational statements when used in statement
 position.
 
 Some built-in functions are overloaded, i.e.: they are available with multiple
