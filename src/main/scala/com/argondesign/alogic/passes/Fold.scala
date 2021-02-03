@@ -123,6 +123,8 @@ final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer 
           loop(cases)
       }
 
+    case StmtExpr(expr) if expr.isPure => Some(Stump)
+
     // Just to track we are in a conditional (it's easier here than in StmtCase above)
     case _: Case =>
       condLvl += 1

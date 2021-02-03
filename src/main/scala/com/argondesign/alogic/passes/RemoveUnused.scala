@@ -142,9 +142,11 @@ object RemoveUnused extends PairsTransformerPass {
               // placeholder in a concatenation on the left hand side of an
               // assignment
               defn flatCollect {
-                case EntAssign(lhs: ExprCat, _)  => WrittenSymbols(lhs)
-                case StmtAssign(lhs: ExprCat, _) => WrittenSymbols(lhs)
-                case _: Expr                     => Iterator.empty // Stop descent
+                case EntAssign(lhs: ExprCat, _)   => WrittenSymbols(lhs)
+                case StmtAssign(lhs: ExprCat, _)  => WrittenSymbols(lhs)
+                case StmtDelayed(lhs: ExprCat, _) => WrittenSymbols(lhs)
+                case StmtOutcall(lhs, _, _)       => WrittenSymbols(lhs)
+                case _: Expr                      => Iterator.empty // Stop descent
               }
             }
           }

@@ -1,0 +1,58 @@
+fsm foreign_func_19 {
+  import bool f(bool i);
+  in  bool i;
+
+  void main() {
+    f(i); // unsed return value
+    fence;
+  }
+}
+// @sim/test {{{
+//  reg [1:0] tick;
+//
+//  always @(posedge clk) begin
+//    if (rst) begin
+//      tick <= 2'd0;
+//    end else begin
+//      tick <= tick + 2'd1;
+//    end
+//  end
+//
+//  wire i = tick[0];
+//
+// }}}
+//
+// @sim/dpi {{{
+//  #include "svdpi.h"
+//  #include <stdio.h>
+//  extern "C" void f(svBitVecVal *o, const svBitVecVal *i) {
+//    if (*i) {
+//      puts("Tick");
+//    }
+//    *o = 0;
+//  }
+// }}}
+//
+// @sim/timeout: 5
+//
+// @sim/expect {{{
+//   Tick
+//   Tick
+//   TIMEOUT at 5ns
+// }}}
+//
+// @manifest/foreign-functions|f {{{
+//  {
+//    "return" : {
+//      "width" : 1,
+//      "signed" : false
+//    },
+//    "args" : [
+//      {
+//        "name" : "i",
+//        "width" : 1,
+//        "signed" : false
+//      }
+//    ]
+//  }
+// }}}
