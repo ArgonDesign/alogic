@@ -40,7 +40,8 @@ final private class RemoveSymbols(
         case CaseDefault(stmts)    => stmts forall emptyStmt
         case _: CaseSplice         => unreachable
       }
-    case _ => false
+    case _: StmtComment => true
+    case _              => false
   }
 
   override def enter(tree: Tree): Option[Tree] = tree match {
@@ -83,11 +84,24 @@ final private class RemoveSymbols(
   }
 
   override def transform(tree: Tree): Tree = tree match {
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Keep comments on their own
+    ////////////////////////////////////////////////////////////////////////////
+
+    case _: StmtComment => tree
+
     ////////////////////////////////////////////////////////////////////////////
     // Fold empty statements as we go to get rid of unused branch conditions
     ////////////////////////////////////////////////////////////////////////////
 
     case stmt: Stmt if emptyStmt(stmt) => Stump
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Fold empty clocked processes as we go to get rid of unused sensitivities
+    ////////////////////////////////////////////////////////////////////////////
+
+    case ent: EntClockedProcess if ent.stmts.forall(emptyStmt) => Stump
 
     ////////////////////////////////////////////////////////////////////////////
     // Remove Decl/Defn of symbol not being retained

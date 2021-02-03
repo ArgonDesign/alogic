@@ -15,10 +15,8 @@ import com.argondesign.alogic.analysis.Liveness
 import com.argondesign.alogic.analysis.WrittenSymbols
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Symbol
-import com.argondesign.alogic.transform.StatementFilter
-import com.argondesign.alogic.util.unreachable
+import com.argondesign.alogic.core.TypeAssigner
 
 import scala.collection.mutable
 
@@ -93,14 +91,6 @@ object DefaultAssignments extends PairTransformerPass(parallel = true) {
         collect(entityDefn)
       } union liveSymbolBits.keySet
 
-      // Any Q symbols which are referenced  (other than in the clocked blocks)
-      val referencedQSymbols = Set from {
-        defn flatCollect {
-          case _: EntClockedProcess                      => None // Stop descent
-          case ExprSym(symbol) if symbol.attr.flop.isSet => Some(symbol)
-        }
-      }
-
       val newBody = entityDefn.body flatMap {
         case ent @ EntCombProcess(stmts) =>
           Some {
@@ -118,29 +108,6 @@ object DefaultAssignments extends PairTransformerPass(parallel = true) {
               StmtAssign(ExprSym(symbol), init) regularize symbol.loc
             }
             TypeAssigner(EntCombProcess(leading ::: stmts) withLoc ent.loc)
-          }
-        case ent @ EntClockedProcess(__, _, stmts) =>
-          // Drop delayed assignments to unused flops
-          val filter = StatementFilter {
-            case StmtDelayed(ExprSym(qSymbol), _) if !referencedQSymbols(qSymbol) =>
-              qSymbol.attr.flop.get match {
-                case None          => true // Keep non-flops
-                case Some(dSymbol) => needsDefault(dSymbol) && initializeToDefault(dSymbol)
-              }
-          }
-          // Keep comments directly in the process, filter the rest
-          val newStmts = stmts flatMap {
-            case stmt: StmtComment => Some(stmt)
-            case stmt: Stmt =>
-              filter(stmt) match {
-                case Stump       => None
-                case other: Stmt => Some(other)
-                case _           => unreachable
-              }
-          }
-          // Drop the whole block if there are only comments left
-          Option.unless(newStmts forall { _.isInstanceOf[StmtComment] }) {
-            TypeAssigner(ent.copy(stmts = newStmts) withLoc ent.loc)
           }
         case other => Some(other)
       }
