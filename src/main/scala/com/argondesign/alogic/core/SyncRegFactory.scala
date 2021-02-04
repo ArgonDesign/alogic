@@ -66,22 +66,19 @@ object SyncRegFactory extends ChainingSyntax {
       loc: Loc,
       kind: TypeFund,
       sep: String
-    )(
-      implicit
-      cc: CompilerContext
     ): (DeclEntity, DefnEntity) = {
     val fcn = FlowControlTypeNone
     val stw = StorageTypeWire
 
-    lazy val ipSymbol = cc.newSymbol("ip", loc) tap { _.kind = TypeIn(kind, fcn) }
-    val ipvSymbol = cc.newSymbol(s"ip${sep}valid", loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
+    lazy val ipSymbol = Symbol("ip", loc) tap { _.kind = TypeIn(kind, fcn) }
+    val ipvSymbol = Symbol(s"ip${sep}valid", loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
     ipvSymbol.attr.default.set(ExprInt(false, 1, 0) regularize loc)
-    lazy val opSymbol = cc.newSymbol("op", loc) tap { _.kind = TypeOut(kind, fcn, stw) }
-    val opvSymbol = cc.newSymbol(s"op${sep}valid", loc) tap {
+    lazy val opSymbol = Symbol("op", loc) tap { _.kind = TypeOut(kind, fcn, stw) }
+    val opvSymbol = Symbol(s"op${sep}valid", loc) tap {
       _.kind = TypeOut(TypeUInt(1), fcn, stw)
     }
-    lazy val pSymbol = cc.newSymbol("payload", loc) tap { _.kind = kind }
-    val vSymbol = cc.newSymbol("valid", loc) tap { _.kind = TypeUInt(1) }
+    lazy val pSymbol = Symbol("payload", loc) tap { _.kind = kind }
+    val vSymbol = Symbol("valid", loc) tap { _.kind = TypeUInt(1) }
 
     lazy val ipDecl = ipSymbol.mkDecl regularize loc
     val ipvDecl = ipvSymbol.mkDecl regularize loc
@@ -139,7 +136,7 @@ object SyncRegFactory extends ChainingSyntax {
       List(EntAssign(opvRef, vRef))
     }
 
-    val entitySymbol = cc.newSymbol(name, loc)
+    val entitySymbol = Symbol(name, loc)
     val decl = DeclEntity(entitySymbol, decls) regularize loc
     val defn = DefnEntity(
       entitySymbol,

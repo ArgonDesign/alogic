@@ -14,7 +14,6 @@ import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.unreachable
 
 import java.util.concurrent.atomic.AtomicInteger
-import scala.util.chaining._
 
 final class Symbol(initialName: String, val loc: Loc = Loc.synthetic) {
   val id: Int = Symbol.nextId.getAndIncrement()
@@ -156,7 +155,7 @@ final class Symbol(initialName: String, val loc: Loc = Loc.synthetic) {
   } ensuring { _decl != null }
 
   // Create a Defn node describing this symbol based on it's type
-  def mkDefn(implicit cc: CompilerContext): Defn = {
+  def mkDefn: Defn = {
     assert(_defn == null, this.toString)
     kind match {
       case _: TypeEntity => DefnInstance(this)
@@ -211,17 +210,27 @@ final class Symbol(initialName: String, val loc: Loc = Loc.synthetic) {
   // Clone symbol (create new symbol with same name, loc and attributes)
   ////////////////////////////////////////////////////////////////////////////
 
-  def dup(implicit cc: CompilerContext): Symbol =
-    cc.newSymbol(name, loc) tap { newSymbol =>
-      newSymbol.attr update attr
-      newSymbol.scopeName = scopeName
-      newSymbol.origName = origName
-    }
+  def dup: Symbol = {
+    val newSymbol = Symbol(name, loc)
+    newSymbol.attr update attr
+    newSymbol.scopeName = scopeName
+    newSymbol.origName = origName
+    newSymbol
+  }
 
 }
 
 object Symbol {
   private val nextId = new AtomicInteger(0)
+
+  @inline def apply(name: String, loc: Loc): Symbol = new Symbol(name, loc)
+
+  def temp(name: String, loc: Loc, kind: Type): Symbol = {
+    val symbol = new Symbol(name, loc)
+    symbol.kind = kind
+    symbol.attr.tmp set true
+    symbol
+  }
 
   // Extractor to pattern match against symbol name
   def unapply(arg: Symbol): Option[String] = Some(arg.name)

@@ -95,12 +95,12 @@ final class ConvertCtrlFuncLocals(implicit cc: CompilerContext) extends Stateles
       // Create the storage structure
       lSymbolOpt = Option.when(localSymbols.nonEmpty) {
         // Create the locals structure type
-        val sSymbol = cc.newSymbol(s"${symbol.name}${cc.sep}locals_t", symbol.loc)
+        val sSymbol = Symbol(s"${symbol.name}${cc.sep}locals_t", symbol.loc)
         val sKind = TypeRecord(sSymbol, mSymbols)
         sSymbol.kind = TypeType(sKind)
         extraTypeSymbols append sSymbol
         // Create the locals variable/stack
-        cc.newSymbol(s"${symbol.name}${cc.sep}locals", symbol.loc) tap { lSymbol =>
+        Symbol(s"${symbol.name}${cc.sep}locals", symbol.loc) tap { lSymbol =>
           lSymbol.kind = {
             val recLimit = symbol.attr.recLimit.value
             if (recLimit > 1) TypeStack(sKind, recLimit) else sKind

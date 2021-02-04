@@ -85,7 +85,7 @@ final class LowerForeignFunctions(
         // Otherwise create a symbol which is assigned the output value
         val tag = s"_${fSymbol.name}${cc.sep}result"
         val n = sequenceNumbers.getOrElseUpdate(tag, Iterator.from(0)).next()
-        val retSymbol = cc.newSymbol(s"${tag}_$n", tree.loc)
+        val retSymbol = Symbol(s"${tag}_$n", tree.loc)
         retSymbol.kind = retType
         retSymbol.attr.combSignal set true
         // Add extra symbol

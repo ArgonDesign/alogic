@@ -28,10 +28,10 @@ final class AddClockAndResetA(
     cc: CompilerContext)
     extends StatefulTreeTransformer {
 
-  private val clk: Symbol = cc.newSymbol("clk", Loc.synthetic)
+  private val clk: Symbol = Symbol("clk", Loc.synthetic)
   clk.kind = TypeIn(TypeUInt(1), FlowControlTypeNone)
   clk.attr.clk set true
-  private val rst: Symbol = cc.newSymbol(cc.rst, Loc.synthetic)
+  private val rst: Symbol = Symbol(cc.rst, Loc.synthetic)
   rst.kind = TypeIn(TypeUInt(1), FlowControlTypeNone)
   rst.attr.rst set true
 

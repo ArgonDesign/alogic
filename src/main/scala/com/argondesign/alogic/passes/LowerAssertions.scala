@@ -142,14 +142,14 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatelessTreeT
     case StmtSplice(AssertionAssert(cond, msgOpt)) =>
       val prefix = s"_assert_${assertSeqNum.next()}"
       val comment = s"'assert' on line ${tree.loc.line}"
-      val enSymbol = cc.newSymbol(s"${prefix}_en", tree.loc)
+      val enSymbol = Symbol(s"${prefix}_en", tree.loc)
       enSymbol.kind = TypeUInt(1)
       enSymbol.attr.combSignal set true
       val deps = List from {
         val seqNum = Iterator.from(0)
         cond collect {
           case expr @ ExprSym(symbol) if modifiable(symbol) =>
-            val newSymbol = cc.newSymbol(s"${prefix}_c${seqNum.next()}", expr.loc)
+            val newSymbol = Symbol(s"${prefix}_c${seqNum.next()}", expr.loc)
             newSymbol.kind = symbol.kind.underlying
             newSymbol.attr.combSignal set true
             symbol -> newSymbol
@@ -193,7 +193,7 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatelessTreeT
     case StmtSplice(AssertionUnreachable(_, msgOpt)) =>
       val prefix = s"_unreachable_${unreachableSeqNum.next()}"
       val comment = s"'unreachable' on line ${tree.loc.line}"
-      val enSymbol = cc.newSymbol(s"${prefix}_en", tree.loc)
+      val enSymbol = Symbol(s"${prefix}_en", tree.loc)
       enSymbol.kind = TypeUInt(1)
       enSymbol.attr.combSignal set true
       assertions.append((enSymbol, None, Nil, msgOpt, comment))
@@ -204,7 +204,7 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatelessTreeT
     ////////////////////////////////////////////////////////////////////////////
 
     case defn: DefnEntity if assertions.nonEmpty =>
-      val aEnSymbol = cc.newSymbol(s"_assertions_en", tree.loc)
+      val aEnSymbol = Symbol(s"_assertions_en", tree.loc)
       aEnSymbol.kind = TypeUInt(1)
       aEnSymbolOpt = Some(aEnSymbol)
       val newBody = List from {

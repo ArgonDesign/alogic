@@ -48,7 +48,7 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends StatefulTree
 
   override def enter(tree: Tree): Option[Tree] = tree match {
     case defn: DefnEntity =>
-      goSymbol = cc.newSymbol("go", defn.symbol.loc) tap { s =>
+      goSymbol = Symbol("go", defn.symbol.loc) tap { s =>
         s.kind = TypeUInt(1)
         s.attr.go set true
         s.attr.combSignal set true
@@ -152,7 +152,7 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends StatefulTree
       singleState = nStates == 1
       stateWidth = Math.clog2(nStates) max 1
       if (nStates > 1) {
-        stateVarSymbol = cc.newSymbol("state", defn.symbol.loc) tap { s =>
+        stateVarSymbol = Symbol("state", defn.symbol.loc) tap { s =>
           s.kind = TypeUInt(stateWidth)
           s.attr.stateVariable set true
         }

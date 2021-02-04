@@ -27,7 +27,7 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-final class ConvertControl(implicit cc: CompilerContext) extends StatelessTreeTransformer {
+final class ConvertControl extends StatelessTreeTransformer {
 
   // The return stack symbol
   private var rsSymbol: Symbol = _
@@ -89,7 +89,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatelessTreeTr
       if stmt.tpe == TypeCtrlStmt
     } yield {
       // Allocate a new state for the following statement
-      val symbol = cc.newSymbol(s"l${next.loc.line}", next.loc) tap { symbol =>
+      val symbol = Symbol(s"l${next.loc.line}", next.loc) tap { symbol =>
         symbol.kind = TypeState(symbol)
       }
       allocStmts(stmt.id) = symbol
@@ -134,7 +134,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatelessTreeTr
           defn.functions.iterator filter { _.symbol.kind.isCtrlFunc } map { funcDefn =>
             val funcSymbol = funcDefn.symbol
             val name = s"l${funcSymbol.loc.line}_function_${funcSymbol.name}"
-            val stateSymbol = cc.newSymbol(name, funcSymbol.loc)
+            val stateSymbol = Symbol(name, funcSymbol.loc)
             stateSymbol.kind = TypeState(stateSymbol)
             stateSymbol.attr.update(funcSymbol.attr)
             stateSymbol.attr.recLimit.clear()
@@ -190,7 +190,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatelessTreeTr
             pendingStates.push(None)
             symbol
           case None =>
-            val symbol = cc.newSymbol(s"l${tree.loc.line}_loop", tree.loc) tap { symbol =>
+            val symbol = Symbol(s"l${tree.loc.line}_loop", tree.loc) tap { symbol =>
               symbol.kind = TypeState(symbol)
             }
             entryStmts(tree.id) = symbol
@@ -347,7 +347,7 @@ final class ConvertControl(implicit cc: CompilerContext) extends StatelessTreeTr
       case stmt: StmtReturn =>
         def stmtGotoStateFollowing(returnee: Symbol): StmtGoto = {
           val returnStateAlias =
-            cc.newSymbol(s"l${stmt.loc.line}_state_alias_following_${returnee.name}_call", stmt.loc)
+            Symbol(s"l${stmt.loc.line}_state_alias_following_${returnee.name}_call", stmt.loc)
           returnStateAlias.kind = TypeState(returnStateAlias)
 
           functionCallReturningTo(returnStateAlias) = returnee

@@ -30,10 +30,7 @@ final class LowerPipelineStage(
     pipeInSymbols: List[Symbol], // List of incoming PipeVar symbols
     pipeOutSymbols: List[Symbol], // List of outgoing PipeVar symbols
     pipeAllSymbols: List[Symbol] // List of all active PipeVar symbols
-  )(
-    implicit
-    cc: CompilerContext)
-    extends StatefulTreeTransformer {
+  ) extends StatefulTreeTransformer {
   require(pipeInSymbols forall { pipeAllSymbols contains _ })
   require(pipeOutSymbols forall { pipeAllSymbols contains _ })
 
@@ -50,7 +47,7 @@ final class LowerPipelineStage(
   private def makePortType(name: String, symbols: List[Symbol]): Type = symbols match {
     case Nil => TypeVoid
     case _ =>
-      val recSymbol = cc.newSymbol(name, Loc.synthetic)
+      val recSymbol = Symbol(name, Loc.synthetic)
       val kind = TypeRecord(recSymbol, symbols map dupDropPipeVar)
       recSymbol.kind = TypeType(kind)
       kind
@@ -213,7 +210,7 @@ final class LowerPipelineStage(
 
 }
 
-final class LowerPipelineHost(implicit cc: CompilerContext) extends StatefulTreeTransformer {
+final class LowerPipelineHost extends StatefulTreeTransformer {
 
   // Map from stage entity symbol the transform to apply to its Decl/Defn
   private var stageTransform: Map[Symbol, LowerPipelineStage] = _

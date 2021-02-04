@@ -29,9 +29,6 @@ object SignOffUnused extends PairsTransformerPass {
       decl: DeclEntity,
       defn: DefnEntity,
       usedSymbolBits: SymbolBitSet
-    )(
-      implicit
-      cc: CompilerContext
     ): (Decl, Defn) = {
 
     // Turns (6, 5, 4, 2, 1, 0) into ((6, 4), (2, 1), (0, 0)), etc.
@@ -74,7 +71,7 @@ object SignOffUnused extends PairsTransformerPass {
     if (!unusedTerms.hasNext) {
       (decl, defn)
     } else {
-      val unusedSymbol = cc.newSymbol("_unused", Loc.synthetic)
+      val unusedSymbol = Symbol("_unused", Loc.synthetic)
       unusedSymbol.kind = TypeUInt(1)
       unusedSymbol.attr.combSignal set true
       val unusedDecl = unusedSymbol.mkDecl regularize Loc.synthetic

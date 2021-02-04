@@ -18,7 +18,7 @@ import com.argondesign.alogic.core.TypeAssigner
 
 import scala.collection.mutable
 
-final class Replace1Stacks(implicit cc: CompilerContext) extends StatelessTreeTransformer {
+final class Replace1Stacks extends StatelessTreeTransformer {
 
   // Map from original stack variable symbol to the corresponding replacement,
   private val stackMap = mutable.LinkedHashMap[Symbol, Symbol]()

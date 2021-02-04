@@ -14,7 +14,6 @@ package com.argondesign.alogic.core
 import com.argondesign.alogic.ast.Trees.Arg
 import com.argondesign.alogic.core.Messages.Fatal
 import com.argondesign.alogic.core.Messages.Ice
-import com.argondesign.alogic.core.Types.Type
 import com.argondesign.alogic.core.enums.ResetStyle
 import com.argondesign.alogic.passes.Passes
 
@@ -28,19 +27,6 @@ final class CompilerContext(
     with Output
     with Profiling
     with StatelessTransforms {
-
-  //////////////////////////////////////////////////////////////////////////////
-  // Creating Symbol instances
-  //////////////////////////////////////////////////////////////////////////////
-
-  def newSymbol(name: String, loc: Loc): Symbol = new Symbol(name, loc)
-
-  def newTemp(name: String, loc: Loc, kind: Type): Symbol = {
-    val symbol = newSymbol(name, loc)
-    symbol.kind = kind
-    symbol.attr.tmp set true
-    symbol
-  }
 
   //////////////////////////////////////////////////////////////////////////////
   // Shorthand for frequently accessed settings

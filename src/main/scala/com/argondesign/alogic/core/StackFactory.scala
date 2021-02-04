@@ -64,9 +64,6 @@ object StackFactory extends ChainingSyntax {
       loc: Loc,
       kind: TypeFund,
       depth: Int
-    )(
-      implicit
-      cc: CompilerContext
     ): (DeclEntity, DefnEntity) = {
     require(kind.isPacked)
     require(kind != TypeVoid)
@@ -77,13 +74,13 @@ object StackFactory extends ChainingSyntax {
     val fcn = FlowControlTypeNone
     val stw = StorageTypeWire
 
-    val pusSymbol = cc.newSymbol("push", loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
-    val popSymbol = cc.newSymbol("pop", loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
-    val setSymbol = cc.newSymbol("set", loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
-    val dSymbol = cc.newSymbol("d", loc) tap { _.kind = TypeIn(kind, fcn) }
-    val qSymbol = cc.newSymbol("q", loc) tap { _.kind = TypeOut(kind, fcn, stw) }
+    val pusSymbol = Symbol("push", loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
+    val popSymbol = Symbol("pop", loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
+    val setSymbol = Symbol("set", loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
+    val dSymbol = Symbol("d", loc) tap { _.kind = TypeIn(kind, fcn) }
+    val qSymbol = Symbol("q", loc) tap { _.kind = TypeOut(kind, fcn, stw) }
     val sSymbols = List from {
-      (0 until depth).iterator map { n => cc.newSymbol(s"s$n", loc) tap { _.kind = kind } }
+      (0 until depth).iterator map { n => Symbol(s"s$n", loc) tap { _.kind = kind } }
     }
 
     val pusDecl = pusSymbol.mkDecl regularize loc
@@ -147,7 +144,7 @@ object StackFactory extends ChainingSyntax {
     val decls = pusDecl :: popDecl :: setDecl :: dDecl :: qDecl :: sDecls
     val defns = (pusDefn :: popDefn :: setDefn :: dDefn :: qDefn :: sDefns) map EntSplice.apply
 
-    val entitySymbol = cc.newSymbol(name, loc)
+    val entitySymbol = Symbol(name, loc)
     val decl = DeclEntity(entitySymbol, decls) regularize loc
     val defn = DefnEntity(
       entitySymbol,

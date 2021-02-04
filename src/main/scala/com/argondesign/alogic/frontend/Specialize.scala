@@ -127,7 +127,7 @@ private[frontend] object Specialize {
                     // definition. We use a temporary name to start with, as
                     // the proper name can only be determined after type
                     // checking the result
-                    val newSymbol = cc.newSymbol("@@@specialization-temp@@@", symbol.loc)
+                    val newSymbol = Symbol("@@@specialization-temp@@@", symbol.loc)
                     // Construct the new definition. This will attach it to the
                     // symbol.
                     val newDesc = mkDesc(Sym(newSymbol) withLocOf desc.ref, body) withLocOf desc

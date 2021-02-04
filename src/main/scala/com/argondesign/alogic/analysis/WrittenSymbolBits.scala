@@ -11,6 +11,7 @@ import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.util.unreachable
 import com.argondesign.alogic.util.BigIntOps._
+
 import scala.collection.immutable.HashMap
 
 object WrittenSymbolBits {

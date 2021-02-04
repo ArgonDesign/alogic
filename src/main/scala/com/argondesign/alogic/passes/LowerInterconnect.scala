@@ -68,7 +68,7 @@ final class LowerInterconnect(implicit cc: CompilerContext)
           val name = iSymbol.name + cc.sep + sel
           val pKind = iSymbol.kind.asEntity(sel).get.kind
           val nKind = pKind.underlying
-          val symbol = cc.newSymbol(name, iSymbol.loc) tap { _.kind = nKind }
+          val symbol = Symbol(name, iSymbol.loc) tap { _.kind = nKind }
           symbol.attr.interconnect.set(true)
 
           // If this is an interconnect symbol that is in the entity

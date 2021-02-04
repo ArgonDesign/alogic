@@ -48,12 +48,12 @@ final class ConvertCtrlFuncArgret(implicit cc: CompilerContext) extends Stateful
           if (args.nonEmpty) {
             // Create the args structure type
             val mSymbols = args map { case Defn(symbol) => symbol.dup tap { _.kind = symbol.kind } }
-            val sSymbol = cc.newSymbol(s"${symbol.name}${cc.sep}args_t", symbol.loc)
+            val sSymbol = Symbol(s"${symbol.name}${cc.sep}args_t", symbol.loc)
             val sKind = TypeRecord(sSymbol, mSymbols)
             sSymbol.kind = TypeType(sKind)
             extraTypeSymbols append sSymbol
             // Create the args variable/stack
-            val aSymbol = cc.newSymbol(s"${symbol.name}${cc.sep}args", symbol.loc)
+            val aSymbol = Symbol(s"${symbol.name}${cc.sep}args", symbol.loc)
             aSymbol.kind = {
               val recLimit = symbol.attr.recLimit.value
               if (recLimit > 1) TypeStack(sKind, recLimit) else sKind
@@ -66,7 +66,7 @@ final class ConvertCtrlFuncArgret(implicit cc: CompilerContext) extends Stateful
           val rKind = symbol.kind.asCtrlFunc.retType
           if (!rKind.isVoid) {
             // Create the return variable
-            val rSymbol = cc.newSymbol(s"${symbol.name}${cc.sep}return", symbol.loc)
+            val rSymbol = Symbol(s"${symbol.name}${cc.sep}return", symbol.loc)
             rSymbol.kind = rKind
             extraEntitySymbols append rSymbol
             // Add to map
@@ -206,7 +206,7 @@ final class ConvertCtrlFuncArgret(implicit cc: CompilerContext) extends Stateful
         // later be optimized away if redundant. Note that this needs to be a
         // local variable in case of recursion, so add it as such, initialized
         // to the return value
-        val tSymbol = cc.newTemp(s"${rSymbol.name}${cc.sep}copy", tree.loc, rSymbol.kind)
+        val tSymbol = Symbol.temp(s"${rSymbol.name}${cc.sep}copy", tree.loc, rSymbol.kind)
         stmts append { StmtSplice(tSymbol.mkDecl) regularize tree.loc }
         stmts append { StmtSplice(tSymbol.mkDefn(ExprSym(rSymbol))) regularize tree.loc }
         // Replace with the temporary holding the return value

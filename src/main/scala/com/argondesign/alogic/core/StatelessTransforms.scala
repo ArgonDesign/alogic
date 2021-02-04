@@ -12,6 +12,5 @@ package com.argondesign.alogic.core
 import com.argondesign.alogic.passes._
 
 trait StatelessTransforms { this: CompilerContext =>
-  val desugar = new Desugar()(cc = this)
   val portCheck = new PortCheck()(cc = this)
 }

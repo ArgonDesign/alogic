@@ -729,7 +729,7 @@ object Elaborate {
       Finished(desc)
     case ident @ Ident(base, Nil) =>
       // Plain identifier. Create symbol
-      val sym = Sym(cc.newSymbol(base, ident.loc)) withLocOf ident
+      val sym = Sym(Symbol(base, ident.loc)) withLocOf ident
       Complete(desc.copyRef(ref = sym) withLocOf desc)
     case ident @ Ident(_, idxs) =>
       // TODO: check shadowing
@@ -750,7 +750,7 @@ object Elaborate {
               case _ => Complete(name)
             }
           } map { name =>
-            val sym = Sym(cc.newSymbol(name, ident.loc)) withLocOf ident
+            val sym = Sym(Symbol(name, ident.loc)) withLocOf ident
             desc.copyRef(ref = sym) withLocOf desc
           }
         case _ => unreachable

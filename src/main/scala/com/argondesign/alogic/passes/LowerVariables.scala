@@ -68,7 +68,7 @@ final class LowerVariables(implicit cc: CompilerContext) extends StatelessTreeTr
           // Append _q to the name of the symbol
           symbol.name = s"${name}_q"
           // Create the _d symbol
-          val dSymbol = cc.newSymbol(s"${name}_d", loc) tap {
+          val dSymbol = Symbol(s"${name}_d", loc) tap {
             _.kind = symbol.kind
           }
           // Move the clearOnStall attribute to the _d symbol

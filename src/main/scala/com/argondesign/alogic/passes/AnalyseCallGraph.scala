@@ -462,7 +462,7 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatelessTree
         // depth. The element type will be refined in a later pass when the
         // state numbers are allocated
         val name = if (stackDepth > 1) "return_stack" else "return_state"
-        val symbol = cc.newSymbol(name, defn.loc) tap { s =>
+        val symbol = Symbol(name, defn.loc) tap { s =>
           s.kind = TypeStack(TypeVoid, stackDepth)
           s.attr.returnStack set true
         }

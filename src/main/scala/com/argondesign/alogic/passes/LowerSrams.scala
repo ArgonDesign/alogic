@@ -33,7 +33,7 @@ final class SramBuilder {
 
   def srams: Iterable[((Int, Int), (DeclEntity, DefnEntity))] = store
 
-  def apply(width: Int, depth: Int)(implicit cc: CompilerContext): Symbol = synchronized {
+  def apply(width: Int, depth: Int): Symbol = synchronized {
     lazy val sram = SramFactory(s"sram_${depth}x$width", Loc.synthetic, width, depth)
     store.getOrElseUpdate((width, depth), sram)._1.symbol
   }
@@ -142,13 +142,13 @@ final class LowerSrams(
             val eSymbol = sramBuilder(kind.width.toInt, depth.toInt)
 
             // Create the instance
-            val sSymbol = cc.newSymbol("sram" + sep + name, loc) tap {
+            val sSymbol = Symbol("sram" + sep + name, loc) tap {
               _.kind = eSymbol.kind.asType.kind
             }
 
             // If this is an SRAM with an underlying struct type, we need a new
             // signal to unpack the read data into, allocate this here
-            lazy val rSymbol = cc.newSymbol(name + sep + "rdata", loc) tap { _.kind = kind }
+            lazy val rSymbol = Symbol(name + sep + "rdata", loc) tap { _.kind = kind }
 
             // If the sram is driven through registers, we need a SyncReg to drive it
             lazy val (oEntity, oSymbol) = {
@@ -159,17 +159,17 @@ final class LowerSrams(
                 val oName = entitySymbol.name + sep + "or" + sep + name
                 val weKind = sSymbol.kind.asEntity("we").get.kind.underlying
                 val addrKind = sSymbol.kind.asEntity("addr").get.kind.underlying
-                val weSymbol = cc.newSymbol("we", tree.loc) tap { _.kind = weKind }
-                val addrSymbol = cc.newSymbol("addr", tree.loc) tap { _.kind = addrKind }
-                val wdataSymbol = cc.newSymbol("wdata", tree.loc) tap { _.kind = kind }
-                val oSymbol = cc.newSymbol(oName, tree.loc)
+                val weSymbol = Symbol("we", tree.loc) tap { _.kind = weKind }
+                val addrSymbol = Symbol("addr", tree.loc) tap { _.kind = addrKind }
+                val wdataSymbol = Symbol("wdata", tree.loc) tap { _.kind = kind }
+                val oSymbol = Symbol(oName, tree.loc)
                 val oKind = TypeType(TypeRecord(oSymbol, List(weSymbol, addrSymbol, wdataSymbol)))
                 oSymbol.kind = oKind
                 SyncRegFactory(oName, loc, oKind.kind)
               }
 
               // Create the instance
-              val oSymbol = cc.newSymbol("or" + sep + name, loc) tap {
+              val oSymbol = Symbol("or" + sep + name, loc) tap {
                 _.kind = oEntity._1.symbol.kind.asType.kind
               }
 

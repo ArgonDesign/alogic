@@ -10,16 +10,16 @@
 package com.argondesign.alogic.passes
 
 import com.argondesign.alogic.ast.StatelessTreeTransformer
-import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Symbol
+import com.argondesign.alogic.core.TypeAssigner
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-final class CreateTemporaries(implicit cc: CompilerContext) extends StatelessTreeTransformer {
+final class CreateTemporaries extends StatelessTreeTransformer {
 
   // Temporary symbols
   private val tmpSymbols = mutable.ListBuffer[Symbol]()
@@ -36,7 +36,7 @@ final class CreateTemporaries(implicit cc: CompilerContext) extends StatelessTre
 
   private def mkTmp(expr: Expr): Symbol = {
     require(expr.tpe.underlying.isFund && expr.tpe.isPacked && expr.tpe.width > 0)
-    cc.newTemp("_tmp", expr.loc, expr.tpe.underlying) tap { tmpSymbol =>
+    Symbol.temp("_tmp", expr.loc, expr.tpe.underlying) tap { tmpSymbol =>
       tmpSymbol.attr.combSignal set true
       tmpSymbols.append(tmpSymbol)
       extraStmts.top append {

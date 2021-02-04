@@ -11,6 +11,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.builtins.AtUnknownU
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
+import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.BigIntOps._
 import org.scalatest.freespec.AnyFreeSpec
@@ -19,9 +20,9 @@ class ReadSymbolBitsSpec extends AnyFreeSpec with AlogicTest {
 
   implicit val cc: CompilerContext = new CompilerContext()
 
-  private val aSymbol = cc.newSymbol("a", Loc.synthetic) tap { _.kind = TypeUInt(4) }
-  private val bSymbol = cc.newSymbol("b", Loc.synthetic) tap { _.kind = TypeUInt(8) }
-  private val cSymbol = cc.newSymbol("c", Loc.synthetic) tap { _.kind = TypeUInt(256) }
+  private val aSymbol = Symbol("a", Loc.synthetic) tap { _.kind = TypeUInt(4) }
+  private val bSymbol = Symbol("b", Loc.synthetic) tap { _.kind = TypeUInt(8) }
+  private val cSymbol = Symbol("c", Loc.synthetic) tap { _.kind = TypeUInt(256) }
 
   // Make sure decl/defn exists
   List(aSymbol, bSymbol, cSymbol) foreach { symbol =>

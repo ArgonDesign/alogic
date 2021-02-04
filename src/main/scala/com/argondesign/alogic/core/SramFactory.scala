@@ -50,9 +50,6 @@ object SramFactory extends ChainingSyntax {
       loc: Loc,
       width: Int,
       depth: Int
-    )(
-      implicit
-      cc: CompilerContext
     ): (DeclEntity, DefnEntity) = {
 
     val fcn = FlowControlTypeNone
@@ -60,15 +57,15 @@ object SramFactory extends ChainingSyntax {
     val addrKind = TypeUInt(Math.clog2(depth))
     val dataKind = TypeUInt(width)
 
-    val ceSymbol = cc.newSymbol("ce", loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
+    val ceSymbol = Symbol("ce", loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
     ceSymbol.attr.default.set(ExprInt(false, 1, 0) regularize loc)
-    val weSymbol = cc.newSymbol("we", loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
-    val adSymbol = cc.newSymbol("addr", loc) tap { _.kind = TypeIn(addrKind, fcn) }
-    val wdSymbol = cc.newSymbol("wdata", loc) tap { _.kind = TypeIn(dataKind, fcn) }
-    val rdSymbol = cc.newSymbol("rdata", loc) tap {
+    val weSymbol = Symbol("we", loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
+    val adSymbol = Symbol("addr", loc) tap { _.kind = TypeIn(addrKind, fcn) }
+    val wdSymbol = Symbol("wdata", loc) tap { _.kind = TypeIn(dataKind, fcn) }
+    val rdSymbol = Symbol("rdata", loc) tap {
       _.kind = TypeOut(dataKind, fcn, StorageTypeReg)
     }
-    val stSymbol = cc.newSymbol("storage", loc) tap { _.kind = TypeArray(dataKind, depth) }
+    val stSymbol = Symbol("storage", loc) tap { _.kind = TypeArray(dataKind, depth) }
 
     val ceDecl = ceSymbol.mkDecl regularize loc
     val weDecl = weSymbol.mkDecl regularize loc
@@ -112,7 +109,7 @@ object SramFactory extends ChainingSyntax {
     val decls = List(ceDecl, weDecl, adDecl, wdDecl, rdDecl, stDecl)
     val defns = List(ceDefn, weDefn, adDefn, wdDefn, rdDefn, stDefn) map EntSplice.apply
 
-    val entitySymbol = cc.newSymbol(name, loc)
+    val entitySymbol = Symbol(name, loc)
     val decl = DeclEntity(entitySymbol, decls) regularize loc
     val defn = DefnEntity(
       entitySymbol,

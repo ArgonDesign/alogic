@@ -13,16 +13,15 @@
 package com.argondesign.alogic.ast
 
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbol
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Types.TypeEntity
 import com.argondesign.alogic.core.Types.TypeType
 
 import scala.collection.mutable
 
-abstract class StatefulTreeTransformer(implicit cc: CompilerContext) extends TreeTransformer {
+abstract class StatefulTreeTransformer extends TreeTransformer {
 
   //////////////////////////////////////////////////////////////////////////////
   // Transform specific interface overridable by sub-classes

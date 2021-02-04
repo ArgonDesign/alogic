@@ -21,7 +21,7 @@ import com.argondesign.alogic.lib.Math
 
 import scala.collection.mutable
 
-final class LowerArrays(implicit cc: CompilerContext) extends StatelessTreeTransformer {
+final class LowerArrays extends StatelessTreeTransformer {
 
   // List of array we/waddr/wdata symbols
   private val arrays = mutable.ListBuffer[(Symbol, Symbol, Symbol)]()
@@ -42,16 +42,16 @@ final class LowerArrays(implicit cc: CompilerContext) extends StatelessTreeTrans
             val loc = tree.loc
             val name = symbol.name
             // Create we symbol
-            val weSymbol = cc.newSymbol(s"${name}_we", loc) tap { _.kind = TypeUInt(1) }
+            val weSymbol = Symbol(s"${name}_we", loc) tap { _.kind = TypeUInt(1) }
             weSymbol.attr.clearOnStall set true
             weSymbol.attr.combSignal set true
             // Create waddr symbol
             val abits = Math.clog2(size) ensuring { _ > 0 }
-            val waSymbol = cc.newSymbol(s"${name}_waddr", loc) tap { _.kind = TypeUInt(abits) }
+            val waSymbol = Symbol(s"${name}_waddr", loc) tap { _.kind = TypeUInt(abits) }
             waSymbol.attr.combSignal set true
             // Create wdata symbol
             val dbits = kind.width
-            val wdSymbol = cc.newSymbol(s"${name}_wdata", loc) tap { _.kind = TypeUInt(dbits) }
+            val wdSymbol = Symbol(s"${name}_wdata", loc) tap { _.kind = TypeUInt(dbits) }
             wdSymbol.attr.combSignal set true
             // Memorize
             symbol.attr.memory.set((weSymbol, waSymbol, wdSymbol))

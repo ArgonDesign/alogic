@@ -29,7 +29,7 @@ final class LowerRegPorts(implicit cc: CompilerContext) extends StatelessTreeTra
       case DeclOut(symbol, _, _, StorageTypeReg) =>
         // Allocate local register
         val rName = "`oreg" + cc.sep + symbol.name
-        val rSymbol = cc.newSymbol(rName, tree.loc) tap { _.kind = symbol.kind.underlying }
+        val rSymbol = Symbol(rName, tree.loc) tap { _.kind = symbol.kind.underlying }
         // Move the clearOnStall attribute to the register symbol
         symbol.attr.clearOnStall.get foreach { attr =>
           rSymbol.attr.clearOnStall set attr

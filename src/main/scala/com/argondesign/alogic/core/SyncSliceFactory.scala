@@ -226,32 +226,29 @@ object SyncSliceFactory extends ChainingSyntax {
       loc: Loc,
       kind: TypeFund,
       sep: String
-    )(
-      implicit
-      cc: CompilerContext
     ): (DeclEntity, DefnEntity) = {
     val fcn = FlowControlTypeNone
     val stw = StorageTypeWire
 
-    lazy val ipSymbol = cc.newSymbol("ip", loc) tap { _.kind = TypeIn(kind, fcn) }
-    val ipvSymbol = cc.newSymbol(s"ip${sep}valid", loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
+    lazy val ipSymbol = Symbol("ip", loc) tap { _.kind = TypeIn(kind, fcn) }
+    val ipvSymbol = Symbol(s"ip${sep}valid", loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
     ipvSymbol.attr.default.set(ExprInt(false, 1, 0) regularize loc)
-    val iprSymbol = cc.newSymbol(s"ip${sep}ready", loc) tap {
+    val iprSymbol = Symbol(s"ip${sep}ready", loc) tap {
       _.kind = TypeOut(TypeUInt(1), fcn, stw)
     }
     iprSymbol.attr.dontCareUnless set ipvSymbol
     ipvSymbol.attr.dontCareUnless set iprSymbol
-    lazy val opSymbol = cc.newSymbol("op", loc) tap { _.kind = TypeOut(kind, fcn, stw) }
-    val opvSymbol = cc.newSymbol(s"op${sep}valid", loc) tap {
+    lazy val opSymbol = Symbol("op", loc) tap { _.kind = TypeOut(kind, fcn, stw) }
+    val opvSymbol = Symbol(s"op${sep}valid", loc) tap {
       _.kind = TypeOut(TypeUInt(1), fcn, stw)
     }
-    val oprSymbol = cc.newSymbol(s"op${sep}ready", loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
+    val oprSymbol = Symbol(s"op${sep}ready", loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
     oprSymbol.attr.default.set(ExprInt(false, 1, 0) regularize loc)
     oprSymbol.attr.dontCareUnless set opvSymbol
     opvSymbol.attr.dontCareUnless set oprSymbol
-    val sSymbol = cc.newSymbol("space", loc) tap { _.kind = TypeOut(TypeUInt(1), fcn, stw) }
-    lazy val pSymbol = cc.newSymbol("payload", loc) tap { _.kind = kind }
-    val vSymbol = cc.newSymbol("valid", loc) tap { _.kind = TypeUInt(1) }
+    val sSymbol = Symbol("space", loc) tap { _.kind = TypeOut(TypeUInt(1), fcn, stw) }
+    lazy val pSymbol = Symbol("payload", loc) tap { _.kind = kind }
+    val vSymbol = Symbol("valid", loc) tap { _.kind = TypeUInt(1) }
 
     lazy val ipDecl = ipSymbol.mkDecl regularize loc
     val ipvDecl = ipvSymbol.mkDecl regularize loc
@@ -311,7 +308,7 @@ object SyncSliceFactory extends ChainingSyntax {
       voidAssigns(ss, ipvRef, iprRef, opvRef, oprRef, sRef, vRef)
     }
 
-    val entitySymbol = cc.newSymbol(name, loc)
+    val entitySymbol = Symbol(name, loc)
     val decl = DeclEntity(entitySymbol, decls) regularize loc
     val defn = DefnEntity(
       entitySymbol,
@@ -329,9 +326,6 @@ object SyncSliceFactory extends ChainingSyntax {
       loc: Loc,
       kind: TypeFund,
       sep: String
-    )(
-      implicit
-      cc: CompilerContext
     ): (DeclEntity, DefnEntity) = {
     val nSlices = slices.length
     require(nSlices >= 2)
@@ -347,19 +341,19 @@ object SyncSliceFactory extends ChainingSyntax {
     val opvName = s"$opName${sep}valid"
     val oprName = s"$opName${sep}ready"
 
-    lazy val ipSymbol = cc.newSymbol(ipName, loc) tap { _.kind = TypeIn(kind, fcn) }
-    val ipvSymbol = cc.newSymbol(ipvName, loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
+    lazy val ipSymbol = Symbol(ipName, loc) tap { _.kind = TypeIn(kind, fcn) }
+    val ipvSymbol = Symbol(ipvName, loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
     ipvSymbol.attr.default.set(ExprInt(false, 1, 0) regularize loc)
-    val iprSymbol = cc.newSymbol(iprName, loc) tap { _.kind = TypeOut(TypeUInt(1), fcn, stw) }
+    val iprSymbol = Symbol(iprName, loc) tap { _.kind = TypeOut(TypeUInt(1), fcn, stw) }
     iprSymbol.attr.dontCareUnless set ipvSymbol
     ipvSymbol.attr.dontCareUnless set iprSymbol
-    lazy val opSymbol = cc.newSymbol(opName, loc) tap { _.kind = TypeOut(kind, fcn, stw) }
-    val opvSymbol = cc.newSymbol(opvName, loc) tap { _.kind = TypeOut(TypeUInt(1), fcn, stw) }
-    val oprSymbol = cc.newSymbol(oprName, loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
+    lazy val opSymbol = Symbol(opName, loc) tap { _.kind = TypeOut(kind, fcn, stw) }
+    val opvSymbol = Symbol(opvName, loc) tap { _.kind = TypeOut(TypeUInt(1), fcn, stw) }
+    val oprSymbol = Symbol(oprName, loc) tap { _.kind = TypeIn(TypeUInt(1), fcn) }
     oprSymbol.attr.default.set(ExprInt(false, 1, 0) regularize loc)
     oprSymbol.attr.dontCareUnless set opvSymbol
     opvSymbol.attr.dontCareUnless set oprSymbol
-    val sSymbol = cc.newSymbol("space", loc) tap { _.kind = TypeOut(TypeUInt(nSlices), fcn, stw) }
+    val sSymbol = Symbol("space", loc) tap { _.kind = TypeOut(TypeUInt(nSlices), fcn, stw) }
 
     lazy val ipDecl = ipSymbol.mkDecl regularize loc
     val ipvDecl = ipvSymbol.mkDecl regularize loc
@@ -388,7 +382,7 @@ object SyncSliceFactory extends ChainingSyntax {
     val iSymbols = slices.zipWithIndex map {
       case ((decl, _), index) =>
         val eSymbol = decl.symbol
-        val iSymbol = cc.newSymbol(s"slice_$index", loc)
+        val iSymbol = Symbol(s"slice_$index", loc)
         iSymbol.kind = eSymbol.kind.asType.kind
         iSymbol
     }
@@ -445,7 +439,7 @@ object SyncSliceFactory extends ChainingSyntax {
       }
     } map EntSplice.apply
 
-    val entitySymbol = cc.newSymbol(name, loc)
+    val entitySymbol = Symbol(name, loc)
     val decl = DeclEntity(entitySymbol, decls) regularize loc
     val defn = DefnEntity(
       entitySymbol,

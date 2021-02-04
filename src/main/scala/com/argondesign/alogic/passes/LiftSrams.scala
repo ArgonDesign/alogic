@@ -67,9 +67,9 @@ final class LiftSramsFrom(
         val loc = iSymbol.loc
         val nSymbol = pSymbol.kind match {
           case TypeIn(kind, `fcn`) =>
-            cc.newSymbol(name, loc) tap { _.kind = TypeOut(kind, fcn, stw) }
+            Symbol(name, loc) tap { _.kind = TypeOut(kind, fcn, stw) }
           case TypeOut(kind, `fcn`, `stw`) =>
-            cc.newSymbol(name, loc) tap { _.kind = TypeIn(kind, fcn) }
+            Symbol(name, loc) tap { _.kind = TypeIn(kind, fcn) }
           case _ => unreachable
         }
         // Propagate interconnectClearOnStall to lifted node
@@ -146,7 +146,7 @@ final class LiftSramsTo(
         val name = prefix + iSymbol.name + cc.sep + lSymbol.name.drop(prefix.length)
         val lKind = lSymbol.kind.asEntity
         // Create the local instance
-        val nSymbol = cc.newSymbol(name, iSymbol.loc) tap { _.kind = lKind }
+        val nSymbol = Symbol(name, iSymbol.loc) tap { _.kind = lKind }
         // Create the connections
         val connects = for (pSymbol <- lKind.publicSymbols.iterator) yield {
           val iPortName = lSymbol.name + cc.sep + pSymbol.name

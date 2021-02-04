@@ -98,11 +98,11 @@ final class LowerFlowControlA(
             val loc = tree.loc
             val pName = symbol.name
             val vName = pName + sep + "valid"
-            lazy val pSymbol = cc.newSymbol(pName, loc) tap { s =>
+            lazy val pSymbol = Symbol(pName, loc) tap { s =>
               s.kind = TypeIn(kind, fctn)
               s.attr.payloadOfPort set symbol
             }
-            val vSymbol = cc.newSymbol(vName, loc) tap { s =>
+            val vSymbol = Symbol(vName, loc) tap { s =>
               s.kind = TypeIn(TypeUInt(1), fctn)
               s.attr.validOfPort set symbol
             }
@@ -114,11 +114,11 @@ final class LowerFlowControlA(
             val loc = tree.loc
             val pName = symbol.name
             val vName = pName + sep + "valid"
-            lazy val pSymbol = cc.newSymbol(pName, loc) tap { s =>
+            lazy val pSymbol = Symbol(pName, loc) tap { s =>
               s.kind = TypeOut(kind, fctn, stw)
               s.attr.payloadOfPort set symbol
             }
-            val vSymbol = cc.newSymbol(vName, loc) tap { s =>
+            val vSymbol = Symbol(vName, loc) tap { s =>
               s.kind = TypeOut(TypeUInt(1), fctn, stw)
               s.attr.validOfPort set symbol
             }
@@ -135,7 +135,7 @@ final class LowerFlowControlA(
               extraEntities append sregEntity
               val iSymbol = {
                 val iName = "or" + sep + pName
-                cc.newSymbol(iName, loc) tap { _.kind = sregEntity._1.symbol.kind.asType.kind }
+                Symbol(iName, loc) tap { _.kind = sregEntity._1.symbol.kind.asType.kind }
               }
               // Set attributes
               oStorage(symbol) = (sregEntity, iSymbol, false)
@@ -152,15 +152,15 @@ final class LowerFlowControlA(
             val pName = symbol.name
             val vName = pName + sep + "valid"
             val rName = pName + sep + "ready"
-            lazy val pSymbol = cc.newSymbol(pName, loc) tap { s =>
+            lazy val pSymbol = Symbol(pName, loc) tap { s =>
               s.kind = TypeIn(kind, fctn)
               s.attr.payloadOfPort set symbol
             }
-            val vSymbol = cc.newSymbol(vName, loc) tap { s =>
+            val vSymbol = Symbol(vName, loc) tap { s =>
               s.kind = TypeIn(TypeUInt(1), fctn)
               s.attr.validOfPort set symbol
             }
-            val rSymbol = cc.newSymbol(rName, loc) tap { s =>
+            val rSymbol = Symbol(rName, loc) tap { s =>
               s.kind = TypeOut(TypeUInt(1), fctn, stw)
               s.attr.readyOfPort set symbol
             }
@@ -182,15 +182,15 @@ final class LowerFlowControlA(
             val pName = symbol.name
             val vName = pName + sep + "valid"
             val rName = pName + sep + "ready"
-            lazy val pSymbol = cc.newSymbol(pName, loc) tap { s =>
+            lazy val pSymbol = Symbol(pName, loc) tap { s =>
               s.kind = TypeOut(kind, fctn, stw)
               s.attr.payloadOfPort set symbol
             }
-            val vSymbol = cc.newSymbol(vName, loc) tap { s =>
+            val vSymbol = Symbol(vName, loc) tap { s =>
               s.kind = TypeOut(TypeUInt(1), fctn, stw)
               s.attr.validOfPort set symbol
             }
-            val rSymbol = cc.newSymbol(rName, loc) tap { s =>
+            val rSymbol = Symbol(rName, loc) tap { s =>
               s.kind = TypeIn(TypeUInt(1), fctn)
               s.attr.readyOfPort set symbol
             }
@@ -213,7 +213,7 @@ final class LowerFlowControlA(
                 extraEntities appendAll sliceEntities
                 val iSymbol = {
                   val iName = "os" + sep + pName
-                  cc.newSymbol(iName, loc) tap {
+                  Symbol(iName, loc) tap {
                     _.kind = sliceEntities.head._1.symbol.kind.asType.kind
                   }
                 }
@@ -451,10 +451,7 @@ final class LowerFlowControlA(
 
 final class LowerFlowControlB(
     globalReplacements: collection.Map[Symbol, Symbol],
-    portMaps: collection.Map[Symbol, collection.Map[Symbol, LoweredSymbols]]
-  )(
-    implicit
-    cc: CompilerContext)
+    portMaps: collection.Map[Symbol, collection.Map[Symbol, LoweredSymbols]])
     extends StatefulTreeTransformer {
 
   //////////////////////////////////////////////////////////////////////////////

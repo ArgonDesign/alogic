@@ -274,10 +274,7 @@ final class NormalizeReferencesA(
 
 final class NormalizeReferencesB(
     globalReplacements: TrieMap[Symbol, Symbol],
-    propagatedSymbols: Set[Symbol]
-  )(
-    implicit
-    cc: CompilerContext)
+    propagatedSymbols: Set[Symbol])
     extends StatefulTreeTransformer {
 
   // We need to replace:
@@ -350,11 +347,7 @@ final class NormalizeReferencesB(
 
 }
 
-final class NormalizeReferencesC(
-    globalReplacements: collection.Map[Symbol, Symbol]
-  )(
-    implicit
-    cc: CompilerContext)
+final class NormalizeReferencesC(globalReplacements: collection.Map[Symbol, Symbol])
     extends StatefulTreeTransformer {
 
   // Now replace instances with replaced entities

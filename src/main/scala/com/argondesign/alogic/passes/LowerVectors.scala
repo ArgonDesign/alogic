@@ -23,11 +23,7 @@ import com.argondesign.alogic.util.unreachable
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
 
-final class LowerVectorsA(
-    globalReplacements: TrieMap[Symbol, Symbol]
-  )(
-    implicit
-    cc: CompilerContext)
+final class LowerVectorsA(globalReplacements: TrieMap[Symbol, Symbol])
     extends StatefulTreeTransformer {
 
   private val tgtTpe = mutable.Stack[Type]()
@@ -218,11 +214,7 @@ final class LowerVectorsA(
 
 }
 
-final class LowerVectorsB(
-    globalReplacements: scala.collection.Map[Symbol, Symbol]
-  )(
-    implicit
-    cc: CompilerContext)
+final class LowerVectorsB(globalReplacements: scala.collection.Map[Symbol, Symbol])
     extends StatefulTreeTransformer {
 
   override def replace(symbol: Symbol): Boolean = symbol.kind match {

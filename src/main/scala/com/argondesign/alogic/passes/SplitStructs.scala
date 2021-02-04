@@ -69,7 +69,7 @@ final class SplitStructsA(
                   case _: TypeRecord => fKind
                   case _             => unreachable
                 }
-                cc.newSymbol(fName, symbol.loc) tap { s =>
+                Symbol(fName, symbol.loc) tap { s =>
                   s.kind = nKind
                   // Propagate attributes
                   symbol.attr.payloadOfPort.get foreach { s.attr.payloadOfPort.set }
@@ -167,10 +167,7 @@ final class SplitStructsA(
 
 final class SplitStructsB(
     globalReplacements: collection.Map[Symbol, Symbol],
-    fieldMaps: collection.Map[Symbol, collection.Map[Symbol, List[Symbol]]]
-  )(
-    implicit
-    cc: CompilerContext)
+    fieldMaps: collection.Map[Symbol, collection.Map[Symbol, List[Symbol]]])
     extends StatefulTreeTransformer {
 
   private def makeRecordCat(symbol: Symbol): ExprCat = {

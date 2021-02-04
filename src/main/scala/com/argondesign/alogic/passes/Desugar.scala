@@ -17,7 +17,7 @@ import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Types.TypeEntity
 import com.argondesign.alogic.util.unreachable
 
-final class Desugar(implicit cc: CompilerContext) extends StatelessTreeTransformer {
+object DesugarTransform extends StatelessTreeTransformer {
 
   override def transform(tree: Tree): Tree = tree match {
     // "a++" rewritten as  "a = a + <width of a>'(s?)d1"
@@ -89,5 +89,5 @@ final class Desugar(implicit cc: CompilerContext) extends StatelessTreeTransform
 object Desugar extends PairTransformerPass(parallel = true) {
   val name = "desugar"
   def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) =
-    (cc.desugar(decl), cc.desugar(defn))
+    (DesugarTransform(decl), DesugarTransform(defn))
 }

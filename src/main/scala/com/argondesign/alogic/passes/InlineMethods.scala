@@ -104,7 +104,7 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatefulTreeTran
       val aSymbols: List[Symbol] = List from {
         (aExprs lazyZip fSymbols) map {
           case (aExpr, fSymbol) =>
-            cc.newTemp(
+            Symbol.temp(
               s"_${symbol.name}${cc.sep}arg${cc.sep}${fSymbol.name}",
               aExpr.loc,
               fSymbol.kind
@@ -363,7 +363,7 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatefulTreeTran
           // which is handled in enter
           unreachable
         case kind =>
-          cc.newTemp(s"_${fSymbol.name}${cc.sep}ret", tree.loc, kind) tap {
+          Symbol.temp(s"_${fSymbol.name}${cc.sep}ret", tree.loc, kind) tap {
             _.attr.combSignal set true
           }
       }

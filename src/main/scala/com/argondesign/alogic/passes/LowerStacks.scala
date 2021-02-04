@@ -51,7 +51,7 @@ final class LowerStacks(implicit cc: CompilerContext) extends StatelessTreeTrans
             // TODO: mark inline
             val eName = entitySymbol.name + cc.sep + "stack" + cc.sep + pName
             val stackEntity = StackFactory(eName, loc, kind, depth.toInt)
-            val instanceSymbol = cc.newSymbol(pName, loc) tap {
+            val instanceSymbol = Symbol(pName, loc) tap {
               _.kind = stackEntity._1.symbol.kind.asType.kind
             }
             stackMap(symbol) = (stackEntity, instanceSymbol)
