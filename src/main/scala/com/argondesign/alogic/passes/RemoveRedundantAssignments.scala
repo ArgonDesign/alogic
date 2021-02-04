@@ -14,9 +14,7 @@ import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.util.unreachable
-import com.argondesign.alogic.util.BitSetOps.BitSetObjectOps
-
-import scala.collection.immutable.BitSet
+import com.argondesign.alogic.util.BigIntOps._
 
 final class RemoveRedundantAssignments extends StatelessTreeTransformer {
 
@@ -49,7 +47,7 @@ final class RemoveRedundantAssignments extends StatelessTreeTransformer {
               ReadSymbols.rval(expr)
           }
           .filter(_.kind.isPacked)
-          .map(symbol => symbol -> BitSet.whole(symbol))
+          .map(symbol => symbol -> BigInt.mask(symbol.kind.width.toInt))
       }
 
     case _ => unreachable

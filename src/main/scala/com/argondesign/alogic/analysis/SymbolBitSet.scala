@@ -4,124 +4,108 @@
 // See the LICENSE file for the precise wording of the license.
 //
 // DESCRIPTION:
-// A data structure representing a set of (symbol, bit index) pairs in an
-// efficient and convenient way
+// A data structure representing a set of (symbol, bit index) pairs in a
+// [hopefully] efficient and convenient way
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.analysis
 
 import com.argondesign.alogic.core.Symbol
 
-import scala.collection.immutable.BitSet
-import scala.language.implicitConversions
+import scala.collection.immutable.HashMap
 
-final class SymbolBitSet(val underlying: Map[Symbol, BitSet]) extends AnyVal {
+final class SymbolBitSet private (private val underlying: HashMap[Symbol, BigInt]) extends AnyVal {
 
-  private def unionSingle(single: SymbolBitSet, big: SymbolBitSet): SymbolBitSet =
-    SymbolBitSet {
-      val (symbol, other) = single.iterator.next()
-      big.updatedWith(symbol) {
-        case Some(bits) => Some(bits union other)
-        case None       => Some(other)
+  def iterator: Iterator[(Symbol, BigInt)] = underlying.iterator
+
+  def size: Int = underlying.size
+
+  def contains(symbol: Symbol): Boolean = underlying.contains(symbol)
+
+  def keySet: Set[Symbol] = underlying.keySet
+
+  def getOrElse(symbol: Symbol, default: => BigInt): BigInt = underlying.getOrElse(symbol, default)
+
+  def updatedWith(symbol: Symbol)(f: Option[BigInt] => Option[BigInt]): SymbolBitSet =
+    new SymbolBitSet(underlying.updatedWith(symbol)(f))
+
+  def collect[T](pf: PartialFunction[(Symbol, BigInt), T]): Iterable[T] = underlying.collect(pf)
+
+  private def unionImpl(
+      large: HashMap[Symbol, BigInt],
+      small: HashMap[Symbol, BigInt]
+    ): SymbolBitSet = {
+    // Imperative for speed
+    val it = small.iterator
+    var result = large
+    while (it.hasNext) {
+      val (symbol, addBits) = it.next()
+      result = result.updatedWith(symbol) {
+        case Some(oldBits) => Some(oldBits | addBits)
+        case None          => Some(addBits)
       }
     }
+    new SymbolBitSet(result)
+  }
 
   def union(that: SymbolBitSet): SymbolBitSet =
-    if (that.isEmpty) {
-      this
-    } else if (this.isEmpty) {
-      that
-    } else if (that.sizeIs == 1) {
-      unionSingle(that, this)
-    } else if (this.sizeIs == 1) {
-      unionSingle(this, that)
+    if (size >= that.size) {
+      unionImpl(underlying, that.underlying)
     } else {
-      SymbolBitSet from {
-        {
-          underlying.iterator map {
-            case (symbol, bits) =>
-              symbol -> {
-                that.get(symbol) match {
-                  case Some(other) => bits union other
-                  case None        => bits
-                }
-              }
-          }
-        } concat {
-          that.underlying.iterator filterNot {
-            case (symbol, _) => this contains symbol
-          }
-        }
+      unionImpl(that.underlying, underlying)
+    }
+
+  private def intersectImpl(
+      large: HashMap[Symbol, BigInt],
+      small: HashMap[Symbol, BigInt]
+    ): SymbolBitSet = {
+    // Imperative for speed
+    val it = small.iterator
+    var result = HashMap.empty[Symbol, BigInt]
+    while (it.hasNext) {
+      val (symbol, smallBits) = it.next()
+      result = large.get(symbol) match {
+        case Some(largeBits) =>
+          val bits = largeBits & smallBits
+          if (bits != 0) result.updated(symbol, bits) else result
+        case None => result
       }
     }
+    new SymbolBitSet(result)
+  }
 
   def intersect(that: SymbolBitSet): SymbolBitSet =
-    if (this.isEmpty || that.isEmpty) {
-      SymbolBitSet.empty
+    if (size >= that.size) {
+      intersectImpl(underlying, that.underlying)
     } else {
-      val (sml, big) = if ((this sizeCompare that) < 0) (this, that) else (that, this)
-      SymbolBitSet from {
-        sml.underlying.iterator map {
-          case (symbol, bits) =>
-            symbol -> {
-              big.get(symbol) match {
-                case Some(other) => bits intersect other
-                case None        => BitSet.empty
-              }
-            }
-        } filter {
-          _._2.nonEmpty
-        }
-      }
+      intersectImpl(that.underlying, underlying)
     }
 
-  def diff(that: SymbolBitSet): SymbolBitSet =
-    if (this.isEmpty || that.isEmpty) {
-      this
-    } else if (that.sizeIs == 1) {
-      SymbolBitSet {
-        val (symbol, other) = that.iterator.next()
-        underlying.updatedWith(symbol) {
-          case Some(bits) =>
-            val diff = bits diff other
-            if (diff.isEmpty) None else Some(diff)
-          case None => None
-        }
-      }
-    } else {
-      SymbolBitSet from {
-        underlying.iterator map {
-          case (symbol, bits) =>
-            symbol -> {
-              that.get(symbol) match {
-                case Some(other) => bits diff other
-                case None        => bits
-              }
-            }
-        } filter {
-          _._2.nonEmpty
-        }
+  def diff(that: SymbolBitSet): SymbolBitSet = {
+    // Imperative for speed
+    val it = that.iterator
+    var result = underlying
+    while (it.hasNext) {
+      val (symbol, remBits) = it.next()
+      result = result.updatedWith(symbol) {
+        case Some(oldBits) =>
+          val bits = oldBits &~ remBits
+          if (bits != 0) Some(bits) else None
+        case None => None
       }
     }
+    new SymbolBitSet(result)
+  }
 
-  override def toString: String = s"SymbolBitSet(${underlying.toString})"
-
+  override def toString: String = iterator.mkString("SymbolBitSet(", ", ", ")")
 }
 
 object SymbolBitSet {
+  val empty = new SymbolBitSet(HashMap.empty)
 
-  val empty = new SymbolBitSet(Map.empty)
+  def apply(pairs: (Symbol, BigInt)*): SymbolBitSet = new SymbolBitSet(HashMap(pairs: _*))
 
-  def apply(symbol: Symbol, bitSet: BitSet): SymbolBitSet = new SymbolBitSet(Map(symbol -> bitSet))
+  def from(underlying: HashMap[Symbol, BigInt]): SymbolBitSet = new SymbolBitSet(underlying)
 
-  implicit def apply(underlying: Map[Symbol, BitSet]): SymbolBitSet = {
-    new SymbolBitSet(underlying)
-  }
-
-  implicit def toUnderlying(symbolBitSet: SymbolBitSet): Map[Symbol, BitSet] = {
-    symbolBitSet.underlying
-  }
-
-  def from(it: IterableOnce[(Symbol, BitSet)]): SymbolBitSet = SymbolBitSet(Map.from(it))
-
+  def from(it: IterableOnce[(Symbol, BigInt)]): SymbolBitSet = new SymbolBitSet(HashMap.from(it))
 }

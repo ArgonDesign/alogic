@@ -19,10 +19,8 @@ import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.util.unreachable
-import com.argondesign.alogic.util.BitSetOps._
+import com.argondesign.alogic.util.BigIntOps._
 import com.argondesign.alogic.util.IteratorOps._
-
-import scala.collection.immutable.BitSet
 
 object SignOffUnused extends PairsTransformerPass {
   val name = "sign-off-unused"
@@ -55,13 +53,14 @@ object SignOffUnused extends PairsTransformerPass {
     } flatMap {
       case symbol if !symbol.kind.isPacked => Iterator.empty
       case symbol =>
-        val usedBits = usedSymbolBits.getOrElse(symbol, BitSet.empty)
-        if (usedBits.size == symbol.kind.width) {
+        val usedBits = usedSymbolBits.getOrElse(symbol, 0)
+        if (usedBits == BigInt.mask(symbol.kind.width.toInt)) {
           Iterator.empty
-        } else if (usedBits.isEmpty) {
+        } else if (usedBits == 0) {
           Iterator.single(TypeAssigner(ExprSym(symbol) withLoc Loc.synthetic))
         } else {
-          val unusedBits = Iterator.range(symbol.kind.width.toInt - 1, -1, -1).filterNot(usedBits)
+          val unusedBits =
+            Iterator.range(symbol.kind.width.toInt - 1, -1, -1).filterNot(usedBits.testBit)
 
           def ref: ExprSym = TypeAssigner(ExprSym(symbol) withLoc Loc.synthetic)
 
@@ -107,12 +106,14 @@ object SignOffUnused extends PairsTransformerPass {
               decls.iterator
                 .map(_.symbol)
                 .filter(_.kind.isOut)
-                .map(symbol => SymbolBitSet(symbol, BitSet.whole(symbol)))
+                .map(symbol => SymbolBitSet(symbol -> BigInt.mask(symbol.kind.width.toInt)))
                 .concat {
                   Iterator.when(defn.variant == EntityVariant.Ver) thenIterator {
                     // Assume everything is used in verbatim entities as signals
                     // might be used in verbatim blocks
-                    decls.iterator.map(decl => SymbolBitSet(decl.symbol, BitSet.whole(decl.symbol)))
+                    decls.iterator.map(d =>
+                      SymbolBitSet(d.symbol -> BigInt.mask(d.symbol.kind.width.toInt))
+                    )
                   }
                 }
                 .concat {

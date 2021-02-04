@@ -10,9 +10,8 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.util.unreachable
-import com.argondesign.alogic.util.BitSetOps._
-
-import scala.collection.immutable.BitSet
+import com.argondesign.alogic.util.BigIntOps._
+import scala.collection.immutable.HashMap
 
 object WrittenSymbolBits {
 
@@ -20,40 +19,44 @@ object WrittenSymbolBits {
   // to be written, should this expression be used on the left hand side of an
   // assignment
   def definitely(lval: Expr): SymbolBitSet = {
+    // Mutable for speed
+    var result = HashMap[Symbol, BigInt]()
 
-    def gather(expr: Expr): Iterator[(Symbol, BitSet)] = expr match {
+    def gather(expr: Expr): Unit = expr match {
       case ExprSym(symbol) =>
-        Iterator single {
-          symbol -> BitSet.range(0, symbol.kind.width.toInt)
-        }
+        result = result.updated(symbol, BigInt.mask(symbol.kind.width.toInt))
       case ExprIndex(ExprSym(symbol), idx) =>
-        idx.valueOption.iterator map { bit =>
-          symbol -> BitSet(bit.toInt)
-        }
-      case ExprSlice(ExprSym(symbol), lIdx, op, rIdx) =>
-        lIdx.valueOption.iterator flatMap { l =>
-          rIdx.valueOption.iterator map { r =>
-            val (msb, lsb) = op match {
-              case ":"  => (l, r)
-              case "+:" => (l + r - 1, l)
-              case "-:" => (l, l - r + 1)
-              case _    => unreachable
-            }
-            symbol -> BitSet.range(lsb.toInt, msb.toInt + 1)
+        idx.valueOption.foreach { bit =>
+          result = result.updatedWith(symbol) {
+            case Some(bits) => Some(bits.setBit(bit.toInt))
+            case None       => Some(BigInt.oneHot(bit.toInt))
           }
         }
-      case ExprCat(parts) => parts.iterator flatMap gather
+      case ExprSlice(ExprSym(symbol), lIdx, op, rIdx) =>
+        lIdx.valueOption foreach { ll =>
+          rIdx.valueOption foreach { rr =>
+            val l = ll.asInt
+            val r = rr.asInt
+            val newBits = op match {
+              case ":"  => BigInt.range(l, r)
+              case "+:" => BigInt.range(l + r - 1, l)
+              case "-:" => BigInt.range(l, l - r + 1)
+              case _    => unreachable
+            }
+            result = result.updatedWith(symbol) {
+              case Some(bits) => Some(bits | newBits)
+              case None       => Some(newBits)
+            }
+          }
+        }
+      case ExprCat(parts) => parts foreach gather
       case other =>
         throw Ice(other, "Don't know how to extract written variables from", other.toSource)
     }
 
-    gather(lval).foldLeft(Map.empty[Symbol, BitSet]) {
-      case (acc, (symbol, bits)) =>
-        acc.updatedWith(symbol) {
-          case Some(prev) => Some(prev union bits)
-          case None       => Some(bits)
-        }
-    }
+    gather(lval)
+
+    SymbolBitSet.from(result)
   }
 
 }

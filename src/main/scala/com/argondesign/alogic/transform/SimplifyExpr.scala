@@ -1062,7 +1062,7 @@ object SimplifyExpr extends StatelessTreeTransformer {
         def mkValue(value: BigInt): Expr = {
           // TODO: should check out of range width inference in the typer
           val lo = if (signed) -(BigInt(1) << (width.toInt - 1)) else BigInt(0)
-          val hi = if (signed) BigInt.mask(width.toInt - 1) else BigInt.mask(width)
+          val hi = if (signed) BigInt.mask(width.toInt - 1) else BigInt.mask(width.toInt)
           if (value > hi || value < lo) {
             val signedness = if (signed) "signed" else "unsigned"
             throw Fatal(tree, s"Value $value cannot be represented with $width $signedness bits")

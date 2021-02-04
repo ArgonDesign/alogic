@@ -53,12 +53,16 @@ object BigIntOps {
       if (width == 0) 0 else extract(0, width, signed = true)
     }
 
+    def asInt: Int = value.bigInteger.intValueExact
     def asLong: Long = value.bigInteger.longValueExact
   }
 
   implicit final class BigIntObjectOps(private val unused: BigInt.type) extends AnyVal {
     def mask(width: Int): BigInt = (BigInt(1) << width) - 1
-    def mask(width: BigInt): BigInt = (BigInt(1) << width.toInt) - 1
+
+    def range(msb: Int, lsb: Int): BigInt = BigInt.mask(msb - lsb + 1) << lsb
+
+    def oneHot(width: Int): BigInt = BigInt(1) << width
 
     def uMax(width: Int): BigInt = mask(width)
 

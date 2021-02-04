@@ -12,9 +12,8 @@ import com.argondesign.alogic.builtins.AtUnknownU
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.util.BigIntOps._
 import org.scalatest.freespec.AnyFreeSpec
-
-import scala.collection.immutable.BitSet
 
 class ReadSymbolBitsSpec extends AnyFreeSpec with AlogicTest {
 
@@ -53,57 +52,57 @@ class ReadSymbolBitsSpec extends AnyFreeSpec with AlogicTest {
     "possiblyRVal" - {
       "should recognize complete ref" - {
         "a" in {
-          possiblyRVal(aRef) shouldBe SymbolBitSet(Map(aSymbol -> BitSet(0 to 3: _*)))
+          possiblyRVal(aRef) shouldBe SymbolBitSet(aSymbol -> 0xf)
         }
         "b" in {
-          possiblyRVal(bRef) shouldBe SymbolBitSet(Map(bSymbol -> BitSet(0 to 7: _*)))
+          possiblyRVal(bRef) shouldBe SymbolBitSet(bSymbol -> 0xff)
         }
         "c" in {
-          possiblyRVal(cRef) shouldBe SymbolBitSet(Map(cSymbol -> BitSet(0 to 255: _*)))
+          possiblyRVal(cRef) shouldBe SymbolBitSet(cSymbol -> BigInt.mask(256))
         }
       }
 
       "should recognize constant indices of ref" - {
         "a[0]" in {
-          possiblyRVal(aRef index 0) shouldBe SymbolBitSet(Map(aSymbol -> BitSet(0)))
+          possiblyRVal(aRef index 0) shouldBe SymbolBitSet(aSymbol -> BigInt.oneHot(0))
         }
         "a[3]" in {
-          possiblyRVal(aRef index 3) shouldBe SymbolBitSet(Map(aSymbol -> BitSet(3)))
+          possiblyRVal(aRef index 3) shouldBe SymbolBitSet(aSymbol -> BigInt.oneHot(3))
         }
         "b[0]" in {
-          possiblyRVal(bRef index 0) shouldBe SymbolBitSet(Map(bSymbol -> BitSet(0)))
+          possiblyRVal(bRef index 0) shouldBe SymbolBitSet(bSymbol -> BigInt.oneHot(0))
         }
         "b[7]" in {
-          possiblyRVal(bRef index 7) shouldBe SymbolBitSet(Map(bSymbol -> BitSet(7)))
+          possiblyRVal(bRef index 7) shouldBe SymbolBitSet(bSymbol -> BigInt.oneHot(7))
         }
         "c[0]" in {
-          possiblyRVal(cRef index 0) shouldBe SymbolBitSet(Map(cSymbol -> BitSet(0)))
+          possiblyRVal(cRef index 0) shouldBe SymbolBitSet(cSymbol -> BigInt.oneHot(0))
         }
         "c[63]" in {
-          possiblyRVal(cRef index 63) shouldBe SymbolBitSet(Map(cSymbol -> BitSet(63)))
+          possiblyRVal(cRef index 63) shouldBe SymbolBitSet(cSymbol -> BigInt.oneHot(63))
         }
         "c[64]" in {
-          possiblyRVal(cRef index 64) shouldBe SymbolBitSet(Map(cSymbol -> BitSet(64)))
+          possiblyRVal(cRef index 64) shouldBe SymbolBitSet(cSymbol -> BigInt.oneHot(64))
         }
         "c[127]" in {
-          possiblyRVal(cRef index 127) shouldBe SymbolBitSet(Map(cSymbol -> BitSet(127)))
+          possiblyRVal(cRef index 127) shouldBe SymbolBitSet(cSymbol -> BigInt.oneHot(127))
         }
       }
 
       "should be pessimistic for variable indices of ref" - {
         "a[@unknownu(1)]]" in {
           possiblyRVal(aRef index zext(1, randBitCall)) shouldBe SymbolBitSet(
-            Map(aSymbol -> BitSet(0 to 3: _*))
+            aSymbol -> 0xf
           )
         }
         "b[@unknownu(1)]]" in {
           possiblyRVal(bRef index zext(2, randBitCall)) shouldBe SymbolBitSet(
-            Map(bSymbol -> BitSet(0 to 7: _*))
+            bSymbol -> 0xff
           )
         }
         "c[@unknownu(1)]]" in {
           possiblyRVal(cRef index zext(7, randBitCall)) shouldBe SymbolBitSet(
-            Map(cSymbol -> BitSet(0 to 255: _*))
+            cSymbol -> BigInt.mask(256)
           )
         }
       }
@@ -111,34 +110,35 @@ class ReadSymbolBitsSpec extends AnyFreeSpec with AlogicTest {
       "should recognize non-constant indices of ref" - {
         "c[b]" in {
           possiblyRVal(cRef index bRef) shouldBe SymbolBitSet(
-            Map(cSymbol -> BitSet(0 to 255: _*), bSymbol -> BitSet(0 to 7: _*))
+            cSymbol -> BigInt.mask(256),
+            bSymbol -> 0xff
           )
         }
       }
 
       "should recognize constant slices of ref" - {
         "a[1:0]" in {
-          possiblyRVal(aRef.slice(1, ":", 0)) shouldBe SymbolBitSet(Map(aSymbol -> BitSet(1, 0)))
+          possiblyRVal(aRef.slice(1, ":", 0)) shouldBe SymbolBitSet(aSymbol -> 0x3)
         }
         "a[2+:2]" in {
-          possiblyRVal(aRef.slice(2, "+:", 2)) shouldBe SymbolBitSet(Map(aSymbol -> BitSet(3, 2)))
+          possiblyRVal(aRef.slice(2, "+:", 2)) shouldBe SymbolBitSet(aSymbol -> 0xc)
         }
         "a[2-:2]" in {
-          possiblyRVal(aRef.slice(2, "-:", 2)) shouldBe SymbolBitSet(Map(aSymbol -> BitSet(2, 1)))
+          possiblyRVal(aRef.slice(2, "-:", 2)) shouldBe SymbolBitSet(aSymbol -> 0x6)
         }
         "c[120:0]" in {
           possiblyRVal(cRef.slice(120, ":", 0)) shouldBe SymbolBitSet(
-            Map(cSymbol -> BitSet(0 to 120: _*))
+            cSymbol -> BigInt.range(120, 0)
           )
         }
         "c[32+:64]" in {
           possiblyRVal(cRef.slice(32, "+:", 64)) shouldBe SymbolBitSet(
-            Map(cSymbol -> BitSet(32 to 95: _*))
+            cSymbol -> BigInt.range(95, 32)
           )
         }
         "c[95-:64]" in {
           possiblyRVal(cRef.slice(95, "-:", 64)) shouldBe SymbolBitSet(
-            Map(cSymbol -> BitSet(32 to 95: _*))
+            cSymbol -> BigInt.range(95, 32)
           )
         }
       }
@@ -146,12 +146,12 @@ class ReadSymbolBitsSpec extends AnyFreeSpec with AlogicTest {
       "should be pessimistic for variable slices of ref" - {
         "a[@unknownu(1)+:1]" in {
           possiblyRVal(aRef.slice(zext(1, randBitCall), "+:", 1)) shouldBe {
-            SymbolBitSet(Map(aSymbol -> BitSet(0 to 3: _*)))
+            SymbolBitSet(aSymbol -> 0xf)
           }
         }
         "a[@unknownu(1)-:1]" in {
           possiblyRVal(aRef.slice(zext(1, randBitCall), "-:", 1)) shouldBe {
-            SymbolBitSet(Map(aSymbol -> BitSet(0 to 3: _*)))
+            SymbolBitSet(aSymbol -> 0xf)
           }
         }
       }
@@ -159,7 +159,8 @@ class ReadSymbolBitsSpec extends AnyFreeSpec with AlogicTest {
       "should recognize non-constant slices of ref" - {
         "c[b +: 1]" in {
           possiblyRVal(cRef.slice(bRef, "+:", 1)) shouldBe SymbolBitSet(
-            Map(cSymbol -> BitSet(0 to 255: _*), bSymbol -> BitSet(0 to 7: _*))
+            cSymbol -> BigInt.mask(256),
+            bSymbol -> 0xff
           )
         }
       }
@@ -168,7 +169,7 @@ class ReadSymbolBitsSpec extends AnyFreeSpec with AlogicTest {
         "{b, a[3], a[1:0]}" in {
           val cat = ExprCat(List(bRef, aRef index 3, aRef.slice(1, ":", 0)))
           possiblyRVal(cat) shouldBe {
-            SymbolBitSet(Map(aSymbol -> BitSet(3, 1, 0), bSymbol -> BitSet(0 to 7: _*)))
+            SymbolBitSet(aSymbol -> 0xb, bSymbol -> 0xff)
           }
         }
       }
@@ -177,24 +178,22 @@ class ReadSymbolBitsSpec extends AnyFreeSpec with AlogicTest {
     "possiblyLVal" - {
       "should handle index" - {
         "c[b]" in {
-          possiblyLVal(cRef index bRef) shouldBe SymbolBitSet(Map(bSymbol -> BitSet(0 to 7: _*)))
+          possiblyLVal(cRef index bRef) shouldBe SymbolBitSet(bSymbol -> 0xff)
         }
         "a[b[0]]" in {
-          possiblyLVal(aRef index zext(1, bRef index 0)) shouldBe {
-            SymbolBitSet(Map(bSymbol -> BitSet(0)))
-          }
+          possiblyLVal(aRef index zext(1, bRef index 0)) shouldBe SymbolBitSet(bSymbol -> 1)
         }
       }
 
       "should handle slice" - {
         "c[b +: 1]" in {
           possiblyLVal(cRef.slice(bRef, "+:", 1)) shouldBe {
-            SymbolBitSet(Map(bSymbol -> BitSet(0 to 7: _*)))
+            SymbolBitSet(bSymbol -> 0xff)
           }
         }
         "a[b[2] +: 1]" in {
           possiblyLVal(aRef.slice(zext(1, bRef index 2), "+:", 1)) shouldBe {
-            SymbolBitSet(Map(bSymbol -> BitSet(2)))
+            SymbolBitSet(bSymbol -> 0x4)
           }
         }
       }
@@ -209,7 +208,7 @@ class ReadSymbolBitsSpec extends AnyFreeSpec with AlogicTest {
               cRef.slice(zext(7, (bRef index 4) + (bRef index 3)), "+:", 3)
             )
           )
-          possiblyLVal(cat) shouldBe SymbolBitSet(Map(bSymbol -> BitSet(4, 3, 1)))
+          possiblyLVal(cat) shouldBe SymbolBitSet(bSymbol -> 0x1a)
         }
       }
     }

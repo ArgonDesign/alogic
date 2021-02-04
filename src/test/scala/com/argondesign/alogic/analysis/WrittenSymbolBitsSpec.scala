@@ -12,9 +12,8 @@ import com.argondesign.alogic.builtins.AtUnknownU
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.util.BigIntOps._
 import org.scalatest.freespec.AnyFreeSpec
-
-import scala.collection.immutable.BitSet
 
 class WrittenSymbolBitsSpec extends AnyFreeSpec with AlogicTest {
 
@@ -51,40 +50,40 @@ class WrittenSymbolBitsSpec extends AnyFreeSpec with AlogicTest {
     "definitely" - {
       "should recognize complete ref" - {
         "a" in {
-          definitely(aRef) shouldBe SymbolBitSet(Map(aSymbol -> BitSet(0 to 3: _*)))
+          definitely(aRef) shouldBe SymbolBitSet(aSymbol -> 0xf)
         }
         "b" in {
-          definitely(bRef) shouldBe SymbolBitSet(Map(bSymbol -> BitSet(0 to 7: _*)))
+          definitely(bRef) shouldBe SymbolBitSet(bSymbol -> 0xff)
         }
         "c" in {
-          definitely(cRef) shouldBe SymbolBitSet(Map(cSymbol -> BitSet(0 to 255: _*)))
+          definitely(cRef) shouldBe SymbolBitSet(cSymbol -> BigInt.mask(256))
         }
       }
 
       "should recognize constant indices of ref" - {
         "a[0]" in {
-          definitely(aRef index 0) shouldBe SymbolBitSet(Map(aSymbol -> BitSet(0)))
+          definitely(aRef index 0) shouldBe SymbolBitSet(aSymbol -> BigInt.oneHot(0))
         }
         "a[3]" in {
-          definitely(aRef index 3) shouldBe SymbolBitSet(Map(aSymbol -> BitSet(3)))
+          definitely(aRef index 3) shouldBe SymbolBitSet(aSymbol -> BigInt.oneHot(3))
         }
         "b[0]" in {
-          definitely(bRef index 0) shouldBe SymbolBitSet(Map(bSymbol -> BitSet(0)))
+          definitely(bRef index 0) shouldBe SymbolBitSet(bSymbol -> BigInt.oneHot(0))
         }
         "b[7]" in {
-          definitely(bRef index 7) shouldBe SymbolBitSet(Map(bSymbol -> BitSet(7)))
+          definitely(bRef index 7) shouldBe SymbolBitSet(bSymbol -> BigInt.oneHot(7))
         }
         "c[0]" in {
-          definitely(cRef index 0) shouldBe SymbolBitSet(Map(cSymbol -> BitSet(0)))
+          definitely(cRef index 0) shouldBe SymbolBitSet(cSymbol -> BigInt.oneHot(0))
         }
         "c[63]" in {
-          definitely(cRef index 63) shouldBe SymbolBitSet(Map(cSymbol -> BitSet(63)))
+          definitely(cRef index 63) shouldBe SymbolBitSet(cSymbol -> BigInt.oneHot(63))
         }
         "c[64]" in {
-          definitely(cRef index 64) shouldBe SymbolBitSet(Map(cSymbol -> BitSet(64)))
+          definitely(cRef index 64) shouldBe SymbolBitSet(cSymbol -> BigInt.oneHot(64))
         }
         "c[127]" in {
-          definitely(cRef index 127) shouldBe SymbolBitSet(Map(cSymbol -> BitSet(127)))
+          definitely(cRef index 127) shouldBe SymbolBitSet(cSymbol -> BigInt.oneHot(127))
         }
       }
 
@@ -102,72 +101,78 @@ class WrittenSymbolBitsSpec extends AnyFreeSpec with AlogicTest {
 
       "should recognize constant slices of ref" - {
         "a[1:0]" in {
-          definitely(aRef.slice(1, ":", 0)) shouldBe SymbolBitSet(Map(aSymbol -> BitSet(1, 0)))
+          definitely(aRef.slice(1, ":", 0)) shouldBe SymbolBitSet(
+            aSymbol -> 0x3
+          )
         }
         "a[2+:2]" in {
-          definitely(aRef.slice(2, "+:", 2)) shouldBe SymbolBitSet(Map(aSymbol -> BitSet(3, 2)))
+          definitely(aRef.slice(2, "+:", 2)) shouldBe SymbolBitSet(
+            aSymbol -> 0xc
+          )
         }
         "a[2-:2]" in {
-          definitely(aRef.slice(2, "-:", 2)) shouldBe SymbolBitSet(Map(aSymbol -> BitSet(2, 1)))
+          definitely(aRef.slice(2, "-:", 2)) shouldBe SymbolBitSet(
+            aSymbol -> 0x6
+          )
         }
         "c[63:0]" in {
           definitely(cRef.slice(63, ":", 0)) shouldBe SymbolBitSet(
-            Map(cSymbol -> BitSet(0 to 63: _*))
+            cSymbol -> BigInt.range(63, 0)
           )
         }
         "c[63:10]" in {
           definitely(cRef.slice(63, ":", 10)) shouldBe SymbolBitSet(
-            Map(cSymbol -> BitSet(10 to 63: _*))
+            cSymbol -> BigInt.range(63, 10)
           )
         }
         "c[120:0]" in {
           definitely(cRef.slice(120, ":", 0)) shouldBe SymbolBitSet(
-            Map(cSymbol -> BitSet(0 to 120: _*))
+            cSymbol -> BigInt.range(120, 0)
           )
         }
         "c[120:66]" in {
           definitely(cRef.slice(120, ":", 66)) shouldBe SymbolBitSet(
-            Map(cSymbol -> BitSet(66 to 120: _*))
+            cSymbol -> BigInt.range(120, 66)
           )
         }
         "c[127:0]" in {
           definitely(cRef.slice(127, ":", 0)) shouldBe SymbolBitSet(
-            Map(cSymbol -> BitSet(0 to 127: _*))
+            cSymbol -> BigInt.range(127, 0)
           )
         }
         "c[127:10]" in {
           definitely(cRef.slice(127, ":", 10)) shouldBe SymbolBitSet(
-            Map(cSymbol -> BitSet(10 to 127: _*))
+            cSymbol -> BigInt.range(127, 10)
           )
         }
         "c[127:64]" in {
           definitely(cRef.slice(127, ":", 64)) shouldBe SymbolBitSet(
-            Map(cSymbol -> BitSet(64 to 127: _*))
+            cSymbol -> BigInt.range(127, 64)
           )
         }
         "c[127:70]" in {
           definitely(cRef.slice(127, ":", 70)) shouldBe SymbolBitSet(
-            Map(cSymbol -> BitSet(70 to 127: _*))
+            cSymbol -> BigInt.range(127, 70)
           )
         }
         "c[250:249]" in {
           definitely(cRef.slice(250, ":", 249)) shouldBe SymbolBitSet(
-            Map(cSymbol -> BitSet(249 to 250: _*))
+            cSymbol -> BigInt.range(250, 249)
           )
         }
         "c[250:128]" in {
           definitely(cRef.slice(250, ":", 128)) shouldBe SymbolBitSet(
-            Map(cSymbol -> BitSet(128 to 250: _*))
+            cSymbol -> BigInt.range(250, 128)
           )
         }
         "c[32+:64]" in {
           definitely(cRef.slice(32, "+:", 64)) shouldBe SymbolBitSet(
-            Map(cSymbol -> BitSet(32 to 95: _*))
+            cSymbol -> BigInt.range(95, 32)
           )
         }
         "c[95-:64]" in {
           definitely(cRef.slice(95, "-:", 64)) shouldBe SymbolBitSet(
-            Map(cSymbol -> BitSet(32 to 95: _*))
+            cSymbol -> BigInt.range(95, 32)
           )
         }
       }
@@ -185,7 +190,7 @@ class WrittenSymbolBitsSpec extends AnyFreeSpec with AlogicTest {
         "{b, a[3], a[1:0]}" in {
           val cat = ExprCat(List(bRef, aRef index 3, aRef.slice(1, ":", 0)))
           definitely(cat) shouldBe {
-            SymbolBitSet(Map(aSymbol -> BitSet(3, 1, 0), bSymbol -> BitSet(0 to 7: _*)))
+            SymbolBitSet(aSymbol -> 0xb, bSymbol -> 0xff)
           }
         }
       }

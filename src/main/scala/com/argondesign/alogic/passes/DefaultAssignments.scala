@@ -17,6 +17,7 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.core.TypeAssigner
+import com.argondesign.alogic.util.BigIntOps._
 
 import scala.collection.mutable
 
@@ -71,7 +72,7 @@ object DefaultAssignments extends PairTransformerPass(parallel = true) {
         // Keep only the symbols with all bits dead
         val deadSymbols = Set from {
           deadSymbolBits collect {
-            case (symbol, set) if set.size == symbol.kind.width => symbol
+            case (symbol, bits) if bits == BigInt.mask(symbol.kind.width.toInt) => symbol
           }
         }
 

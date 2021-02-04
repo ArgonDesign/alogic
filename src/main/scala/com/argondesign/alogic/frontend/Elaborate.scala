@@ -651,9 +651,9 @@ object Elaborate {
             val maxValueOpt = if (lKind.underlying.isNum) {
               None
             } else if (lKind.isSigned) {
-              Some(BigInt.mask(lKind.width - 1))
+              Some(BigInt.mask(lKind.width.toInt - 1))
             } else {
-              Some(BigInt.mask(lKind.width))
+              Some(BigInt.mask(lKind.width.toInt))
             }
             // Compute last value taken on by the iteration
             val lastValue = maxValueOpt map {
