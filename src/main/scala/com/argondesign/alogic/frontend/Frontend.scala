@@ -163,6 +163,7 @@ final class Frontend private (
             }
           }
           .nextOption()
+          .map(_.getCanonicalFile)
         //
         sourceFileOpt match {
           case None =>
@@ -192,17 +193,17 @@ final class Frontend private (
             }
           case Some(file) =>
             // Found file. Go ahead and import it
-            guardCircularFuture(PendingImport(file.getCanonicalPath), loc) {
+            guardCircularFuture(PendingImport(file.getPath), loc) {
               if (cc.settings.parallel) {
                 val frontend = fork
                 lazy val theFuture = Future(frontend.doImport(loc, file))
-                importCache.putIfAbsent(file.getCanonicalPath, () => Right(theFuture)) match {
+                importCache.putIfAbsent(file.getPath, () => Right(theFuture)) match {
                   case Some(f) => f()
                   case None    => Right(theFuture)
                 }
               } else {
                 lazy val theResult = this.doImport(loc, file)
-                importCache.putIfAbsent(file.getCanonicalPath, () => Left(theResult)) match {
+                importCache.putIfAbsent(file.getPath, () => Left(theResult)) match {
                   case Some(f) => f()
                   case None    => Left(theResult)
                 }
