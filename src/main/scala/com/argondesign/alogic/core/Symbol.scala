@@ -13,9 +13,11 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.unreachable
 
+import java.util.concurrent.atomic.AtomicInteger
 import scala.util.chaining._
 
-final class Symbol(initialName: String, val loc: Loc = Loc.synthetic, val id: Int = -1) {
+final class Symbol(initialName: String, val loc: Loc = Loc.synthetic) {
+  val id: Int = Symbol.nextId.getAndIncrement()
   var name: String = initialName // Name of the symbol right now
   var origName: String = initialName // Name of the symbol as it appeared in source
   var scopeName: String = "" // Hierarchical name of scope symbol is defined under
@@ -219,6 +221,8 @@ final class Symbol(initialName: String, val loc: Loc = Loc.synthetic, val id: In
 }
 
 object Symbol {
+  private val nextId = new AtomicInteger(0)
+
   // Extractor to pattern match against symbol name
   def unapply(arg: Symbol): Option[String] = Some(arg.name)
 

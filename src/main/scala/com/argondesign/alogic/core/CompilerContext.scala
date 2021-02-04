@@ -17,7 +17,6 @@ import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Types.Type
 import com.argondesign.alogic.core.enums.ResetStyle
 import com.argondesign.alogic.passes.Passes
-import com.argondesign.alogic.util.SequenceNumbers
 
 import scala.collection.mutable
 
@@ -34,11 +33,7 @@ final class CompilerContext(
   // Creating Symbol instances
   //////////////////////////////////////////////////////////////////////////////
 
-  private val symbolSequenceNumbers = new SequenceNumbers
-
-  def newSymbol(name: String, loc: Loc): Symbol = synchronized {
-    new Symbol(name, loc, symbolSequenceNumbers.next)
-  }
+  def newSymbol(name: String, loc: Loc): Symbol = new Symbol(name, loc)
 
   def newTemp(name: String, loc: Loc, kind: Type): Symbol = {
     val symbol = newSymbol(name, loc)

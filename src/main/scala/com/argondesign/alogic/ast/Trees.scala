@@ -10,30 +10,30 @@
 package com.argondesign.alogic.ast
 
 import com.argondesign.alogic.builtins.Builtin
+import com.argondesign.alogic.core.FlowControlTypes.FlowControlType
 import com.argondesign.alogic.core.FuncVariant
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Locationed
-import com.argondesign.alogic.core.FlowControlTypes.FlowControlType
 import com.argondesign.alogic.core.StorageTypes.StorageType
 import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.enums.EntityVariant
 import com.argondesign.alogic.frontend.FinalResult
 import com.argondesign.alogic.frontend.SymbolTable
-import com.argondesign.alogic.util.SequenceNumbers
 
+import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.Future
 
 object Trees {
 
-  private val sequenceNumbers = new SequenceNumbers
+  private val nextId = new AtomicInteger(0)
 
   //////////////////////////////////////////////////////////////////////////////
   // AST base type
   //////////////////////////////////////////////////////////////////////////////
 
   sealed trait Tree extends TreeImpl with TreeOps {
-    val id: Int = sequenceNumbers.next // TODO: Get rid of this
+    val id: Int = nextId.getAndIncrement()
   }
 
   object Tree extends ObjectTreeOps

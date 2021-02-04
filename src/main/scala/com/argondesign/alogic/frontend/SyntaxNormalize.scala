@@ -17,7 +17,7 @@ import com.argondesign.alogic.util.unreachable
 final class SyntaxNormalize extends StatelessTreeTransformer {
   override val typed: Boolean = false
 
-  private val tmpNames: Iterator[String] = LazyList.from(0).iterator.map(n => s"`tmp_$n")
+  private val tmpNames: Iterator[String] = Iterator.from(0).map(n => s"`tmp_$n")
 
   private def adjUnnamed(desc: Desc, isLoop: Boolean): Thicket = {
     require(desc.ref == Ident("", Nil))

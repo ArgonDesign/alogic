@@ -1408,7 +1408,7 @@ object Elaborate {
                 // As we only do this after the cases have been completed,
                 // there are only symbolic references left to these, so
                 // this renaming operation is safe. Same applies to Aliases.
-                val ord = LazyList.from(0).iterator
+                val ord = Iterator.from(0)
                 descStmts foreach {
                   case StmtSplice(Desc(Sym(symbol))) =>
                     symbol.name = symbol.name + cc.sep + ord.next()

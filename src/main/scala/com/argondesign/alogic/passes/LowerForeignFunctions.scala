@@ -19,7 +19,6 @@ import com.argondesign.alogic.core.Messages.Note
 import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.util.SequenceNumbers
 
 import scala.collection.immutable.ListMap
 import scala.collection.mutable
@@ -37,7 +36,7 @@ final class LowerForeignFunctions(
   private val extraStmts = mutable.Stack[ListBuffer[Stmt]]()
   private val extraSymbols = new ListBuffer[Symbol]
 
-  private val sequenceNumbers = mutable.Map[String, SequenceNumbers]()
+  private val sequenceNumbers = mutable.Map[String, Iterator[Int]]()
 
   override def enter(tree: Tree): Option[Tree] = tree match {
     case DeclFunc(symbol, FuncVariant.Xeno, _, args) =>
@@ -85,7 +84,7 @@ final class LowerForeignFunctions(
       } else {
         // Otherwise create a symbol which is assigned the output value
         val tag = s"_${fSymbol.name}${cc.sep}result"
-        val n = sequenceNumbers.getOrElseUpdate(tag, new SequenceNumbers).next
+        val n = sequenceNumbers.getOrElseUpdate(tag, Iterator.from(0)).next()
         val retSymbol = cc.newSymbol(s"${tag}_$n", tree.loc)
         retSymbol.kind = retType
         retSymbol.attr.combSignal set true

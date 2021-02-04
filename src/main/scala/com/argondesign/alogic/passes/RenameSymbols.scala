@@ -15,7 +15,6 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Types.TypeEntity
-import com.argondesign.alogic.util.SequenceNumbers
 import com.argondesign.alogic.util.unreachable
 
 import java.security.MessageDigest
@@ -152,8 +151,8 @@ object RenameSymbols {
               symbols.head.name = base
             } else {
               // Ensure uniqueness, even if defined on the same line
-              val seq = new SequenceNumbers
-              symbols foreach { _.name = s"$base${cc.sep}${seq.next}" }
+              val it = Iterator.from(0)
+              symbols foreach { _.name = s"$base${cc.sep}${it.next()}" }
             }
         }
     }
@@ -185,7 +184,7 @@ object RenameSymbols {
           case (_, eDecls) =>
             // Process entities with the same name in a defined order to ensure
             // deterministic output.
-            val sequenceNumbers = LazyList.from(0).iterator
+            val sequenceNumbers = Iterator.from(0)
             eDecls.iterator.toSeq.sortBy(_.loc) foreach {
               case DeclEntity(eSymbol, decls) =>
                 ////////////////////////////////////////////////////////////////////

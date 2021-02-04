@@ -38,8 +38,8 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatelessTreeT
   private var aEnSymbolOpt: Option[Symbol] = None
 
   // Sequence numbers for name disambiguation
-  private val assertSeqNum = LazyList.from(0).iterator
-  private val unreachableSeqNum = LazyList.from(0).iterator
+  private val assertSeqNum = Iterator.from(0)
+  private val unreachableSeqNum = Iterator.from(0)
 
   // How deep are within a conditional (does not inclde the state dispatch
   // statement)
@@ -146,7 +146,7 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatelessTreeT
       enSymbol.kind = TypeUInt(1)
       enSymbol.attr.combSignal set true
       val deps = List from {
-        val seqNum = LazyList.from(0).iterator
+        val seqNum = Iterator.from(0)
         cond collect {
           case expr @ ExprSym(symbol) if modifiable(symbol) =>
             val newSymbol = cc.newSymbol(s"${prefix}_c${seqNum.next()}", expr.loc)

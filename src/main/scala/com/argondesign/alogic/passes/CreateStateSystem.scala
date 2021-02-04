@@ -21,7 +21,6 @@ import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Math
 import com.argondesign.alogic.transform.StatementFilter
-import com.argondesign.alogic.util.SequenceNumbers
 import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
@@ -169,13 +168,13 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends StatefulTree
       // For now, just allocate state numbers linearly as binary coded
       stateNumbers = {
         val trueStateNumbers = {
-          val it = new SequenceNumbers
+          val it = Iterator.from(0)
           // Ensure the entry symbol is allocated number 0.
           // This is necessary since the return stack uses the special value 0
           // to mean "stack is empty - return to top of main".
           Map from {
             (entryStates.head :: otherStates) map {
-              _.symbol -> ExprInt(false, stateWidth, it.next)
+              _.symbol -> ExprInt(false, stateWidth, it.next())
             }
           }
         }
