@@ -556,11 +556,14 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
   private def computeTypeOfAmbiguousUnreachableStatements(stmts: List[Tree]): Boolean =
     stmts.exists {
       // Type of 'unreachable' statement might be already set when walking the
-      // StmtBlock wrapping an explicit 'else', which we checked when walking
-      // the containing StmtIf
+      // body of a StmtBlock or StmtLet contained in an outer statement.
       case stmt @ StmtSplice(AssertionUnreachable(None, _)) if !stmt.hasTpe =>
         false
       case StmtSplice(DescGenScope(_, _, body)) =>
+        computeTypeOfAmbiguousUnreachableStatements(body)
+      case StmtBlock(body) =>
+        computeTypeOfAmbiguousUnreachableStatements(body)
+      case StmtLet(_, body) =>
         computeTypeOfAmbiguousUnreachableStatements(body)
       case stmt: Stmt =>
         if (!stmt.hasTpe) {
@@ -574,12 +577,15 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
   private def setTypeOfAmbiguousUnreachableStatements(stmts: List[Tree], ctrl: Boolean): Unit =
     stmts.foreach {
       // Type of 'unreachable' statement might be already set when walking the
-      // StmtBlock wrapping an explicit 'else', which we checked when walking
-      // the containing StmtIf
+      // body of a StmtBlock or StmtLet contained in an outer statement.
       case stmt @ StmtSplice(a @ AssertionUnreachable(None, _)) if !stmt.hasTpe =>
         TypeAssigner(a)
         stmt.withTpe(if (ctrl) TypeCtrlStmt else TypeCombStmt)
       case StmtSplice(DescGenScope(_, _, body)) =>
+        setTypeOfAmbiguousUnreachableStatements(body, ctrl)
+      case StmtBlock(body) =>
+        setTypeOfAmbiguousUnreachableStatements(body, ctrl)
+      case StmtLet(_, body) =>
         setTypeOfAmbiguousUnreachableStatements(body, ctrl)
       case _: Stmt =>
       case _       => unreachable
@@ -617,12 +623,7 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
     case StmtBlock(body) =>
       val ctrl = computeTypeOfAmbiguousUnreachableStatements(body)
       setTypeOfAmbiguousUnreachableStatements(body, ctrl)
-    case StmtIf(_, thenStmts, elseBlock) =>
-      val elseStmts = elseBlock match {
-        case Nil                     => Nil // No explicit 'else'
-        case StmtBlock(stmts) :: Nil => stmts // Explicit 'else' present (might still be empty)
-        case _                       => unreachable // See StmtBuilder
-      }
+    case StmtIf(_, thenStmts, elseStmts) =>
       val ctrl = computeTypeOfAmbiguousUnreachableStatements(thenStmts) ||
         computeTypeOfAmbiguousUnreachableStatements(elseStmts)
       setTypeOfAmbiguousUnreachableStatements(thenStmts, ctrl)

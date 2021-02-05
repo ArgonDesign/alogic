@@ -1,4 +1,4 @@
-fsm unreachable_19 {
+fsm unreachable_20 {
   out wire bool o;
 
   void main() {
@@ -6,7 +6,8 @@ fsm unreachable_19 {
       o = true;
       fence;
     } else {
-      {
+      let (bool x = false) {
+        o = x;
         unreachable; // Allow as ctrl statement
       }
     }
@@ -14,7 +15,7 @@ fsm unreachable_19 {
 }
 
 // @fec/golden {{{
-//  module unreachable_19(
+//  module unreachable_20(
 //    output wire o
 //  );
 //    assign o = 1'd1;
