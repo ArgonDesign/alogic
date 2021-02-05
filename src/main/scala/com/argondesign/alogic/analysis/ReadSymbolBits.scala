@@ -14,7 +14,10 @@ import scala.collection.immutable.HashMap
 
 object ReadSymbolBits {
 
-  private def addRval(init: HashMap[Symbol, BigInt], expr: Expr): HashMap[Symbol, BigInt] = {
+  private def addPossiblyRead(
+      init: HashMap[Symbol, BigInt],
+      expr: Expr
+    ): HashMap[Symbol, BigInt] = {
     // Mutable for speed
     var result = init
     expr visit {
@@ -34,7 +37,7 @@ object ReadSymbolBits {
               result = result.updated(symbol, BigInt.mask(symbol.kind.width.toInt))
           }
         }
-        result = addRval(result, idx)
+        result = addPossiblyRead(result, idx)
       case ExprSlice(ExprSym(symbol), lIdx, op, rIdx) =>
         val newBits = lIdx.valueOption flatMap { ll =>
           rIdx.valueOption map { rr =>
@@ -54,8 +57,8 @@ object ReadSymbolBits {
           case Some(bits) => Some(bits | newBits)
           case None       => Some(newBits)
         }
-        result = addRval(result, lIdx)
-        result = addRval(result, rIdx)
+        result = addPossiblyRead(result, lIdx)
+        result = addPossiblyRead(result, rIdx)
     }
 
     result
@@ -64,7 +67,7 @@ object ReadSymbolBits {
   // Given an expression, return a SymbolBitSet that holds bits that might be
   // read if this expression is not used on the left hand side of an assignment
   def possiblyRVal(expr: Expr): SymbolBitSet =
-    SymbolBitSet.from(addRval(HashMap[Symbol, BigInt](), expr))
+    SymbolBitSet.from(addPossiblyRead(HashMap[Symbol, BigInt](), expr))
 
   // Given an expression, return a SymbolBitSet that holds bits that might be
   // read if this expression is used on the left hand side of an assignment
@@ -75,10 +78,10 @@ object ReadSymbolBits {
     def gather(expr: Expr): Unit = expr match {
       case _: ExprSym =>
       case ExprIndex(_: ExprSym, idx) =>
-        result = addRval(result, idx)
+        result = addPossiblyRead(result, idx)
       case ExprSlice(_: ExprSym, lIdx, _, rIdx) =>
-        result = addRval(result, lIdx)
-        result = addRval(result, rIdx)
+        result = addPossiblyRead(result, lIdx)
+        result = addPossiblyRead(result, rIdx)
       case ExprCat(parts) => parts foreach gather
       case _              => unreachable
     }

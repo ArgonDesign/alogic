@@ -60,4 +60,55 @@ object WrittenSymbolBits {
     SymbolBitSet.from(result)
   }
 
+  // Given an expression, return a SymbolBitSet that holds bits that might be
+  // written, should this expression be used on the left hand side of an
+  // assignment
+  def possibly(lval: Expr): SymbolBitSet = {
+    // Mutable for speed
+    var result = HashMap[Symbol, BigInt]()
+
+    def gather(expr: Expr): Unit = expr match {
+      case ExprSym(symbol) =>
+        result = result.updated(symbol, BigInt.mask(symbol.kind.width.toInt))
+      case ExprIndex(ExprSym(symbol), idx) =>
+        if (symbol.kind.isPacked) {
+          idx.valueOption match {
+            case Some(bit) =>
+              result = result.updatedWith(symbol) {
+                case Some(bits) => Some(bits.setBit(bit.toInt))
+                case None       => Some(BigInt.oneHot(bit.toInt))
+              }
+            case None =>
+              result = result.updated(symbol, BigInt.mask(symbol.kind.width.toInt))
+          }
+        }
+      case ExprSlice(ExprSym(symbol), lIdx, op, rIdx) =>
+        val newBits = lIdx.valueOption flatMap { ll =>
+          rIdx.valueOption map { rr =>
+            val l = ll.asInt
+            val r = rr.asInt
+            op match {
+              case ":"  => BigInt.range(l, r)
+              case "+:" => BigInt.range(l + r - 1, l)
+              case "-:" => BigInt.range(l, l - r + 1)
+              case _    => unreachable
+            }
+          }
+        } getOrElse {
+          BigInt.mask(symbol.kind.width.toInt)
+        }
+        result = result.updatedWith(symbol) {
+          case Some(bits) => Some(bits | newBits)
+          case None       => Some(newBits)
+        }
+      case ExprCat(parts) => parts foreach gather
+      case other =>
+        throw Ice(other, "Don't know how to extract written variables from", other.toSource)
+    }
+
+    gather(lval)
+
+    SymbolBitSet.from(result)
+  }
+
 }

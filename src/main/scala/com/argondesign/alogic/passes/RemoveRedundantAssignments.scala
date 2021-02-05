@@ -9,7 +9,7 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.analysis.BitwiseLiveVariableAnalysis
 import com.argondesign.alogic.analysis.ReadSymbols
 import com.argondesign.alogic.analysis.SymbolBitSet
-import com.argondesign.alogic.analysis.WrittenSymbols
+import com.argondesign.alogic.analysis.WrittenSymbolBits
 import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
@@ -62,11 +62,11 @@ final class RemoveRedundantAssignments extends StatelessTreeTransformer {
     case StmtAssign(lhs, _) =>
       liveVariableMaps.get(tree.id).map {
         case (_, liveVariables) =>
-          if (WrittenSymbols(lhs).exists(liveVariables.contains)) {
-            tree
-          } else {
-            Stump
+          val mightWriteLiveBit = WrittenSymbolBits.possibly(lhs).exists {
+            case (symbol, writtenBits) =>
+              liveVariables.get(symbol).exists(liveBits => (writtenBits & liveBits) != 0)
           }
+          if (mightWriteLiveBit) tree else Stump
       } orElse Some(tree)
 
     // Skip

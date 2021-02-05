@@ -24,12 +24,16 @@ final class SymbolBitSet private (private val underlying: HashMap[Symbol, BigInt
 
   def keySet: Set[Symbol] = underlying.keySet
 
+  def get(symbol: Symbol): Option[BigInt] = underlying.get(symbol)
+
   def getOrElse(symbol: Symbol, default: => BigInt): BigInt = underlying.getOrElse(symbol, default)
 
   def updatedWith(symbol: Symbol)(f: Option[BigInt] => Option[BigInt]): SymbolBitSet =
     new SymbolBitSet(underlying.updatedWith(symbol)(f))
 
   def collect[T](pf: PartialFunction[(Symbol, BigInt), T]): Iterable[T] = underlying.collect(pf)
+
+  def exists(p: ((Symbol, BigInt)) => Boolean): Boolean = underlying.exists(p)
 
   private def unionImpl(
       large: HashMap[Symbol, BigInt],
