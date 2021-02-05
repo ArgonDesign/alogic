@@ -6,6 +6,6 @@ network dictident_decl_13 {
   }
 }
 // :5: ERROR: 'i#\[0\]' is undefined
-// :5: ERROR: 'o#\[0,0\]' is undefined
 // :5: ERROR: 'i#\[1\]' is undefined
+// :5: ERROR: 'o#\[0,0\]' is undefined
 // :5: ERROR: 'o#\[1,0\]' is undefined

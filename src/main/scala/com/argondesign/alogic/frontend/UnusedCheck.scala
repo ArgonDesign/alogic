@@ -24,7 +24,7 @@ final class UnusedCheck extends StatelessTreeTransformer {
 
   private val mb = new MessageBuffer
 
-  def messages: List[Message] = mb.messages
+  def messages: Seq[Message] = mb.messages
 
   // Set of declared symbols, keyed by entity containing the definition
   private val declared =
@@ -199,7 +199,7 @@ final class UnusedCheck extends StatelessTreeTransformer {
 
 object UnusedCheck {
 
-  def apply(desc: Desc): List[Message] = {
+  def apply(desc: Desc): Seq[Message] = {
     val check = new UnusedCheck
     check(desc)
     check.messages

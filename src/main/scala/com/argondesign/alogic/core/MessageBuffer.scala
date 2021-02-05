@@ -25,11 +25,13 @@ final class MessageBuffer {
   // Get messages/status
   //////////////////////////////////////////////////////////////////////////////
 
-  // TODO: Sort
-  def messages: List[Message] = buffer.toList.distinct flatMap {
-    case message: MessageWithNotes => message +: message.notes
-    case other                     => Seq(other)
-  }
+  def messages: Seq[Message] =
+    buffer.toSeq.distinct.sortBy(message =>
+      (message.loc, message.category, message.msg.mkString("\n"))
+    ) flatMap {
+      case message: MessageWithNotes => message +: message.notes
+      case other                     => Seq(other)
+    }
 
   def hasError: Boolean = _hasError
 

@@ -13,5 +13,5 @@ fsm unreachable_17 {
     fence;
   }
 }
-// :13: WARNING: Statement is unreachable
 // :10: ERROR: 'unreachable' statement is always reached
+// :13: WARNING: Statement is unreachable

@@ -14,7 +14,7 @@ trait Messaging { self: CompilerContext =>
   // Get messages/status
   //////////////////////////////////////////////////////////////////////////////
 
-  final def messages: List[Message] = messageBuffer.messages
+  final def messages: Seq[Message] = messageBuffer.messages
 
   final def hasError: Boolean = messageBuffer.hasError
 

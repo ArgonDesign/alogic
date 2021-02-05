@@ -2,9 +2,6 @@
 // Copyright (c) 2017-2021 Argon Design Ltd. All rights reserved.
 // This file is covered by the BSD (with attribution) license.
 // See the LICENSE file for the precise wording of the license.
-//
-// DESCRIPTION:
-// TreeTransformer tests
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.ast
@@ -13,9 +10,10 @@ import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.Messages.Warning
 import com.argondesign.alogic.core.Types.TypeUInt
 import org.scalatest.flatspec.AnyFlatSpec
+
+import scala.collection.mutable.ListBuffer
 
 final class StatelessTreeTransformerSpec extends AnyFlatSpec with AlogicTest {
 
@@ -45,19 +43,22 @@ final class StatelessTreeTransformerSpec extends AnyFlatSpec with AlogicTest {
 
   it should "return the same tree instance if it is not rewritten" in {
     val oldTree = "{ a = b; bool c = a; }".asTree[Stmt]()
+
+    val result = new ListBuffer[String]()
+
     val newTree = oldTree rewrite new StatelessTreeTransformer {
       override val typed = false
       private val it = Iterator.from(0)
       override def transform(tree: Tree): Tree = tree tap { _ =>
-        cc.warning(tree, s"Saw it ${it.next()}")
+        result.addOne(s"Saw it ${it.next()}")
       }
     }
 
     newTree should be theSameInstanceAs oldTree
 
-    cc.messages should have length 9
-    cc.messages.zipWithIndex foreach {
-      case (msg, idx) => msg should beThe[Warning](s"Saw it $idx")
+    result should have length 9
+    result.zipWithIndex foreach {
+      case (msg, idx) => msg shouldBe s"Saw it $idx"
     }
 
   }

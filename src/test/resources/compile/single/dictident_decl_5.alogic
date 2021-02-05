@@ -11,10 +11,10 @@ network dictident_decl_5 {
   i#[1] -> o#[1];
 }
 // :3: ERROR: 'i#\[0\]' has multiple definitions
-// :7: ERROR: 'i#\[0\]' has multiple definitions
 // :3: ERROR: 'i#\[1\]' has multiple definitions
-// :7: ERROR: 'i#\[1\]' has multiple definitions
 // :4: ERROR: 'o#\[0\]' has multiple definitions
-// :8: ERROR: 'o#\[0\]' has multiple definitions
 // :4: ERROR: 'o#\[1\]' has multiple definitions
+// :7: ERROR: 'i#\[0\]' has multiple definitions
+// :7: ERROR: 'i#\[1\]' has multiple definitions
+// :8: ERROR: 'o#\[0\]' has multiple definitions
 // :8: ERROR: 'o#\[1\]' has multiple definitions

@@ -7,6 +7,7 @@ fsm ports_only_fsm {
   out sync ready u8 oc;
   out wire       u8 od;
 }
+// :1: ERROR: No 'main' function in fsm.
 // :2: WARNING: Input port 'ia' is unused
 // :3: WARNING: Input port 'ib' is unused
 // :4: WARNING: Input port 'ic' is unused
@@ -14,4 +15,3 @@ fsm ports_only_fsm {
 // :6: WARNING: Output port 'ob' is unused
 // :7: WARNING: Output port 'oc' is unused
 // :8: WARNING: Output port 'od' is unused
-// :1: ERROR: No 'main' function in fsm.

@@ -15,12 +15,16 @@ import scala.io.AnsiColor
 
 object Messages {
 
-  sealed trait MessageCategory
-  case object WarningCategory extends MessageCategory
-  case object ErrorCategory extends MessageCategory
-  case object NoteCategory extends MessageCategory
-  case object FatalCategory extends MessageCategory
-  case object IceCategory extends MessageCategory
+  sealed abstract class MessageCategory(val ord: Int)
+  case object WarningCategory extends MessageCategory(0)
+  case object ErrorCategory extends MessageCategory(1)
+  case object NoteCategory extends MessageCategory(2)
+  case object FatalCategory extends MessageCategory(3)
+  case object IceCategory extends MessageCategory(4)
+
+  implicit val messageCategoryOrdering: Ordering[MessageCategory] = {
+    (x: MessageCategory, y: MessageCategory) => x.ord compare y.ord
+  }
 
   def ansiColorMap: Map[MessageCategory, (String, String)] = Map(
     Messages.WarningCategory -> ((AnsiColor.MAGENTA + AnsiColor.BOLD, AnsiColor.RESET)),

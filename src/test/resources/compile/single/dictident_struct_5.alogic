@@ -27,10 +27,10 @@ network dictident_struct_5 {
   }
 }
 // :8: ERROR: 'i_t#\[0\]' has multiple definitions
-// :13: ERROR: 'i_t#\[0\]' has multiple definitions
 // :8: ERROR: 'i_t#\[1\]' has multiple definitions
-// :13: ERROR: 'i_t#\[1\]' has multiple definitions
 // :9: ERROR: 'o_t#\[0\]' has multiple definitions
-// :14: ERROR: 'o_t#\[0\]' has multiple definitions
 // :9: ERROR: 'o_t#\[1\]' has multiple definitions
+// :13: ERROR: 'i_t#\[0\]' has multiple definitions
+// :13: ERROR: 'i_t#\[1\]' has multiple definitions
+// :14: ERROR: 'o_t#\[0\]' has multiple definitions
 // :14: ERROR: 'o_t#\[1\]' has multiple definitions

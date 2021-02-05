@@ -42,7 +42,7 @@ final class SyntaxCheck extends StatelessTreeTransformer {
 
   private val mb = new MessageBuffer
 
-  def messages: List[Message] = mb.messages
+  def messages: Seq[Message] = mb.messages
 
   private val variantStack = mutable.Stack[EntityVariant.Type]()
 
@@ -338,7 +338,7 @@ final class SyntaxCheck extends StatelessTreeTransformer {
 
 object SyntaxCheck {
 
-  def apply(tree: Tree): List[Message] = {
+  def apply(tree: Tree): Seq[Message] = {
     val checker = new SyntaxCheck
     checker(tree)
     checker.messages

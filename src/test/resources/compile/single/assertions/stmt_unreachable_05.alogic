@@ -8,5 +8,5 @@ fsm stmt_unreachable_05 {
     f();
   }
 }
-// :4: WARNING: Statement is unreachable
 // :3: ERROR: 'unreachable' statement is always reached: Boom
+// :4: WARNING: Statement is unreachable
