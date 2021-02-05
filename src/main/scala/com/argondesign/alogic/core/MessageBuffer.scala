@@ -39,10 +39,9 @@ final class MessageBuffer {
 
   def add(msg: Message): Unit = synchronized {
     msg match {
-      case _: Warning        => buffer.append(msg)
-      case _: Error          => buffer.append(msg); _hasError = true
-      case _: Note           => unreachable // Must be attached to other message
-      case _: Fatal | _: Ice => unreachable // Must be thrown
+      case _: Warning                   => buffer.append(msg)
+      case _: Error | _: Fatal | _: Ice => buffer.append(msg); _hasError = true
+      case _: Note                      => unreachable // Must be attached to other message
     }
   }
 

@@ -1,0 +1,17 @@
+fsm unreachable_17 {
+  out wire bool o;
+
+  void main() {
+    case (false) {
+      true:
+         o = true;
+      false:
+        gen if (true) {
+          unreachable; // Allow as comb statement
+        }
+    }
+    fence;
+  }
+}
+// :13: WARNING: Statement is unreachable
+// :10: ERROR: 'unreachable' statement is always reached

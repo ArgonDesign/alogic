@@ -130,11 +130,16 @@ object TypeAssigner {
     case node: StmtComment  => kind(node)
   }
 
-  private def kind(tree: StmtSplice) = tree.tree match {
-    case DescGenScope(_, _, Nil)        => unreachable
-    case DescGenScope(_, _, body)       => body.last.tpe
-    case AssertionUnreachable(false, _) => TypeCtrlStmt
-    case _                              => TypeCombStmt
+  private def kind(tree: StmtSplice): Type = tree.tree match {
+    case DescGenScope(_, _, Nil)  => unreachable
+    case DescGenScope(_, _, body) => body.last.tpe
+    case AssertionUnreachable(knownComb, _) =>
+      knownComb match {
+        case Some(true)  => TypeCombStmt
+        case Some(false) => TypeCtrlStmt
+        case _           => unreachable
+      }
+    case _ => TypeCombStmt
   }
 
   private def kind(tree: StmtBlock) = tree.body match {

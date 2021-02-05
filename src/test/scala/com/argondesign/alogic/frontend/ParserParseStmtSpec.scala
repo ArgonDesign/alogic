@@ -445,13 +445,13 @@ final class ParserParseStmtSpec extends AnyFreeSpec with AlogicTest {
     "unreachable" - {
       "ctrl-func" in {
         "unreachable;".asTree[Stmt](SourceContext.FuncCtrl) shouldBe StmtSplice(
-          AssertionUnreachable(comb = false, None)
+          AssertionUnreachable(knownComb = None, None)
         )
       }
 
       "comb-func" in {
         "unreachable;".asTree[Stmt](SourceContext.FuncComb) shouldBe StmtSplice(
-          AssertionUnreachable(comb = true, None)
+          AssertionUnreachable(knownComb = Some(true), None)
         )
       }
     }

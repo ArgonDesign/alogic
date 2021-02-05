@@ -1,0 +1,23 @@
+fsm unreachable_15 {
+  out wire bool o;
+
+  void main() {
+    case (true) {
+      true:
+         o = true;
+      false:
+        gen if (true) {
+          unreachable; // Allow as comb statement
+        }
+    }
+    fence;
+  }
+}
+
+// @fec/golden {{{
+//  module unreachable_15(
+//    output wire o
+//  );
+//    assign o = 1'd1;
+//  endmodule
+// }}}

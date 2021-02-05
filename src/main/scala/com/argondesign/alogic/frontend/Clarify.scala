@@ -69,7 +69,7 @@ object Clarify {
 
       override protected def enter(tree: Tree): Option[Tree] = tree pipe {
 
-        // SKip
+        // Skip
         case _: DescParametrized => Some(tree)
 
         ////////////////////////////////////////////////////////////////////////
@@ -224,6 +224,19 @@ object Clarify {
                 TypeAssigner(ExprNum(false, fe.evaluate(d.size, unreachable).get) withLocOf d.size)
               )
             case other => other
+          }
+
+        ////////////////////////////////////////////////////////////////////////
+        // Fix ambiguous 'unreachable' statements
+        ////////////////////////////////////////////////////////////////////////
+
+        case StmtSplice(a @ AssertionUnreachable(None, _)) =>
+          StmtSplice {
+            if (tree.tpe.isCombStmt) {
+              TypeAssigner(a.copy(knownComb = Some(true)) withLocOf a)
+            } else {
+              TypeAssigner(a.copy(knownComb = Some(false)) withLocOf a)
+            }
           }
 
         ////////////////////////////////////////////////////////////////////////

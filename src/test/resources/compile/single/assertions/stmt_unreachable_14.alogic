@@ -1,18 +1,18 @@
-fsm unreachable_13 {
+fsm unreachable_14 {
   out wire bool o;
 
   void main() {
     if (true) {
       o = true;
+      fence;
     } else {
-      unreachable; // Allow as comb statement
+      unreachable; // Allow as control statement
     }
-    fence;
   }
 }
 
 // @fec/golden {{{
-//  module unreachable_13(
+//  module unreachable_14(
 //    output wire o
 //  );
 //    assign o = 1'd1;

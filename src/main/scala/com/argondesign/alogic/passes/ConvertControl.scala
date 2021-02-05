@@ -323,9 +323,9 @@ final class ConvertControl extends StatelessTreeTransformer {
           StmtGoto(ref) regularize tree.loc
         )
 
-      case StmtSplice(assertion @ AssertionUnreachable(false, _)) =>
+      case StmtSplice(assertion @ AssertionUnreachable(Some(false), _)) =>
         val ref = TypeAssigner(ExprSym(followingState.top) withLocOf tree)
-        val newAssertion = TypeAssigner(assertion.copy(comb = true) withLocOf assertion)
+        val newAssertion = TypeAssigner(assertion.copy(knownComb = Some(true)) withLocOf assertion)
         Thicket(
           TypeAssigner(StmtSplice(newAssertion) withLocOf tree),
           TypeAssigner(StmtGoto(ref) withLocOf tree)

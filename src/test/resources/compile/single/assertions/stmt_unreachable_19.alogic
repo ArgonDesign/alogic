@@ -1,0 +1,24 @@
+bool f(u1 x) {
+  case (x) {
+    0:       return true;
+    default: unreachable;
+  }
+  // Should not error reaching end of function here
+}
+
+fsm unreachable_19 {
+  out wire bool o;
+
+  void main() {
+    o = f(0);
+    fence;
+  }
+}
+
+// @fec/golden {{{
+//  module unreachable_19(
+//    output wire o
+//  );
+//    assign o = 1'd1;
+//  endmodule
+// }}}

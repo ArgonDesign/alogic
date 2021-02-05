@@ -13,6 +13,7 @@ import com.argondesign.alogic.antlr.AlogicParser._
 import com.argondesign.alogic.antlr.AntlrConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.MessageBuffer
+import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.SourceContext
 
 object AssertionBuilder extends BaseBuilder[AssertionContext, Assertion] {
@@ -43,7 +44,15 @@ object AssertionBuilder extends BaseBuilder[AssertionContext, Assertion] {
         val msgOpt = Option.when(ctx.STRING != null) {
           ctx.STRING.txt.slice(1, ctx.STRING.txt.length - 1)
         }
-        AssertionUnreachable(true, msgOpt) withLoc ctx.loc
+        // 'unreachable' in control functions is ambiguous. Everywhere else
+        // it behaves as a combinational statement.
+        val knownComb = sc match {
+          case SourceContext.FuncCtrl => None
+          case SourceContext.Unknown =>
+            throw Ice("Cannot parse 'unreachable' without source context")
+          case _ => Some(true)
+        }
+        AssertionUnreachable(knownComb, msgOpt) withLoc ctx.loc
       }
     }
 

@@ -14,6 +14,7 @@ import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
+import com.argondesign.alogic.core.FuncVariant
 import com.argondesign.alogic.core.Locatable
 import com.argondesign.alogic.core.Messages.Error
 import com.argondesign.alogic.core.Messages.Ice
@@ -547,6 +548,43 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
     tree
   }
 
+  // Walks as many statements as necessary to determine whether ambiguous
+  // 'unreachable' statements in the list are control statements or comb
+  // statements. It is a control statement if there are any other control
+  // statements in the list. Returns 'true' if the 'unreachable' statement
+  // should be treated as a control statement
+  private def computeTypeOfAmbiguousUnreachableStatements(stmts: List[Tree]): Boolean =
+    stmts.exists {
+      // Type of 'unreachable' statement might be already set when walking the
+      // StmtBlock wrapping an explicit 'else', which we checked when walking
+      // the containing StmtIf
+      case stmt @ StmtSplice(AssertionUnreachable(None, _)) if !stmt.hasTpe =>
+        false
+      case StmtSplice(DescGenScope(_, _, body)) =>
+        computeTypeOfAmbiguousUnreachableStatements(body)
+      case stmt: Stmt =>
+        if (!stmt.hasTpe) {
+          walk(stmt)
+        }
+        stmt.tpe.isCtrlStmt
+      case _ => unreachable
+    }
+
+  // Set the types of ambiguous 'unreachable' statements
+  private def setTypeOfAmbiguousUnreachableStatements(stmts: List[Tree], ctrl: Boolean): Unit =
+    stmts.foreach {
+      // Type of 'unreachable' statement might be already set when walking the
+      // StmtBlock wrapping an explicit 'else', which we checked when walking
+      // the containing StmtIf
+      case stmt @ StmtSplice(a @ AssertionUnreachable(None, _)) if !stmt.hasTpe =>
+        TypeAssigner(a)
+        stmt.withTpe(if (ctrl) TypeCtrlStmt else TypeCombStmt)
+      case StmtSplice(DescGenScope(_, _, body)) =>
+        setTypeOfAmbiguousUnreachableStatements(body, ctrl)
+      case _: Stmt =>
+      case _       => unreachable
+    }
+
   private def preOrder(implicit tree: Tree): Unit = tree match {
     case desc: Desc =>
       // Compute type of symbol up front as we might need it for the
@@ -564,6 +602,57 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
           mAcc addAll ms
           error
       }
+
+      desc match {
+        case DescFunc(_, _, variant, _, _, body) =>
+          setTypeOfAmbiguousUnreachableStatements(body, variant == FuncVariant.Ctrl)
+        case _ =>
+      }
+
+    // Work out types of ambiguous 'unreachable' statements. An 'unrachable'
+    // statement at this point is ambiguous if the 'comb' flag is false, as
+    // it might still be a comb statement, if only comb statements are present
+    // in the enclosing statement
+
+    case StmtBlock(body) =>
+      val ctrl = computeTypeOfAmbiguousUnreachableStatements(body)
+      setTypeOfAmbiguousUnreachableStatements(body, ctrl)
+    case StmtIf(_, thenStmts, elseBlock) =>
+      val elseStmts = elseBlock match {
+        case Nil                     => Nil // No explicit 'else'
+        case StmtBlock(stmts) :: Nil => stmts // Explicit 'else' present (might still be empty)
+        case _                       => unreachable // See StmtBuilder
+      }
+      val ctrl = computeTypeOfAmbiguousUnreachableStatements(thenStmts) ||
+        computeTypeOfAmbiguousUnreachableStatements(elseStmts)
+      setTypeOfAmbiguousUnreachableStatements(thenStmts, ctrl)
+      setTypeOfAmbiguousUnreachableStatements(elseStmts, ctrl)
+    case StmtCase(_, cases) =>
+      val ctrl = cases.exists {
+        case CaseRegular(_, stmts) => computeTypeOfAmbiguousUnreachableStatements(stmts)
+        case CaseDefault(stmts)    => computeTypeOfAmbiguousUnreachableStatements(stmts)
+        case _: CaseSplice         => unreachable // Removed by Elaborate
+      }
+      cases foreach {
+        case CaseRegular(_, stmts) => setTypeOfAmbiguousUnreachableStatements(stmts, ctrl)
+        case CaseDefault(stmts)    => setTypeOfAmbiguousUnreachableStatements(stmts, ctrl)
+        case _: CaseSplice         => unreachable // Removed by Elaborate
+      }
+    case StmtLoop(body) =>
+      val ctrl = computeTypeOfAmbiguousUnreachableStatements(body)
+      setTypeOfAmbiguousUnreachableStatements(body, ctrl)
+    case StmtWhile(_, body) =>
+      val ctrl = computeTypeOfAmbiguousUnreachableStatements(body)
+      setTypeOfAmbiguousUnreachableStatements(body, ctrl)
+    case StmtFor(_, _, _, body) =>
+      val ctrl = computeTypeOfAmbiguousUnreachableStatements(body)
+      setTypeOfAmbiguousUnreachableStatements(body, ctrl)
+    case StmtDo(_, body) =>
+      val ctrl = computeTypeOfAmbiguousUnreachableStatements(body)
+      setTypeOfAmbiguousUnreachableStatements(body, ctrl)
+    case StmtLet(_, body) =>
+      val ctrl = computeTypeOfAmbiguousUnreachableStatements(body)
+      setTypeOfAmbiguousUnreachableStatements(body, ctrl)
 
     // Type check the lhs up front
     case StmtAssign(lhs, _) =>
@@ -796,8 +885,8 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
           }
         }
         // check branches are compatible
-        val allComb = cases forall { _.stmts forall { _.tpe.isCombStmt } }
-        val allCtrl = cases forall { _.stmts exists { _.tpe.isCtrlStmt } }
+        val allComb = cases forall { _.stmts.lastOption.forall(_.tpe.isCombStmt) }
+        val allCtrl = cases forall { _.stmts.lastOption.exists(_.tpe.isCtrlStmt) }
         if (!allComb && !allCtrl) {
           error("Either all or no cases of a 'case' statement must be control statements")
         }

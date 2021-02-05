@@ -38,18 +38,8 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
       override def visitStmtFrom(ctx: StmtFromContext): Stmt =
         StmtSplice(FromBuilder(ctx.from)) withLoc ctx.loc
 
-      override def visitStmtAssertion(ctx: StmtAssertionContext): Stmt = {
-        val assertion = AssertionBuilder(ctx.assertion) match {
-          case a: AssertionUnreachable =>
-            if (sc == SourceContext.FuncCtrl) {
-              a.copy(comb = false) withLocOf a
-            } else {
-              a.copy(comb = true) withLocOf a
-            }
-          case a => a
-        }
-        StmtSplice(assertion) withLoc ctx.loc
-      }
+      override def visitStmtAssertion(ctx: StmtAssertionContext): Stmt =
+        StmtSplice(AssertionBuilder(ctx.assertion)) withLoc ctx.loc
 
       override def visitStmtBlock(ctx: StmtBlockContext): Stmt =
         StmtBlock(visit(ctx.stmt)) withLoc ctx.loc

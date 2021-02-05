@@ -57,11 +57,28 @@ object NormalizeControlTransform extends StatelessTreeTransformer {
     stmts.init concat convertFinal(stmts.last)
 
   private def convertFinal(stmt: Stmt): Iterator[Stmt] = {
-    require(stmt.tpe.isCtrlStmt)
+    require(stmt.tpe.isCtrlStmt || {
+      stmt match {
+        // Comb statement looking unreachable in final position means it will be
+        // reached if the function is called. Accept it. will convert to control below.
+        case StmtSplice(AssertionUnreachable(Some(true), _)) => true
+        case _                                               => false
+      }
+    })
     stmt match {
-      // 'return', 'goto' and 'unreachable' are OK
-      case _: StmtReturn | _: StmtGoto | StmtSplice(_: AssertionUnreachable) =>
+      // 'return' and 'goto' are OK
+      case _: StmtReturn | _: StmtGoto =>
         Iterator.single(stmt)
+
+      //  'unreachable' is also ok, but convert to control statement
+      case StmtSplice(a: AssertionUnreachable) =>
+        Iterator.single(
+          TypeAssigner(
+            StmtSplice(
+              TypeAssigner(a.copy(knownComb = Some(false)) withLocOf a)
+            ) withLocOf stmt
+          )
+        )
 
       // Convert final 'fence' to 'Comment + return'. The comment is there to
       // prevent potential removal of an empty state if the function ends in

@@ -13,6 +13,7 @@ import com.argondesign.alogic.AlogicTest
 import com.argondesign.alogic.SourceTextConverters._
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.SourceContext
 import org.scalatest.freespec.AnyFreeSpec
 
 final class ParserParseAssertionSpec extends AnyFreeSpec with AlogicTest {
@@ -45,14 +46,14 @@ final class ParserParseAssertionSpec extends AnyFreeSpec with AlogicTest {
     }
 
     "unreachable with no message" in {
-      "unreachable;".asTree[Assertion]() shouldBe {
-        AssertionUnreachable(true, None)
+      "unreachable;".asTree[Assertion](SourceContext.Package) shouldBe {
+        AssertionUnreachable(Some(true), None)
       }
     }
 
     "unreachable with message" in {
-      """unreachable "msg";""".asTree[Assertion]() shouldBe {
-        AssertionUnreachable(true, Some("msg"))
+      """unreachable "msg";""".asTree[Assertion](SourceContext.Package) shouldBe {
+        AssertionUnreachable(Some(true), Some("msg"))
       }
     }
   }

@@ -1,0 +1,19 @@
+fsm unreachable_18 {
+  out wire bool o;
+
+  void main() {
+    case (false) {
+      true:
+        {
+         o = true;
+         fence;
+        }
+      false:
+        gen if (true) {
+          unreachable; // Allow as control statement
+        }
+    }
+  }
+}
+
+// :13: ERROR: 'unreachable' statement is always reached
