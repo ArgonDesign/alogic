@@ -54,31 +54,39 @@ object StmtBuilder extends BaseBuilder[ParserRuleContext, Stmt] {
           // written even if it's empty or 'gen' expands to empty
           List(StmtBlock(stmts(visit(ctx.elseStmt))) withLoc ctx.elseStmt.loc)
         }
-        StmtIf(cond, thenStmts, elseStmts) withLoc ctx.loc
+        val loc = ctx.loc.copy(end = ctx.cpar.loc.end)
+        StmtIf(cond, thenStmts, elseStmts) withLoc loc
       }
 
-      override def visitStmtCase(ctx: StmtCaseContext): Stmt =
-        StmtCase(ExprBuilder(ctx.expr), CaseBuilder(ctx.kase)) withLoc ctx.loc
+      override def visitStmtCase(ctx: StmtCaseContext): Stmt = {
+        val loc = ctx.loc.copy(end = ctx.cpar.loc.end)
+        StmtCase(ExprBuilder(ctx.expr), CaseBuilder(ctx.kase)) withLoc loc
+      }
 
       override def visitStmtLoop(ctx: StmtLoopContext): Stmt =
-        StmtLoop(visit(ctx.stmt)) withLoc ctx.loc
+        StmtLoop(visit(ctx.stmt)) withLoc ctx.keyword.loc
 
       override def visitStmtDo(ctx: StmtDoContext): Stmt =
-        StmtDo(ExprBuilder(ctx.expr), visit(ctx.stmt)) withLoc ctx.loc
+        StmtDo(ExprBuilder(ctx.expr), visit(ctx.stmt)) withLoc ctx.keyword.loc
 
-      override def visitStmtWhile(ctx: StmtWhileContext): Stmt =
-        StmtWhile(ExprBuilder(ctx.expr), visit(ctx.stmt)) withLoc ctx.loc
+      override def visitStmtWhile(ctx: StmtWhileContext): Stmt = {
+        val loc = ctx.loc.copy(end = ctx.cpar.loc.end)
+        StmtWhile(ExprBuilder(ctx.expr), visit(ctx.stmt)) withLoc loc
+      }
 
       override def visitStmtFor(ctx: StmtForContext): Stmt = {
         val inits = if (ctx.linits != null) visit(ctx.linits.linit) else Nil
         val cond = if (ctx.expr != null) Some(ExprBuilder(ctx.expr)) else None
         val steps = if (ctx.lsteps != null) visit(ctx.lsteps.lstep) else Nil
         val body = visit(ctx.stmt)
-        StmtFor(inits, cond, steps, body) withLoc ctx.loc
+        val loc = ctx.loc.copy(end = ctx.cpar.loc.end)
+        StmtFor(inits, cond, steps, body) withLoc loc
       }
 
-      override def visitStmtLet(ctx: StmtLetContext): Stmt =
-        StmtLet(visit(ctx.linits.linit), stmts(visit(ctx.stmt))) withLoc ctx.loc
+      override def visitStmtLet(ctx: StmtLetContext): Stmt = {
+        val loc = ctx.loc.copy(end = ctx.cpar.loc.end)
+        StmtLet(visit(ctx.linits.linit), stmts(visit(ctx.stmt))) withLoc loc
+      }
 
       override def visitStmtFence(ctx: StmtFenceContext): Stmt =
         StmtFence() withLoc ctx.loc

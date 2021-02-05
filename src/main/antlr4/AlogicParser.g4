@@ -185,29 +185,29 @@ rec
 ////////////////////////////////////////////////////////////////////////////////
 
 stmt
-  : desc                                                        # StmtDesc
-  | imprt                                                       # StmtImport
-  | usng                                                        # StmtUsing
-  | from                                                        # StmtFrom
-  | assertion                                                   # StmtAssertion
-  | '{' stmt* '}'                                               # StmtBlock
-  | 'if' '(' expr ')' thenStmt=stmt ('else' elseStmt=stmt)?     # StmtIf
-  | 'case' '(' expr ')' '{' kase* '}'                           # StmtCase
-  | 'loop' '{' stmt* '}'                                        # StmtLoop
-  | 'do' '{' stmt* '}' 'while' '(' expr ')' ';'                 # StmtDo
-  | 'while' '(' expr ')' '{' stmt* '}'                          # StmtWhile
-  | 'for' '(' linits?  ';' expr? ';' lsteps? ')' '{' stmt* '}'  # StmtFor
-  | 'let' '(' linits ')' stmt                                   # StmtLet
-  | 'fence' ';'                                                 # StmtFence
-  | 'break' ';'                                                 # StmtBreak
-  | 'continue' ';'                                              # StmtContinue
-  | 'goto' expr ';'                                             # StmtGoto
-  | 'return' expr? ';'                                          # StmtReturn
-  | expr point='=' expr ';'                                     # StmtAssign
-  | expr ASSIGNOP expr ';'                                      # StmtUpdate
-  | expr op=('++'|'--') ';'                                     # StmtPost
-  | expr ';'                                                    # StmtExpr
-  | 'wait' expr? ';'                                            # StmtWait
+  : desc                                                            # StmtDesc
+  | imprt                                                           # StmtImport
+  | usng                                                            # StmtUsing
+  | from                                                            # StmtFrom
+  | assertion                                                       # StmtAssertion
+  | '{' stmt* '}'                                                   # StmtBlock
+  | 'if' '(' expr cpar=')' thenStmt=stmt ('else' elseStmt=stmt)?    # StmtIf
+  | 'case' '(' expr cpar=')' '{' kase* '}'                          # StmtCase
+  | keyword='loop' '{' stmt* '}'                                    # StmtLoop
+  | keyword='do' '{' stmt* '}' 'while' '(' expr ')' ';'             # StmtDo
+  | 'while' '(' expr cpar=')' '{' stmt* '}'                         # StmtWhile
+  | 'for' '(' linits?  ';' expr? ';' lsteps? cpar=')' '{' stmt* '}' # StmtFor
+  | 'let' '(' linits cpar=')' stmt                                  # StmtLet
+  | 'fence' ';'                                                     # StmtFence
+  | 'break' ';'                                                     # StmtBreak
+  | 'continue' ';'                                                  # StmtContinue
+  | 'goto' expr ';'                                                 # StmtGoto
+  | 'return' expr? ';'                                              # StmtReturn
+  | expr point='=' expr ';'                                         # StmtAssign
+  | expr ASSIGNOP expr ';'                                          # StmtUpdate
+  | expr op=('++'|'--') ';'                                         # StmtPost
+  | expr ';'                                                        # StmtExpr
+  | 'wait' expr? ';'                                                # StmtWait
   ;
 
 kase
