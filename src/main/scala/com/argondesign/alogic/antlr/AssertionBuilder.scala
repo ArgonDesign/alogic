@@ -52,7 +52,7 @@ object AssertionBuilder extends BaseBuilder[AssertionContext, Assertion] {
             throw Ice("Cannot parse 'unreachable' without source context")
           case _ => Some(true)
         }
-        AssertionUnreachable(knownComb, msgOpt) withLoc ctx.loc
+        AssertionUnreachable(knownComb, None, msgOpt) withLoc ctx.loc
       }
     }
 

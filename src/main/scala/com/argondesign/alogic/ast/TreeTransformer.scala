@@ -481,7 +481,9 @@ abstract class TreeTransformer extends (Tree => Tree) with ChainingSyntax {
     case node: AssertionStatic =>
       val cond = walk(node.cond)
       TreeCopier(node)(cond)
-    case node: AssertionUnreachable => node
+    case node: AssertionUnreachable =>
+      val condOpt = walk(node.condOpt)
+      TreeCopier(node)(condOpt)
   }
 
   final private def walkChildrenPkg(tree: Pkg): Tree = tree match {

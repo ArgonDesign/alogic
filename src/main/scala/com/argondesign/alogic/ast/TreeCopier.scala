@@ -874,6 +874,14 @@ object TreeCopier {
       tree.copy(cond = cond.asInstanceOf[Expr]) withLocOf tree
     }
 
+  def apply(tree: AssertionUnreachable)(condOpt: Option[Tree]): AssertionUnreachable =
+    if (condOpt eq tree.condOpt) {
+      tree
+    } else {
+      assert(condOpt.forall(_.isInstanceOf[Expr]))
+      tree.copy(condOpt = condOpt.asInstanceOf[Option[Expr]]) withLocOf tree
+    }
+
   //////////////////////////////////////////////////////////////////////////////
   // Pkg
   //////////////////////////////////////////////////////////////////////////////

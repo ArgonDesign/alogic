@@ -557,7 +557,7 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
     stmts.exists {
       // Type of 'unreachable' statement might be already set when walking the
       // body of a StmtBlock or StmtLet contained in an outer statement.
-      case stmt @ StmtSplice(AssertionUnreachable(None, _)) if !stmt.hasTpe =>
+      case stmt @ StmtSplice(AssertionUnreachable(None, _, _)) if !stmt.hasTpe =>
         false
       case StmtSplice(DescGenScope(_, _, body)) =>
         computeTypeOfAmbiguousUnreachableStatements(body)
@@ -578,7 +578,7 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
     stmts.foreach {
       // Type of 'unreachable' statement might be already set when walking the
       // body of a StmtBlock or StmtLet contained in an outer statement.
-      case stmt @ StmtSplice(a @ AssertionUnreachable(None, _)) if !stmt.hasTpe =>
+      case stmt @ StmtSplice(a @ AssertionUnreachable(None, _, _)) if !stmt.hasTpe =>
         TypeAssigner(a)
         stmt.withTpe(if (ctrl) TypeCtrlStmt else TypeCombStmt)
       case StmtSplice(DescGenScope(_, _, body)) =>

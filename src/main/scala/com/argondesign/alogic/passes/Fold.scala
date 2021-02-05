@@ -142,12 +142,17 @@ final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer 
     case _ => None
   }
 
-  private def transformAssertion(cond: Expr, msgOpt: Option[String], assertion: Tree): Tree =
+  private def transformAssertion(
+      cond: Expr,
+      msgOpt: Option[String],
+      assertion: Tree,
+      msg: String
+    ): Tree =
     cond.valueOption match {
       case Some(v) =>
         if (v == 0) {
           val suffix = msgOpt.map(": " + _).getOrElse("")
-          cc.error(assertion.loc, s"Assertion is always false$suffix")
+          cc.error(assertion.loc, s"$msg$suffix")
         }
         Stump
       case None => assertion
@@ -185,8 +190,12 @@ final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer 
     case EntClockedProcess(_, _, stmts) if empty(stmts) => Stump
 
     // Fail on known false assertions and drop ones that always hold
-    case AssertionAssert(cond, msgOpt) => transformAssertion(cond, msgOpt, tree)
-    case AssertionAssume(cond, msgOpt) => transformAssertion(cond, msgOpt, tree)
+    case AssertionAssert(cond, msgOpt) =>
+      transformAssertion(cond, msgOpt, tree, "Assertion is always false")
+    case AssertionAssume(cond, msgOpt) =>
+      transformAssertion(cond, msgOpt, tree, "Assertion is always false")
+    case AssertionUnreachable(_, Some(cond), msgOpt) =>
+      transformAssertion(cond, msgOpt, tree, "'unreachable' statement is always reached")
 
     //
     case _ => tree

@@ -212,13 +212,14 @@ object Trees {
   // Assertion
   //////////////////////////////////////////////////////////////////////////////
 
+  // format: off
   sealed trait Assertion extends Tree with Spliceable
 
   case class AssertionAssert(cond: Expr, msgOpt: Option[String]) extends Assertion
   case class AssertionAssume(cond: Expr, msgOpt: Option[String]) extends Assertion
   case class AssertionStatic(cond: Expr, msgOpt: Option[String]) extends Assertion
-  case class AssertionUnreachable(knownComb: Option[Boolean], msgOpt: Option[String])
-      extends Assertion
+  case class AssertionUnreachable(knownComb: Option[Boolean], condOpt: Option[Expr], msgOpt: Option[String]) extends Assertion
+  // format: on
 
   //////////////////////////////////////////////////////////////////////////////
   // Package (file) contents

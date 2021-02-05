@@ -277,14 +277,16 @@ trait TreePrintOps {
   // format: on
 
   final private def v(tree: Assertion)(implicit indent: Int): String = tree match {
-    case AssertionAssert(cond, Some(msg))   => s"""assert ${v(cond)}, "$msg";"""
-    case AssertionAssert(cond, None)        => s"assert ${v(cond)};"
-    case AssertionAssume(cond, Some(msg))   => s"""assume ${v(cond)}, "$msg";"""
-    case AssertionAssume(cond, None)        => s"assume ${v(cond)};"
-    case AssertionStatic(cond, Some(msg))   => s"""static assert ${v(cond)}, "$msg";"""
-    case AssertionStatic(cond, None)        => s"static assert ${v(cond)};"
-    case AssertionUnreachable(_, Some(msg)) => s"""unreachable "$msg";"""
-    case AssertionUnreachable(_, None)      => "unreachable;"
+    case AssertionAssert(cond, Some(msg))               => s"""assert ${v(cond)}, "$msg";"""
+    case AssertionAssert(cond, None)                    => s"assert ${v(cond)};"
+    case AssertionAssume(cond, Some(msg))               => s"""assume ${v(cond)}, "$msg";"""
+    case AssertionAssume(cond, None)                    => s"assume ${v(cond)};"
+    case AssertionStatic(cond, Some(msg))               => s"""static assert ${v(cond)}, "$msg";"""
+    case AssertionStatic(cond, None)                    => s"static assert ${v(cond)};"
+    case AssertionUnreachable(_, None, Some(msg))       => s"""unreachable "$msg";"""
+    case AssertionUnreachable(_, None, None)            => "unreachable;"
+    case AssertionUnreachable(_, Some(cond), Some(msg)) => s"""unreachable ${v(cond)} "$msg";"""
+    case AssertionUnreachable(_, Some(cond), None)      => s"unreachable ${v(cond)};"
   }
 
   final private def v(tree: Pkg)(implicit indent: Int): String = tree match {

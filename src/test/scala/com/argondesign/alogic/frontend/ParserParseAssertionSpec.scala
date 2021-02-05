@@ -47,13 +47,13 @@ final class ParserParseAssertionSpec extends AnyFreeSpec with AlogicTest {
 
     "unreachable with no message" in {
       "unreachable;".asTree[Assertion](SourceContext.Package) shouldBe {
-        AssertionUnreachable(Some(true), None)
+        AssertionUnreachable(Some(true), None, None)
       }
     }
 
     "unreachable with message" in {
       """unreachable "msg";""".asTree[Assertion](SourceContext.Package) shouldBe {
-        AssertionUnreachable(Some(true), Some("msg"))
+        AssertionUnreachable(Some(true), None, Some("msg"))
       }
     }
   }

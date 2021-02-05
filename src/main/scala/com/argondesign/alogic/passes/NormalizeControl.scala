@@ -61,8 +61,8 @@ object NormalizeControlTransform extends StatelessTreeTransformer {
       stmt match {
         // Comb statement looking unreachable in final position means it will be
         // reached if the function is called. Accept it. will convert to control below.
-        case StmtSplice(AssertionUnreachable(Some(true), _)) => true
-        case _                                               => false
+        case StmtSplice(AssertionUnreachable(Some(true), _, _)) => true
+        case _                                                  => false
       }
     })
     stmt match {

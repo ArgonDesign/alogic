@@ -1,0 +1,11 @@
+fsm stmt_unreachable_22 {
+  void main() {
+    u2 baz = 2;
+    case (baz) {
+      0: baz = 0;
+      default: unreachable;
+    }
+    fence;
+  }
+}
+// :6: ERROR: 'unreachable' statement is always reached

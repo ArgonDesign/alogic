@@ -133,7 +133,7 @@ object TypeAssigner {
   private def kind(tree: StmtSplice): Type = tree.tree match {
     case DescGenScope(_, _, Nil)  => unreachable
     case DescGenScope(_, _, body) => body.last.tpe
-    case AssertionUnreachable(knownComb, _) =>
+    case AssertionUnreachable(knownComb, _, _) =>
       knownComb match {
         case Some(true)  => TypeCombStmt
         case Some(false) => TypeCtrlStmt

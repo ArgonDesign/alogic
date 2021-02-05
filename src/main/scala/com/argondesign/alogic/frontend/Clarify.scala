@@ -230,7 +230,7 @@ object Clarify {
         // Fix ambiguous 'unreachable' statements
         ////////////////////////////////////////////////////////////////////////
 
-        case StmtSplice(a @ AssertionUnreachable(None, _)) =>
+        case StmtSplice(a @ AssertionUnreachable(None, _, _)) =>
           StmtSplice {
             if (tree.tpe.isCombStmt) {
               TypeAssigner(a.copy(knownComb = Some(true)) withLocOf a)
