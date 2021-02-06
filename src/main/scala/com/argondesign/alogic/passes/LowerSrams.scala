@@ -135,6 +135,7 @@ final class LowerSrams(implicit cc: CompilerContext) extends StatefulTreeTransfo
                 val addrSymbol = Symbol("addr", tree.loc) tap { _.kind = addrKind }
                 val wdataSymbol = Symbol("wdata", tree.loc) tap { _.kind = kind }
                 val oSymbol = Symbol(oName, tree.loc)
+                oSymbol.scopeName = entitySymbol.scopeName
                 val oKind = TypeType(TypeRecord(oSymbol, List(weSymbol, addrSymbol, wdataSymbol)))
                 oSymbol.kind = oKind
                 cc.syncRegFactory(oKind.kind)

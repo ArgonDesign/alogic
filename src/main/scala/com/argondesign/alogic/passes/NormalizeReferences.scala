@@ -99,11 +99,7 @@ private object Analyze {
 
 }
 
-final class NormalizeReferencesA(
-    requiredSymbolsMap: Map[Symbol, Set[Symbol]]
-  )(
-    implicit
-    cc: CompilerContext)
+final class NormalizeReferencesA(requiredSymbolsMap: Map[Symbol, Set[Symbol]])
     extends StatefulTreeTransformer {
 
   // Map of ('containing entity', 'referenced symbol') -> 'propagated symbol'
@@ -148,11 +144,6 @@ final class NormalizeReferencesA(
                 }
               }
             }
-        }
-
-        // Also, rename to contain parent name
-        if (enclosingSymbols.nonEmpty) {
-          decl.symbol.name = entitySymbol.name + cc.sep + decl.symbol.name
         }
 
       // Build definitions of additional symbols added to this entity up front

@@ -178,7 +178,7 @@ object RenameSymbols {
         // Process each Entity, grouped by name
         input.asPar
           .collect { case (decl: DeclEntity, _) => decl }
-          .groupBy(_.symbol.name) foreach {
+          .groupBy(_.symbol.hierName) foreach {
           case (_, eDecls) =>
             // Process entities with the same name in a defined order to ensure
             // deterministic output.
@@ -203,6 +203,8 @@ object RenameSymbols {
 
                 // Only run on very last rename pass (just before code generation)
                 if (last) {
+                  // Use the full hierarchical name
+                  eSymbol.name = eSymbol.hierName
                   // Make all names valid target language identifiers
                   (eSymbol :: symbols) foreach { symbol =>
                     val newName = symbol.name
