@@ -50,6 +50,8 @@ case class Settings(
     // Sandbox path for file accesses, if any
     sandboxPathOpt: Option[Path] = None,
     //
-    parallel: Boolean = false) {
+    parallel: Boolean = false,
+    // Emit schematic diagrams
+    schematic: Boolean = false) {
   require(sandboxPathOpt.forall(path => path.toFile.getCanonicalFile.toPath == path))
 }

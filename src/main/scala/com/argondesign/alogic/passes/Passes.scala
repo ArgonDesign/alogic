@@ -58,6 +58,7 @@ object Passes extends ChainingSyntax {
         ConvertControl andThen
         SimplifyStates andThen
         CreateStateSystem andThen
+        WriteSchematic andThen
         Replace1Stacks andThen
         // TODO: Replace1Arrays
         DefaultStorage andThen

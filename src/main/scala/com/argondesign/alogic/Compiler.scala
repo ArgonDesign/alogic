@@ -66,7 +66,8 @@ object Compiler {
         combRecLimit = options.combRecLimit(),
         assertions = !options.noAssertions(),
         stats = options.stats(),
-        parallel = options.parallelism.toOption.exists(_ > 1)
+        parallel = options.parallelism.toOption.exists(_ > 1),
+        schematic = options.schematic()
       )
 
       // Add some defaults for convenience

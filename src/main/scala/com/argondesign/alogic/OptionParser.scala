@@ -355,6 +355,11 @@ class OptionParser(args: Seq[String], messageBuffer: MessageBuffer, sandboxPathO
     case n if n <= 0 => "parallelism option must be >= 1"
   }
 
+  val schematic = opt[Boolean](
+    noshort = true,
+    descr = "Emit schematic diagram of each top level entity"
+  )
+
   // There is no standard library call to check if the console is a terminal,
   // so we pass this hidden option from the wrapper script to help ourselves out
   val stderrisatty = toggle(noshort = true, hidden = true)
