@@ -1,0 +1,71 @@
+network nested_00 {
+  in       u2 i;
+  out wire u2 o;
+
+  pipeline u1 a;
+  pipeline u1 b;
+
+  new fsm stage_0 {
+    out wire pipeline;
+
+    void main() {
+      {b, a} = i;
+      out.write();
+      fence;
+    }
+  }
+
+  stage_0 -> stage_12;
+
+  new network stage_12 {
+    in       pipeline;
+    out wire pipeline;
+
+    pipeline u2 c;
+
+    new fsm stage_1 {
+      out wire pipeline;
+
+      void main() {
+        in.read();
+        c = {a, b};
+        out.write();
+        fence;
+      }
+    }
+
+    stage_1 -> stage_2;
+
+    new fsm stage_2 {
+      in pipeline;
+
+      void main() {
+        in.read();
+        {b, a} = ~c;
+        out.write();
+        fence;
+      }
+    }
+  }
+
+  stage_12 -> stage_3;
+
+  new fsm stage_3 {
+    in pipeline;
+
+    void main() {
+      in.read();
+      o = {a, b};
+      fence;
+    }
+  }
+}
+
+// @fec/golden {{{
+//  module nested_00(
+//    input  wire [1:0] i,
+//    output wire [1:0] o
+//  );
+//    assign o = ~i;
+//  endmodule
+// }}}

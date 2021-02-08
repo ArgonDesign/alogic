@@ -13,6 +13,10 @@ trait DefnEntityOps { this: DefnEntity =>
 
   final lazy val defns: List[Defn] = body collect { case EntSplice(defn: Defn) => defn }
 
+  final lazy val entities: List[DefnEntity] = defns collect {
+    case defn: DefnEntity => defn
+  }
+
   final lazy val instances: List[DefnInstance] = defns collect {
     case defn: DefnInstance => defn
   }

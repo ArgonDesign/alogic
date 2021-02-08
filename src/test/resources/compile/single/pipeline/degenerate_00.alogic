@@ -1,0 +1,28 @@
+network degenerate_00 {
+  in  u2 i;
+  out u2 o;
+
+  pipeline bool p;
+  pipeline bool q;
+
+  new fsm a {
+    out pipeline;
+    void main() {
+      {p, q} = i.read();
+      out.write();
+      fence;
+    }
+  }
+
+  // Pipeline ports unconnected
+
+  new fsm b {
+    in pipeline;
+    void main() {
+      in.read();
+      o.write({q, p});
+      fence;
+    }
+  }
+}
+// TODO: Error port is unconnected

@@ -1,0 +1,23 @@
+network degenerate_01 {
+  in       u16 i;
+  out wire u16 o;
+
+  pipeline u16[4] t;
+
+  new fsm stage_0 {
+    void main() {
+      t[0] = i;
+      o = t[0];
+      fence;
+    }
+  }
+}
+
+// @fec/golden {{{
+//  module degenerate_01(
+//    input  wire [15:0] i,
+//    output wire [15:0] o
+//  );
+//    assign o = i;
+//  endmodule
+// }}}

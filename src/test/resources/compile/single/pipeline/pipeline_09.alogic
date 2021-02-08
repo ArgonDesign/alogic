@@ -1,4 +1,3 @@
-// @ignore
 network pipeline_09 {
   in  u2 i;
   out u2 o;

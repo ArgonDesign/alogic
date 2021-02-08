@@ -1,4 +1,3 @@
-// @ignore
 network port_access_02 {
   in  bool i;
   out bool o;

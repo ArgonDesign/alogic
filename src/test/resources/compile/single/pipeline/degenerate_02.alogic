@@ -1,0 +1,10 @@
+network degenerate_02 {
+  pipeline bool[1 + 1] bar;
+
+  new fsm stage0 {
+    void main() {
+      bar[0] |= false;
+      fence;
+    }
+  }
+}
