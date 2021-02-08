@@ -113,14 +113,15 @@ object WriteSchematic extends PairsTransformerPass {
         case _ => None // Ignore
       }
 
-    def instances(decl: DeclEntity, defn: DefnEntity): Seq[Map[String, Any]] = {
+    def instances(decl: DeclEntity, defn: DefnEntity, depth: Int): Seq[Map[String, Any]] = {
       decl.decls collect {
         case decl: DeclInstance =>
           val eSymbol = decl.symbol.kind.asEntity.symbol
           entity(
             Some(decl.symbol),
             eSymbol.decl.asInstanceOf[DeclEntity],
-            eSymbol.defn.asInstanceOf[DefnEntity]
+            eSymbol.defn.asInstanceOf[DefnEntity],
+            depth + 1
           )
         case DeclSram(symbol, _, size, _) =>
           ListMap(
@@ -146,7 +147,8 @@ object WriteSchematic extends PairsTransformerPass {
     def entity(
         iSymbolOpt: Option[Symbol],
         decl: DeclEntity,
-        defn: DefnEntity
+        defn: DefnEntity,
+        depth: Int
       ): Map[String, Any] = {
       nodeIds(iSymbolOpt) = ids.head
       val cssClass = defn.variant match {
@@ -159,13 +161,13 @@ object WriteSchematic extends PairsTransformerPass {
         "id" -> ids.next(),
         "hideChildren" -> true,
         "ports" -> ports(iSymbolOpt, decl.ports),
-        "_children" -> instances(decl, defn),
+        "_children" -> instances(decl, defn, depth),
         "_edges" -> defn.assigns.flatMap(assign(iSymbolOpt, _)),
         "hwMeta" -> ListMap[String, Any](
           "name" -> iSymbolOpt.map(_.name).getOrElse("TOP"),
           "bodyText" -> decl.symbol.name,
           "maxId" -> (ids.head - 1),
-          "cssClass" -> s"entity $cssClass"
+          "cssClass" -> s"entity $cssClass ${if (depth % 2 == 0) "even" else "odd"}"
         ),
         "properties" -> ListMap[String, Any](
           "org.eclipse.elk.layered.mergeEdges" -> 1,
@@ -177,7 +179,7 @@ object WriteSchematic extends PairsTransformerPass {
       )
     }
 
-    val hierarchy = entity(None, decl, defn)
+    val hierarchy = entity(None, decl, defn, 0)
 
     val (topLevelPorts, topLevelEdges) = decl.ports.map { symbol =>
       val topNode = ids.next()
@@ -272,8 +274,11 @@ object WriteSchematic extends PairsTransformerPass {
          |    .d3-hwschematic .node.entity.fsm {
          |      fill: #e0ffe0;
          |    }
-         |    .d3-hwschematic .node.entity.net {
+         |    .d3-hwschematic .node.entity.net.even {
          |      fill: #e0e0ff;
+         |    }
+         |    .d3-hwschematic .node.entity.net.odd {
+         |      fill: #c0c0ff;
          |    }
          |    .d3-hwschematic .node.entity.ver {
          |      fill: #e0e0e0;
