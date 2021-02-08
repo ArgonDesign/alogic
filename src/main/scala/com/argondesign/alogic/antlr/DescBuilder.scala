@@ -130,7 +130,7 @@ object DescBuilder extends BaseBuilder[DescContext, Desc] with ChainingSyntax {
           val spec = ExprBuilder(ctx.spec)
           DescIn(ident, Nil, spec, fct) withLoc loc
         } else {
-          DescPipeIn(ident, Nil, fct) withLoc loc
+          DescPipeIn(ident, Nil, None, fct) withLoc loc
         }
       }
 
@@ -147,7 +147,7 @@ object DescBuilder extends BaseBuilder[DescContext, Desc] with ChainingSyntax {
           if (ctx.init != null) {
             mb.error(ctx.init, "Pipeline output port cannot have an initializer")
           }
-          DescPipeOut(ident, Nil, fct, stt) withLoc loc
+          DescPipeOut(ident, Nil, None, fct, stt) withLoc loc
         }
       }
 

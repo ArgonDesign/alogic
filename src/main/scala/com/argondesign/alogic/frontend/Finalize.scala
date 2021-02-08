@@ -181,10 +181,10 @@ private[frontend] object Finalize {
         }
 
         override def enter(tree: Tree): Option[Tree] = tree tap {
-          case DescPackage(Sym(symbol), _, _)          => hierarcy.push(symbol)
-          case Splice(DescGenScope(Sym(symbol), _, _)) => hierarcy.push(symbol)
-          case _: DescGenScope                         => unreachable // See below why
-          case Desc(Sym(symbol))                       =>
+          case DescPackage(Sym(symbol), _, _)             => hierarcy.push(symbol)
+          case Splice(DescGenScope(Sym(symbol), _, _, _)) => hierarcy.push(symbol)
+          case _: DescGenScope                            => unreachable // See below why
+          case Desc(Sym(symbol))                          =>
             // Attach the hierarchical scope name
             symbol.scopeName = hierarcy.reverse
               .dropWhile(_.kind.isPackage) // Drop leading package

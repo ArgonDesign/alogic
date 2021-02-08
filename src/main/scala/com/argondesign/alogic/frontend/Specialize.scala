@@ -30,10 +30,10 @@ private[frontend] object Specialize {
       case Splice(spliceable) => spliceable
       case other              => other
     } flatMap {
-      case DescGenScope(_, _, body) => gatherParamDescs(body)
-      case d: DescParam             => List(d)
-      case d: DescParamType         => List(d)
-      case _                        => Nil
+      case DescGenScope(_, _, body, _) => gatherParamDescs(body)
+      case d: DescParam                => List(d)
+      case d: DescParamType            => List(d)
+      case _                           => Nil
     }
 
     gatherParamDescs(body)
@@ -108,23 +108,25 @@ private[frontend] object Specialize {
                 body: List[T],
                 mkDesc: (Sym, List[T]) => Desc
               ): FinalResult[Symbol] = {
+              // Construct new symbol representing the specialized
+              // definition. We use a temporary name to start with, as
+              // the proper name can only be determined after type
+              // checking the result
+              val newSymbol = Symbol("`specialization-temp", symbol.loc)
+              // Make an initial definition so we can examine enclosing symbols
+              mkDesc(Sym(newSymbol), body)
               @tailrec
               def loop(body: List[T]): FinalResult[Symbol] =
-                fe.elaborate(body, symtab, Some((loc, params))) match {
+                fe.elaborate(body, Some(newSymbol), symtab, Some((loc, params))) match {
                   case Success(body) =>
-                    // Construct new symbol representing the specialized
-                    // definition. We use a temporary name to start with, as
-                    // the proper name can only be determined after type
-                    // checking the result
-                    val newSymbol = Symbol("@@@specialization-temp@@@", symbol.loc)
-                    // Construct the new definition. This will attach it to the
-                    // symbol.
+                    // Construct the specialized definition. This will attach
+                    // it to the symbol.
                     val newDesc = mkDesc(Sym(newSymbol) withLocOf desc.ref, body) withLocOf desc
                     // As the elaboration of the body is complete, the
                     // specialized definition must also type check at this point.
                     fe.typeCheck(newDesc) tapEach { _ =>
-                      // Assign the name of the result symbol, now that we
-                      // type checking has passed
+                      // Assign the name of the result symbol, now that type
+                      // checking has passed and we know actual parameter values
                       val newName = symbol.name + paramsSuffix(body)
                       newSymbol.name = newName
                       newSymbol.origName = newName
@@ -149,7 +151,10 @@ private[frontend] object Specialize {
                       // We are returning the new symbol
                       newSymbol
                     }
-                  case Partial(body, _) => loop(body)
+                  case Partial(body, _) =>
+                    // Update initial definition so we can examine enclosing symbols
+                    mkDesc(Sym(newSymbol), body)
+                    loop(body)
                   case unknown: Unknown => unknown
                   case failure: Failure => failure
                   case _                => unreachable // Success covers the rest

@@ -220,11 +220,13 @@ abstract class TreeTransformer extends (Tree => Tree) with ChainingSyntax {
     case node: DescPipeIn =>
       val ref = walk(node.ref)
       val attr = walk(node.attr)
-      TreeCopier(node)(ref, attr)
+      val specOpt = walk(node.specOpt)
+      TreeCopier(node)(ref, attr, specOpt)
     case node: DescPipeOut =>
       val ref = walk(node.ref)
       val attr = walk(node.attr)
-      TreeCopier(node)(ref, attr)
+      val specOpt = walk(node.specOpt)
+      TreeCopier(node)(ref, attr, specOpt)
     case node: DescParam =>
       val ref = walk(node.ref)
       val attr = walk(node.attr)
@@ -362,8 +364,12 @@ abstract class TreeTransformer extends (Tree => Tree) with ChainingSyntax {
     case node: DeclPipeVar =>
       val spec = walk(node.spec)
       TreeCopier(node)(spec)
-    case node: DeclPipeIn  => node
-    case node: DeclPipeOut => node
+    case node: DeclPipeIn =>
+      val pipeVars = walk(node.pipeVars)
+      TreeCopier(node)(pipeVars)
+    case node: DeclPipeOut =>
+      val pipeVars = walk(node.pipeVars)
+      TreeCopier(node)(pipeVars)
     case node: DeclConst =>
       val spec = walk(node.spec)
       TreeCopier(node)(spec)
@@ -458,7 +464,7 @@ abstract class TreeTransformer extends (Tree => Tree) with ChainingSyntax {
     case node: UsingAll =>
       val expr = walk(node.expr)
       TreeCopier(node)(expr)
-    case node: UsingGenLoopBody =>
+    case node: UsingGenBody =>
       val expr = walk(node.expr)
       TreeCopier(node)(expr)
   }

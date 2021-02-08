@@ -110,9 +110,9 @@ final class RemoveStructuralSharing extends StatelessTreeTransformer {
         case node: ImportOne     => node.copy()
         case node: ImportPending => node.copy()
 
-        case node: UsingOne         => node.copy()
-        case node: UsingAll         => node.copy()
-        case node: UsingGenLoopBody => node.copy()
+        case node: UsingOne     => node.copy()
+        case node: UsingAll     => node.copy()
+        case node: UsingGenBody => node.copy()
 
         case node: FromOne => node.copy()
         case node: FromAll => node.copy()

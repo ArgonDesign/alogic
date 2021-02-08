@@ -69,15 +69,15 @@ object ConnectChecks {
     // Given the type of a an expression in a connect, return the type of
     // flow control it has (if any), assuming it appears on the given side.
     def flowControlType(kind: Type, onLhs: Boolean): Option[FlowControlType] = kind match {
-      case TypeIn(_, FlowControlTypeNone)      => None
-      case TypeIn(_, fc)                       => Some(fc)
-      case TypeOut(_, FlowControlTypeNone, _)  => None
-      case TypeOut(_, fc, _)                   => Some(fc)
-      case TypePipeIn(FlowControlTypeNone)     => None
-      case TypePipeIn(fc)                      => Some(fc)
-      case TypePipeOut(FlowControlTypeNone, _) => None
-      case TypePipeOut(fc, _)                  => Some(fc)
-      case kind: TypeEntity                    =>
+      case TypeIn(_, FlowControlTypeNone)         => None
+      case TypeIn(_, fc)                          => Some(fc)
+      case TypeOut(_, FlowControlTypeNone, _)     => None
+      case TypeOut(_, fc, _)                      => Some(fc)
+      case TypePipeIn(_, FlowControlTypeNone)     => None
+      case TypePipeIn(_, fc)                      => Some(fc)
+      case TypePipeOut(_, FlowControlTypeNone, _) => None
+      case TypePipeOut(_, fc, _)                  => Some(fc)
+      case kind: TypeEntity                       =>
         // Check the cardinal port
         kind(if (onLhs) "out" else "in") flatMap { symbol => flowControlType(symbol.kind, onLhs) }
       case _ => None
@@ -256,9 +256,9 @@ object ConnectChecks {
 
     def checkValidStorage(rhs: Expr): Iterator[Message] = {
       def outWithNonDefaultStorage(symbol: Symbol): Boolean = symbol.kind match {
-        case TypeOut(_, _, st)  => st != StorageTypeDefault
-        case TypePipeOut(_, st) => st != StorageTypeDefault
-        case _                  => false
+        case TypeOut(_, _, st)     => st != StorageTypeDefault
+        case TypePipeOut(_, _, st) => st != StorageTypeDefault
+        case _                     => false
       }
       rhs flatCollect {
         case expr @ ExprSym(symbol) if outWithNonDefaultStorage(symbol) =>

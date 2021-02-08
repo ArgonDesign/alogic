@@ -209,16 +209,16 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
     def hasCtrl(trees: List[Tree]): Boolean =
       trees
         .exists {
-          case StmtSplice(DescGenScope(_, _, body)) => hasCtrl(body)
-          case stmt: Stmt                           => stmt.tpe.isCtrlStmt
-          case _                                    => unreachable
+          case StmtSplice(DescGenScope(_, _, body, _)) => hasCtrl(body)
+          case stmt: Stmt                              => stmt.tpe.isCtrlStmt
+          case _                                       => unreachable
         }
     def lastStmt(trees: List[Tree]): Option[Stmt] =
       trees.lastOption
         .flatMap {
-          case StmtSplice(DescGenScope(_, _, body)) => lastStmt(body)
-          case stmt: Stmt                           => Some(stmt)
-          case _                                    => unreachable
+          case StmtSplice(DescGenScope(_, _, body, _)) => lastStmt(body)
+          case stmt: Stmt                              => Some(stmt)
+          case _                                       => unreachable
         }
     val lastStmtOpt = lastStmt(stmts)
     val lastIsCtrl = lastStmtOpt.exists(_.tpe == TypeCtrlStmt)
@@ -559,7 +559,7 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
       // body of a StmtBlock or StmtLet contained in an outer statement.
       case stmt @ StmtSplice(AssertionUnreachable(None, _, _)) if !stmt.hasTpe =>
         false
-      case StmtSplice(DescGenScope(_, _, body)) =>
+      case StmtSplice(DescGenScope(_, _, body, _)) =>
         computeTypeOfAmbiguousUnreachableStatements(body)
       case StmtBlock(body) =>
         computeTypeOfAmbiguousUnreachableStatements(body)
@@ -581,7 +581,7 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
       case stmt @ StmtSplice(a @ AssertionUnreachable(None, _, _)) if !stmt.hasTpe =>
         TypeAssigner(a)
         stmt.withTpe(if (ctrl) TypeCtrlStmt else TypeCombStmt)
-      case StmtSplice(DescGenScope(_, _, body)) =>
+      case StmtSplice(DescGenScope(_, _, body, _)) =>
         setTypeOfAmbiguousUnreachableStatements(body, ctrl)
       case StmtBlock(body) =>
         setTypeOfAmbiguousUnreachableStatements(body, ctrl)

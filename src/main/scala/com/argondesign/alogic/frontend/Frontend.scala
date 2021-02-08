@@ -91,8 +91,13 @@ final class Frontend private (
               case _: PendingImport             => None
             } exists {
               _.desc match {
-                case _: DescGenIf | _: DescGenFor | _: DescGenRange | _: DescGenScope => true
-                case _                                                                => false
+                case _: DescGenIf | //
+                    _: DescGenFor | //
+                    _: DescGenRange | //
+                    _: DescGenScope =>
+                  true
+                case Desc(Sym(symbol)) => symbol.name.startsWith("`")
+                case _                 => false
               }
             }
           }
@@ -218,6 +223,7 @@ final class Frontend private (
 
   def typeOf(symbol: Symbol, loc: Loc, refresh: Boolean = false): FinalResult[Type] =
     guardCircular(PendingTypeOf(symbol), loc) {
+      if (symbol.name.startsWith("@@@")) ???
       TypeOf(symbol, refresh)
     }
 
@@ -252,10 +258,11 @@ final class Frontend private (
 
   def elaborate[T <: Tree: ListElaborable](
       trees: List[T],
+      enclosingSymbol: Option[Symbol],
       symtab: SymbolTable,
       paramsOpt: Option[(Loc, List[Arg])]
     ): Result[List[T]] =
-    Elaborate.list[T](trees, symtab, paramsOpt)
+    Elaborate.list[T](trees, enclosingSymbol, symtab, paramsOpt)
 
   def elaborate(
       source: Source
@@ -315,7 +322,7 @@ final class Frontend private (
       typeCheck(desc) map { _ => desc }
     } flatMap { // Specialize if parametrized
       case desc @ DescParametrized(_, _, _: DescPackage, _) =>
-        elaborate(params, Builtins.symbolTable, None)
+        elaborate(params, None, Builtins.symbolTable, None)
           .pipe {
             case result: FinalResult[List[Arg]] => result
             case Finished(result)               => Complete(result)

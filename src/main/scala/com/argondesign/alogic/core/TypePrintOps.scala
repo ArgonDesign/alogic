@@ -49,9 +49,9 @@ trait TypePrintOps { this: Type =>
     case TypeEntity(symbol, _)                => s"entity ${symbol.name}"
     case TypeIn(kind, fct)                    => s"in ${fct2String(fct)}${kind.toSource}"
     case TypeOut(kind, fct, st)               => s"out ${fct2String(fct)}${st2String(st)}${kind.toSource}"
-    case TypePipeVar(kind)                   => s"pipeline ${kind.toSource}"
-    case TypePipeIn(fct)                      => s"in ${fct2String(fct)}pipeline"
-    case TypePipeOut(fct, st)                 => s"out ${fct2String(fct)}${st2String(st)}pipeline"
+    case TypePipeVar(kind)                    => s"pipeline ${kind.toSource}"
+    case TypePipeIn(_, fct)                   => s"in ${fct2String(fct)}pipeline"
+    case TypePipeOut(_, fct, st)              => s"out ${fct2String(fct)}${st2String(st)}pipeline"
     case TypeParam(kind)                      => s"param ${kind.toSource}"
     case TypeConst(kind)                      => s"const ${kind.toSource}"
     case TypeGen(kind)                        => s"gen ${kind.toSource}"
@@ -73,7 +73,7 @@ trait TypePrintOps { this: Type =>
     case TypeNormalMethod(s, r, as)           => s"method ${r.toSource} ${s.name} ${as.map(_.toSource).mkString("(", ", ", ")")}"
     case TypeState(symbol)                    => s"state ${symbol.name}"
     case TypeMisc                             => this.toString
-    case TypeBuiltin                           => this.toString
+    case TypeBuiltin                          => this.toString
     case TypeError                            => this.toString
   }
   // format: on

@@ -20,6 +20,7 @@ import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.util.unreachable
 import com.argondesign.alogic.util.BigIntOps._
 
+import scala.annotation.tailrec
 import scala.util.chaining._
 
 private[frontend] object TypeOf {
@@ -74,12 +75,13 @@ private[frontend] object TypeOf {
 
   // Extract list of symbols, defined by trees
   private def definedSymbols(
-      trees: List[Tree]
+      trees: List[Tree],
+      filter: Desc => Boolean = _ => true
     )(
       implicit
       fe: Frontend
     ): FinalResult[List[Symbol]] =
-    trees collect {
+    trees.iterator collect {
       case Splice(tree: Tree) => tree
       case tree               => tree
     } filter {
@@ -92,10 +94,17 @@ private[frontend] object TypeOf {
       case d: DescGenFor   => Unknown(ReasonUnelaborated(d))
       case d: DescGenRange => Unknown(ReasonUnelaborated(d))
       case Desc(i: Ident)  => Unknown(ReasonUnelaborated(i))
-      case Desc(Sym(s))    => fe.typeOf(s, s.loc) map { _ => s }
+      case d: Desc         => Complete(d)
       case _               => unreachable
+    } collect {
+      case Complete(d: Desc) if filter(d) => Complete(d.symbol)
+      case unknown: Unknown               => unknown
     } pipe {
-      _.distil
+      _.toList.distil
+    } flatMap { symbols =>
+      symbols.map { s =>
+        fe.typeOf(s, s.loc) map { _ => s }
+      }.distil
     }
 
   private def portSymbols(
@@ -112,6 +121,40 @@ private[frontend] object TypeOf {
     }
   }
 
+  private def pipelineVariableSymbolsWithin(
+      symbol: Symbol // The entity we are examining
+    )(
+      implicit
+      fe: Frontend
+    ): FinalResult[List[Symbol]] = {
+    val body = symbol.desc match {
+      case DescEntity(_, _, _, body)    => body
+      case DescSingleton(_, _, _, body) => body
+      case _                            => unreachable
+    }
+    // There is a circularity problem as definedSymbols will try to type check
+    // all definitions in the body, which includes the entity containing
+    // the pipeline port definition that invoked this check. As we are only
+    // interested in the pipeline variables in the body, we break the infinite
+    // descent, by ignoring everything but the pipeline variables. Note that we
+    // also need to consider ones created by 'gen', which we can tell from the
+    // form of the alias.
+    @tailrec
+    def consider(desc: Desc): Boolean = desc match {
+      case _: DescPipeVar                      => true
+      case DescAlias(_, _, ExprSym(symbol), _) => consider(symbol.desc)
+      case _                                   => false
+    }
+    definedSymbols(body, consider) map {
+      _ filter {
+        _.kind match {
+          case _: TypePipeVar => true
+          case _              => false
+        }
+      }
+    }
+  }
+
   def apply(
       symbol: Symbol,
       refresh: Boolean
@@ -122,7 +165,7 @@ private[frontend] object TypeOf {
     if (!refresh && symbol.kindIsSet) {
       Complete(symbol.kind)
     } else {
-      symbol.descOption.map[FinalResult[Type]] {
+      symbol.descOption.map {
         case DescVar(_, _, spec, _) =>
           simpleTypeFrom(spec) flatMap ensureNotNumNorVoid(spec, "Variable")
         case DescVal(_, _, spec, _) =>
@@ -150,8 +193,20 @@ private[frontend] object TypeOf {
             spec,
             "Pipeline variable"
           ) map TypePipeVar.apply
-        case DescPipeIn(_, _, fc)            => Complete(TypePipeIn(fc))
-        case DescPipeOut(_, _, fc, st)       => Complete(TypePipeOut(fc, st))
+        case d @ DescPipeIn(_, _, specOpt, fc) =>
+          specOpt match {
+            case None => Unknown(ReasonUnelaborated(d))
+            case Some(ExprSym(symbol)) =>
+              pipelineVariableSymbolsWithin(symbol) map { TypePipeIn(_, fc) }
+            case _ => unreachable
+          }
+        case d @ DescPipeOut(_, _, specOpt, fc, st) =>
+          specOpt match {
+            case None => Unknown(ReasonUnelaborated(d))
+            case Some(ExprSym(symbol)) =>
+              pipelineVariableSymbolsWithin(symbol) map { TypePipeOut(_, fc, st) }
+            case _ => unreachable
+          }
         case d @ DescParam(_, _, _, None, _) =>
           // Missing parameter assignment caught in Elaborate
           Unknown(ReasonUnelaborated(d))
@@ -228,7 +283,7 @@ private[frontend] object TypeOf {
         case d: DescGenIf    => Unknown(ReasonUnelaborated(d))
         case d: DescGenFor   => Unknown(ReasonUnelaborated(d))
         case d: DescGenRange => Unknown(ReasonUnelaborated(d))
-        case DescGenScope(_, _, body) =>
+        case DescGenScope(_, _, body, _) =>
           definedSymbols(body) map { symbols => TypeScope(symbol, symbols) }
         case DescAlias(_, _, expr, _)     => fe.typeCheck(expr)
         case DescParametrized(_, _, _, _) => Complete(TypeParametrized(symbol))

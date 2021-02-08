@@ -13,6 +13,7 @@ import com.argondesign.alogic.core.Symbol
 
 class SymbolTable private (
     private val local: Map[String, Symbol], // The map of names in the local scope
+    private val enclosingSymbolOpt: Option[Symbol], // The symbol introducing this scope
     val outer: Option[SymbolTable] // The symbol table of the enclosing scope, if any
   ) {
 
@@ -33,13 +34,18 @@ class SymbolTable private (
     }
   }
 
+  // Iterator of enclosing symbols
+  def enclosingSymbols: Iterator[Symbol] =
+    enclosingSymbolOpt.iterator concat outer.iterator.flatMap(_.enclosingSymbols)
+
   // Create a new symbol table with this symbol table used as the outer scope.
-  def push: SymbolTable = new SymbolTable(Map.empty, Some(this))
+  def push(enclosingSymbol: Option[Symbol]): SymbolTable =
+    new SymbolTable(Map.empty, enclosingSymbol, Some(this))
 
   // Create a new symbol table with the given 'name' -> 'symbol' mapping added
   // to the local scope.
   def updated(name: String, symbol: Symbol): SymbolTable =
-    new SymbolTable(local.updated(name, symbol), outer)
+    new SymbolTable(local.updated(name, symbol), enclosingSymbolOpt, outer)
 
   // Add a symbol the the local scope
   def +(symbol: Symbol): SymbolTable = updated(symbol.name, symbol)
@@ -68,5 +74,5 @@ object SymbolTable {
   }
 
   // The empty symbol table
-  val empty = new SymbolTable(Map.empty, None)
+  val empty = new SymbolTable(Map.empty, None, None)
 }

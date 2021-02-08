@@ -298,7 +298,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
 
       "pipe in" in {
         "in pipeline a;".asTree[Desc]() shouldBe {
-          DescPipeIn(Ident("a", Nil), Nil, FlowControlTypeNone)
+          DescPipeIn(Ident("a", Nil), Nil, None, FlowControlTypeNone)
         }
       }
 
@@ -308,6 +308,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
             DescPipeOut(
               Ident("a", Nil),
               Nil,
+              None,
               FlowControlTypeNone,
               StorageTypeDefault
             )

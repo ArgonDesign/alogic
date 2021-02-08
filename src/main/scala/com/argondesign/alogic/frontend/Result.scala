@@ -81,9 +81,10 @@ sealed trait Reason {
 
   def toMessage(implicit fe: Frontend): Message = this match {
     case ReasonUnresolved(t) =>
+      val msg: (Expr, String) => Message = if (t.base.startsWith("`")) Ice(_, _) else Error(_, _)
       fe.nameFor(t.base, t.idxs) match {
-        case Complete(name) => Error(t, s"'$name' is undefined")
-        case _              => Error(t, s"identifier is undefined")
+        case Complete(name) => msg(t, s"'$name' is undefined")
+        case _              => msg(t, s"identifier is undefined")
       }
 
     case ReasonNeedsParamValue(symbol, loc) =>
@@ -91,7 +92,7 @@ sealed trait Reason {
         Note.definedHere(symbol.desc)
 
     // $COVERAGE-OFF$ should not have ICE
-    case ReasonUnelaborated(t)     => Ice(t, s"Not elaborated")
+    case ReasonUnelaborated(t)     => Ice(t, s"Not elaborated: ${t.toSource}")
     case ReasonEarlierTypeError(t) => Ice(t, s"Earlier type error")
     case ReasonImportPending(t)    => Ice(t, s"Import pending")
     // $COVERAGE-ON$

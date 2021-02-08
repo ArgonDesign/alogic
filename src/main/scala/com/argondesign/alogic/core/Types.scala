@@ -59,11 +59,16 @@ object Types {
   // format: on
 
   //////////////////////////////////////////////////////////////////////////////
-  // Type port types
+  // Pipeline port types
   //////////////////////////////////////////////////////////////////////////////
 
-  case class TypePipeIn(fc: FlowControlType) extends Type with TypePipeInImpl
-  case class TypePipeOut(fc: FlowControlType, st: StorageType) extends Type with TypePipeOutImpl
+  case class TypePipeIn(pipelineVariables: List[Symbol], fc: FlowControlType)
+      extends Type
+      with TypePipeInImpl
+
+  case class TypePipeOut(pipelineVariables: List[Symbol], fc: FlowControlType, st: StorageType)
+      extends Type
+      with TypePipeOutImpl
 
   //////////////////////////////////////////////////////////////////////////////
   // Type wrappers for semantic disambiguation
@@ -229,7 +234,7 @@ trait TypeScopeImpl { this: TypeScope =>
 // Base trait of types that add fields to existing types
 trait ExtensionType extends TypeCompound {
   // The underlying type
-  def kind: Type
+  protected def kind: Type
 
   // The extensions
   protected def extensionSymbols: List[Symbol]
@@ -243,7 +248,6 @@ trait ExtensionType extends TypeCompound {
 
 trait TypeInImpl extends ExtensionType { this: TypeIn =>
 
-  // TODO: fix symbol Ids, here and below
   final lazy val extensionSymbols: List[Symbol] = fc match {
     case FlowControlTypeNone =>
       val read = new Symbol("read")
@@ -299,9 +303,11 @@ trait TypeOutImpl extends ExtensionType { this: TypeOut =>
 
 }
 
-trait TypePipeInImpl extends TypeCompound { this: TypePipeIn =>
+trait TypePipeInImpl extends ExtensionType { this: TypePipeIn =>
 
-  final lazy val publicSymbols: List[Symbol] = fc match {
+  final lazy val kind: Type = TypeRecord(new Symbol("pipeline_in_t"), pipelineVariables)
+
+  final lazy val extensionSymbols: List[Symbol] = fc match {
     case FlowControlTypeNone =>
       val read = new Symbol("read")
       read.kind = TypeCombFunc(read, TypeVoid, Nil)
@@ -316,9 +322,11 @@ trait TypePipeInImpl extends TypeCompound { this: TypePipeIn =>
 
 }
 
-trait TypePipeOutImpl extends TypeCompound { this: TypePipeOut =>
+trait TypePipeOutImpl extends ExtensionType { this: TypePipeOut =>
 
-  final lazy val publicSymbols: List[Symbol] = fc match {
+  final lazy val kind: Type = TypeRecord(new Symbol("pipeline_out_t"), pipelineVariables)
+
+  final lazy val extensionSymbols: List[Symbol] = fc match {
     case FlowControlTypeNone =>
       val write = new Symbol("write")
       write.kind = TypeCombFunc(write, TypeVoid, Nil)

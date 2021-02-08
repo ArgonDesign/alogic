@@ -77,7 +77,7 @@ object ListElaborable {
   implicit object ListElaborableRec extends ListElaborable[Rec] { //
     def unapply(tree: Tree): Option[Rec] = tree match {
       case t: Spliceable => Some(RecSplice(t) withLocOf t)
-      case rec: Rec      => unreachable // Everything in a Rec is spliceable
+      case _: Rec        => unreachable // Everything in a Rec is spliceable
       case _             => None
     } //
     val description: String = "Record content"
@@ -165,10 +165,11 @@ object Elaborate {
   // which includes the symbols introduced by definitions in the trees.
   private def expandSymtab(
       symtab: SymbolTable,
+      enclosingSymbol: Option[Symbol],
       trees: Seq[Tree]
     ): FinalResult[SymbolTable] =
     definedSymbols(trees) map { symbols =>
-      symbols.foldLeft(symtab.push) {
+      symbols.foldLeft(symtab.push(enclosingSymbol)) {
         case (st, symbol: Symbol) => st + symbol
       }
     }
@@ -195,6 +196,7 @@ object Elaborate {
 
   def list[T <: Tree](
       trees: List[Tree],
+      enclosingSymbol: Option[Symbol],
       symtab: SymbolTable,
       paramsOpt: Option[(Loc, List[Arg])] = None
     )(
@@ -247,7 +249,7 @@ object Elaborate {
                 hadProgress: Boolean
               ): Result[List[Tree]] =
               // Gather local symbols
-              expandSymtab(symtab, trees.map(_._2)) match { // using match to allow tail recursion
+              expandSymtab(symtab, enclosingSymbol, trees.map(_._2)) match { // using match to allow tail recursion
                 case failure: Failure => failure
                 case unknown: Unknown => unknown
                 case Complete(st)     =>
@@ -289,7 +291,7 @@ object Elaborate {
                       val merged = processed flatMap {
                         case (Finished(tree), _) =>
                           Iterator.single((true, tree)) // Completed result earlier
-                        case (Complete(DescGenScope(_, _, Nil)), _) =>
+                        case (Complete(DescGenScope(_, _, Nil, _)), _) =>
                           Iterator.empty // Completed result just now, drop empty scope
                         case (Complete(tree), _) =>
                           Iterator.single((true, tree)) // Completed result just now
@@ -347,7 +349,7 @@ object Elaborate {
                 // DescParametrized definitions with the final symbol table
                 // TODO: this needs to handle deeper nested parametrized stuff
                 processed proceed { trees =>
-                  expandSymtab(symtab, trees) flatMap { st =>
+                  expandSymtab(symtab, enclosingSymbol, trees) flatMap { st =>
                     Finished {
                       trees map {
                         case desc: DescParametrized => desc.copy(symtab = st) withLocOf desc
@@ -469,7 +471,7 @@ object Elaborate {
             val body = processed collectFirst {
               case Complete(Some(body)) => body
             } getOrElse desc.defaults
-            DescGenScope(desc.ref, desc.attr, body) withLocOf desc
+            DescGenScope(desc.ref, desc.attr, body, wasLoopBody = false) withLocOf desc
           }
         }
     }
@@ -484,11 +486,11 @@ object Elaborate {
       fe: Frontend
     ): Result[Desc] =
     // Elaborate the initializers
-    list[Desc](desc.inits, symtab) map { inits =>
+    list[Desc](desc.inits, None, symtab) map { inits =>
       desc.copy(inits = inits) withLocOf desc
     } proceed { desc =>
       // Add initializers to the symbol table
-      expandSymtab(symtab, desc.inits) flatMap { st =>
+      expandSymtab(symtab, None, desc.inits) flatMap { st =>
         // Resolve names in condition
         elaborate(desc.cond, st) map { cond =>
           desc.copy(cond = cond) withLocOf desc
@@ -516,7 +518,7 @@ object Elaborate {
           }
         } proceed { desc =>
           // Elaborate the step statements
-          list[Stmt](desc.steps, st) map { steps =>
+          list[Stmt](desc.steps, None, st) map { steps =>
             desc.copy(steps = steps) withLocOf desc
           }
         } proceed { desc =>
@@ -574,7 +576,7 @@ object Elaborate {
                               s"${symbol.name}_${fe.evaluate(value, unreachable).get}"
                           }
                           .mkString("``", cc.sep, "")
-                        val ident = Ident(name, Nil) withLoc Loc.synth("d")
+                        val ident = Ident(name, Nil) withLoc Loc.synthetic
                         // Clone the loop variables, and replace replace initializers with
                         // their current bindings
                         val initClones = inits map {
@@ -589,13 +591,16 @@ object Elaborate {
                         }
                         // Create the expansion of the current iteration
                         List(
-                          DescGenScope(ident, attr, initClones concat body) withLoc Loc.synth("a"),
-                          UsingGenLoopBody(
-                            ExprIdent(ident.base, ident.idxs) withLoc Loc.synth("b"),
+                          DescGenScope(
+                            ident,
+                            attr,
+                            initClones concat body,
+                            wasLoopBody = true
+                          ) withLoc Loc.synthetic,
+                          UsingGenBody(
+                            ExprIdent(ident.base, ident.idxs) withLoc Loc.synthetic,
                             Set.empty
-                          ) withLoc {
-                            Loc.synth("c")
-                          }
+                          ) withLoc Loc.synthetic
                         )
                       }
                       // Apply the step to the bindings and expand
@@ -611,7 +616,7 @@ object Elaborate {
               // Compute the expanded loop body
               expandLoopBody(bindings, 0, Nil) map { newBody =>
                 // Convert into a Gen scope
-                DescGenScope(ref, attr, newBody) withLocOf desc
+                DescGenScope(ref, attr, newBody, wasLoopBody = false) withLocOf desc
               }
             }
         }
@@ -670,6 +675,7 @@ object Elaborate {
         } flatMap { lastValue =>
           // Function that computes the rest of the loop body given the
           // current iteration index
+          @tailrec
           def expandLoopBody(currValue: BigInt, acc: List[List[Tree]]): Result[List[Tree]] =
             if (currValue > lastValue) {
               Complete(acc.reverse.flatten)
@@ -681,7 +687,7 @@ object Elaborate {
               val currBody = {
                 // Introduce a new unique name for the temporary scope
                 val name = s"``${init.symbol.name}_$currValue"
-                val ident = Ident(name, Nil) withLoc Loc.synth("e")
+                val ident = Ident(name, Nil) withLoc Loc.synthetic
                 // Clone the loop variables, and replace replace initializers with
                 // their current bindings
                 val initClone = init match {
@@ -696,13 +702,16 @@ object Elaborate {
                 }
                 // Create the expansion of the current iteration
                 List(
-                  DescGenScope(ident, attr, initClone :: body) withLoc Loc.synth("f"),
-                  UsingGenLoopBody(
-                    ExprIdent(ident.base, ident.idxs) withLoc Loc.synth("g"),
+                  DescGenScope(
+                    ident,
+                    attr,
+                    initClone :: body,
+                    wasLoopBody = true
+                  ) withLoc Loc.synthetic,
+                  UsingGenBody(
+                    ExprIdent(ident.base, ident.idxs) withLoc Loc.synthetic,
                     Set.empty
-                  ) withLoc {
-                    Loc.synth("h")
-                  }
+                  ) withLoc Loc.synthetic
                 )
               }
               expandLoopBody(currValue + 1, currBody :: acc)
@@ -711,7 +720,7 @@ object Elaborate {
           // Compute the expanded loop body
           expandLoopBody(0, Nil) map { newBody =>
             // Convert into a Gen scope
-            DescGenScope(ref, attr, newBody) withLocOf desc
+            DescGenScope(ref, attr, newBody, wasLoopBody = false) withLocOf desc
           }
         }
     } tap assertProgressIsReal(desc)
@@ -734,7 +743,7 @@ object Elaborate {
     case ident @ Ident(_, idxs) =>
       // TODO: check shadowing
       // Dict identifier. Try to evaluate indices, then create symbol
-      list[Expr](idxs, symtab) map { i =>
+      list[Expr](idxs, None, symtab) map { i =>
         desc.copyRef(ref = ident.copy(idxs = i) withLocOf ident) withLocOf desc
       } proceed {
         case Desc(Ident(base, idxs)) =>
@@ -757,6 +766,19 @@ object Elaborate {
       }
   }
 
+  private def enclosingPipelineHost(symtab: SymbolTable, loc: Loc): FinalResult[Symbol] =
+    symtab.enclosingSymbols // We want the 2nd enclosing Entity or Singleton
+      .filter(_.desc match {
+        case _: DescEntity    => true
+        case _: DescSingleton => true
+        case _                => false
+      })
+      .drop(1)
+      .nextOption() match {
+      case None         => Failure(loc, "'pipeline' port definition can only appear in nested entity")
+      case Some(symbol) => Complete(symbol)
+    }
+
   def apply(
       desc: Desc,
       symtab: SymbolTable
@@ -778,7 +800,7 @@ object Elaborate {
     ): Result[Desc] =
     simbolify(desc, symtab) proceed { desc =>
       // Elaborate attributes
-      list[Attr](desc.attr, symtab) map {
+      list[Attr](desc.attr, None, symtab) map {
         desc.copyAttr(_) withLocOf desc
       }
     } proceed { desc =>
@@ -853,9 +875,21 @@ object Elaborate {
           d.copy(spec = s) withLocOf d
         }
       case d: DescPipeIn =>
-        Finished(d)
+        if (d.specOpt.nonEmpty) {
+          Finished(d)
+        } else {
+          enclosingPipelineHost(symtab, d.loc) map { symbol =>
+            d.copy(specOpt = Some(ExprSym(symbol) withLocOf d)) withLocOf d
+          }
+        }
       case d: DescPipeOut =>
-        Finished(d)
+        if (d.specOpt.nonEmpty) {
+          Finished(d)
+        } else {
+          enclosingPipelineHost(symtab, d.loc) map { symbol =>
+            d.copy(specOpt = Some(ExprSym(symbol) withLocOf d)) withLocOf d
+          }
+        }
       case d: DescParam =>
         if (d.finished) {
           Finished(d)
@@ -986,11 +1020,11 @@ object Elaborate {
           d.copy(spec = s) withLocOf d
         }
       case d: DescEntity =>
-        list[Ent](d.body, symtab) map { b =>
+        list[Ent](d.body, Some(d.symbol), symtab) map { b =>
           d.copy(body = b) withLocOf d
         }
       case d: DescRecord =>
-        list[Rec](d.body, symtab) map { b =>
+        list[Rec](d.body, Some(d.symbol), symtab) map { b =>
           d.copy(body = b) withLocOf d
         }
       case d: DescInstance =>
@@ -998,7 +1032,7 @@ object Elaborate {
           d.copy(spec = s) withLocOf d
         }
       case d: DescSingleton =>
-        list[Ent](d.body, symtab) map { b =>
+        list[Ent](d.body, Some(d.symbol), symtab) map { b =>
           d.copy(body = b) withLocOf d
         }
       case d: DescFunc =>
@@ -1008,18 +1042,18 @@ object Elaborate {
         elaborate(d.ret, symtab) map { ret =>
           d.copy(ret = ret) withLocOf d
         } proceed { d =>
-          list[Desc](d.args, symtab) map { args =>
+          list[Desc](d.args, None, symtab) map { args =>
             d.copy(args = args) withLocOf d
           }
         } proceed { d =>
-          expandSymtab(symtab, d.args) flatMap { st =>
-            list[Stmt](d.body, st) map { body =>
+          expandSymtab(symtab, None, d.args) flatMap { st =>
+            list[Stmt](d.body, Some(d.symbol), st) map { body =>
               d.copy(body = body) withLocOf d
             }
           }
         }
       case d: DescPackage =>
-        list[Pkg](d.body, symtab) map { b =>
+        list[Pkg](d.body, Some(d.symbol), symtab) map { b =>
           d.copy(body = b) withLocOf d
         }
       case d: DescGenVar =>
@@ -1049,7 +1083,7 @@ object Elaborate {
           elaborate[T](newDesc, symtab, namedParamsOpt)
         }
       case d: DescGenScope =>
-        list[T](d.body, symtab, namedParamsOpt) map { b =>
+        list[T](d.body, Some(d.symbol), symtab, namedParamsOpt) map { b =>
           d.copy(body = b) withLocOf d
         }
       case d: DescAlias =>
@@ -1156,17 +1190,17 @@ object Elaborate {
                 exprt = exprt && reExport(symbol)
               ) withLocOf symbol.desc
             }
-          list[Desc](aliases, symtab) map { Thicket(_) }
+          list[Desc](aliases, None, symtab) map { Thicket(_) }
         }
-      case u @ UsingGenLoopBody(expr, exclude) =>
+      case u @ UsingGenBody(expr, exclude) =>
         // As opposed to the UsingAll directive, which works based on types,
         // this one works lexically and allows partial resolution. This in
         // turn enables loop carried dependencies among names.
         expr pipe {
           case ExprSym(symbol) => symbol.desc
-          case _               => throw Ice("Malformed UsingGenLoopBody")
+          case _               => throw Ice("Malformed UsingGenBody")
         } pipe {
-          case DescGenScope(_, _, body) =>
+          case DescGenScope(_, _, body, wasLoopBody) =>
             val (unresolved, resolved) = body map {
               case Splice(tree) => tree
               case other        => other
@@ -1179,7 +1213,13 @@ object Elaborate {
               case other            => Left(other)
             } match {
               case (us, rs) =>
-                (us, rs filter { _.name contains "#" } filterNot exclude)
+                // In loop bodies, only keep Descs introducing dict identifiers
+                (
+                  us,
+                  rs.filter(symbol =>
+                    !symbol.name.startsWith("`") && (!wasLoopBody || symbol.name.contains("#"))
+                  ) filterNot exclude
+                )
             }
             val aliases: List[Desc] = resolved map { symbol =>
               DescAlias(
@@ -1205,11 +1245,12 @@ object Elaborate {
                 Unknown(rs)
               }
             } else {
-              list[Desc](aliases, symtab) map { Thicket(_) }
+              list[Desc](aliases, None, symtab) map { Thicket(_) }
             }
+          case desc: DescGenIf    => Unknown(ReasonUnelaborated(desc))
           case desc: DescGenRange => Unknown(ReasonUnelaborated(desc))
           case desc: DescGenFor   => Unknown(ReasonUnelaborated(desc))
-          case _                  => throw Ice("Malformed UsingGenLoopBody")
+          case _                  => throw Ice("Malformed UsingGenBody")
         }
     } tap assertProgressIsReal(usng)
 
@@ -1308,7 +1349,7 @@ object Elaborate {
                   PkgSplice(wrapper) withLocOf p,
                   PkgCompile(ExprIdent(ident.base, ident.idxs) withLocOf ident, None) withLocOf p
                 )
-                list[Pkg](result, symtab) map { Thicket(_) }
+                list[Pkg](result, None, symtab) map { Thicket(_) }
               }
           }
         }
@@ -1325,13 +1366,13 @@ object Elaborate {
     ent pipe {
       case _: EntSplice => unreachable
       case e: EntConnect =>
-        list[Expr](e.lhs :: e.rhs, symtab) map {
+        list[Expr](e.lhs :: e.rhs, None, symtab) map {
           case l :: r => e.copy(lhs = l, rhs = r) withLocOf e
           case Nil    => unreachable
         }
       case _: EntAssign => unreachable
       case e: EntCombProcess =>
-        list[Stmt](e.stmts, symtab) map { stmts =>
+        list[Stmt](e.stmts, None, symtab) map { stmts =>
           e.copy(stmts = stmts) withLocOf e
         }
       case _: EntClockedProcess => unreachable
@@ -1350,18 +1391,18 @@ object Elaborate {
     stmt pipe {
       case _: StmtSplice => unreachable
       case s: StmtBlock =>
-        list[Stmt](s.body, symtab) map { body =>
+        list[Stmt](s.body, None, symtab) map { body =>
           s.copy(body = body) withLocOf s
         }
       case s: StmtIf =>
         elaborate(s.cond, symtab) map { cond =>
           s.copy(cond = cond) withLocOf s
         } proceed { s =>
-          list[Stmt](s.thenStmts, symtab) map { thenStmts =>
+          list[Stmt](s.thenStmts, None, symtab) map { thenStmts =>
             s.copy(thenStmts = thenStmts) withLocOf s
           }
         } proceed { s =>
-          list[Stmt](s.elseStmts, symtab) map { elseStmts =>
+          list[Stmt](s.elseStmts, None, symtab) map { elseStmts =>
             s.copy(elseStmts = elseStmts) withLocOf s
           }
         }
@@ -1369,7 +1410,7 @@ object Elaborate {
         elaborate(s.expr, symtab) map { expr =>
           s.copy(expr = expr) withLocOf s
         } proceed { s =>
-          list[Case](s.cases, symtab) map { cases =>
+          list[Case](s.cases, None, symtab) map { cases =>
             s.copy(cases = cases) withLocOf s
           }
         } match {
@@ -1383,12 +1424,12 @@ object Elaborate {
               case Splice(tree) => tree
               case tree         => tree
             } flatMap {
-              case c: CaseDefault           => Iterator.single(c)
-              case c: CaseRegular           => Iterator.single(c)
-              case d: DescAlias             => Iterator.single(d)
-              case d: DescGenVar            => Iterator.single(d)
-              case DescGenScope(_, _, body) => gather(body)
-              case _                        => unreachable
+              case c: CaseDefault              => Iterator.single(c)
+              case c: CaseRegular              => Iterator.single(c)
+              case d: DescAlias                => Iterator.single(d)
+              case d: DescGenVar               => Iterator.single(d)
+              case DescGenScope(_, _, body, _) => gather(body)
+              case _                           => unreachable
             }
 
             val (cases, descStmts) = gather(s.cases) partitionMap {
@@ -1421,32 +1462,32 @@ object Elaborate {
           case other => other
         }
       case s: StmtLoop =>
-        list[Stmt](s.body, symtab) map { body =>
+        list[Stmt](s.body, None, symtab) map { body =>
           s.copy(body = body) withLocOf s
         }
       case s: StmtWhile =>
         elaborate(s.cond, symtab) map { cond =>
           s.copy(cond = cond) withLocOf s
         } proceed { s =>
-          list[Stmt](s.body, symtab) map { body =>
+          list[Stmt](s.body, None, symtab) map { body =>
             s.copy(body = body) withLocOf s
           }
         }
       case s: StmtFor =>
-        list[Stmt](s.inits, symtab) map { inits =>
+        list[Stmt](s.inits, None, symtab) map { inits =>
           s.copy(inits = inits) withLocOf s
         } proceed { s =>
-          expandSymtab(symtab, s.inits) flatMap { st =>
+          expandSymtab(symtab, None, s.inits) flatMap { st =>
             s.condOpt map { cond =>
               elaborate(cond, st) map { cond =>
                 s.copy(condOpt = Some(cond)) withLocOf s
               }
             } getOrElse Finished(s) proceed { s =>
-              list[Stmt](s.steps, st) map { steps =>
+              list[Stmt](s.steps, None, st) map { steps =>
                 s.copy(steps = steps) withLocOf s
               }
             } proceed { s =>
-              list[Stmt](s.body, st) map { body =>
+              list[Stmt](s.body, None, st) map { body =>
                 s.copy(body = body) withLocOf s
               }
             }
@@ -1456,16 +1497,16 @@ object Elaborate {
         elaborate(s.cond, symtab) map { cond =>
           s.copy(cond = cond) withLocOf s
         } proceed { s =>
-          list[Stmt](s.body, symtab) map { body =>
+          list[Stmt](s.body, None, symtab) map { body =>
             s.copy(body = body) withLocOf s
           }
         }
       case s: StmtLet =>
-        list[Stmt](s.inits, symtab) map { inits =>
+        list[Stmt](s.inits, None, symtab) map { inits =>
           s.copy(inits = inits) withLocOf s
         } proceed { s =>
-          expandSymtab(symtab, s.inits) flatMap { st =>
-            list[Stmt](s.body, st) map { body =>
+          expandSymtab(symtab, None, s.inits) flatMap { st =>
+            list[Stmt](s.body, None, st) map { body =>
               s.copy(body = body) withLocOf s
             }
           }
@@ -1530,15 +1571,15 @@ object Elaborate {
     kase pipe {
       case _: CaseSplice => unreachable
       case c: CaseRegular =>
-        list[Expr](c.cond, symtab) map { cond =>
+        list[Expr](c.cond, None, symtab) map { cond =>
           c.copy(cond = cond) withLocOf c
         } proceed { c =>
-          list[Stmt](c.stmts, symtab) map { stmts =>
+          list[Stmt](c.stmts, None, symtab) map { stmts =>
             c.copy(stmts = stmts) withLocOf c
           }
         }
       case c: CaseDefault =>
-        list[Stmt](c.stmts, symtab) map { stmts =>
+        list[Stmt](c.stmts, None, symtab) map { stmts =>
           c.copy(stmts = stmts) withLocOf c
         }
     } tap assertProgressIsReal(kase)
@@ -1555,7 +1596,7 @@ object Elaborate {
       elaborate(e.expr, symtab) map { tgt =>
         e.copy(expr = tgt) withLocOf e
       } proceed { e =>
-        list[Arg](e.args, symtab) map { args =>
+        list[Arg](e.args, None, symtab) map { args =>
           e.copy(args = args) withLocOf e
         }
       } map {
@@ -1564,7 +1605,7 @@ object Elaborate {
         case e => e
       }
     case e: ExprBuiltin =>
-      list[Arg](e.args, symtab) map { args =>
+      list[Arg](e.args, None, symtab) map { args =>
         e.copy(args = args) withLocOf e
       }
     case e: ExprUnary =>
@@ -1572,37 +1613,37 @@ object Elaborate {
         e.copy(expr = op) withLocOf e
       }
     case e: ExprBinary =>
-      list[Expr](e.lhs :: e.rhs :: Nil, symtab) map {
+      list[Expr](e.lhs :: e.rhs :: Nil, None, symtab) map {
         case lhs :: rhs :: Nil => e.copy(lhs = lhs, rhs = rhs) withLocOf e
         case _                 => unreachable
       }
     case e: ExprCond =>
-      list[Expr](e.cond :: e.thenExpr :: e.elseExpr :: Nil, symtab) map {
+      list[Expr](e.cond :: e.thenExpr :: e.elseExpr :: Nil, None, symtab) map {
         case c :: te :: ee :: Nil => e.copy(cond = c, thenExpr = te, elseExpr = ee) withLocOf e
         case _                    => unreachable
       }
     case e: ExprRep =>
-      list[Expr](e.count :: e.expr :: Nil, symtab) map {
+      list[Expr](e.count :: e.expr :: Nil, None, symtab) map {
         case count :: expr :: Nil => e.copy(count = count, expr = expr) withLocOf e
         case _                    => unreachable
       }
     case e: ExprCat =>
-      list[Expr](e.parts, symtab) map { parts =>
+      list[Expr](e.parts, None, symtab) map { parts =>
         ExprCat(parts) withLocOf e
       }
     case e: ExprIndex =>
-      list[Expr](e.expr :: e.index :: Nil, symtab) map {
+      list[Expr](e.expr :: e.index :: Nil, None, symtab) map {
         case expr :: index :: Nil => e.copy(expr = expr, index = index) withLocOf e
         case _                    => unreachable
       }
     case e: ExprSlice =>
-      list[Expr](e.expr :: e.lIdx :: e.rIdx :: Nil, symtab) map {
+      list[Expr](e.expr :: e.lIdx :: e.rIdx :: Nil, None, symtab) map {
         case expr :: lIdx :: rIdx :: Nil =>
           e.copy(expr = expr, lIdx = lIdx, rIdx = rIdx) withLocOf e
         case _ => unreachable
       }
     case e: ExprDot =>
-      list[Expr](e.expr :: e.idxs, symtab) map {
+      list[Expr](e.expr :: e.idxs, None, symtab) map {
         case expr :: idxs => e.copy(expr = expr, idxs = idxs) withLocOf e
         case _            => unreachable
       } proceed { e =>
@@ -1611,7 +1652,7 @@ object Elaborate {
         }
       }
     case e: ExprIdent =>
-      list[Expr](e.idxs, symtab) map { idxs =>
+      list[Expr](e.idxs, None, symtab) map { idxs =>
         e.copy(idxs = idxs) withLocOf e
       } proceed { e =>
         fe.nameFor(e.base, e.idxs) flatMap { name =>
@@ -1652,7 +1693,7 @@ object Elaborate {
         a.copy(expr = e) withLocOf a
       }
     case a: ArgD =>
-      list[Expr](a.idxs, symtab) map { idxs =>
+      list[Expr](a.idxs, None, symtab) map { idxs =>
         a.copy(idxs = idxs) withLocOf a
       } proceed { a =>
         fe.nameFor(a.base, a.idxs) map { name =>

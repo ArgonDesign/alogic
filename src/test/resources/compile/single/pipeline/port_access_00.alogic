@@ -1,0 +1,48 @@
+network port_access_00 {
+  in  bool i;
+  out bool o;
+
+  pipeline bool p;
+
+  new fsm a {
+    out pipeline;
+    void main() {
+      p = i.read();
+      out.write();
+      fence;
+    }
+  }
+
+  a -> b;
+
+  new fsm b {
+    in pipeline;
+    void main() {
+      o = in.p;
+      in.read();
+      fence;
+    }
+  }
+}
+// @fec/golden {{{
+// module port_access_00(
+//   input  wire  clk,
+//   input  wire  rst,
+//   input  wire  i,
+//   output reg   o
+// );
+//
+//   reg pa_q;
+//
+//   always @(posedge clk) begin
+//     if (rst) begin
+//       pa_q <= 1'b0;
+//       o <= 1'b0;
+//     end else begin
+//       pa_q <= i;
+//       o <= pa_q;
+//     end
+//   end
+//
+// endmodule
+// }}}

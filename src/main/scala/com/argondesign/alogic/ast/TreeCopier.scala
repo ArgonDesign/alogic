@@ -148,25 +148,29 @@ object TreeCopier {
       ) withLocOf tree
     }
 
-  def apply(tree: DescPipeIn)(ref: Tree, attr: List[Tree]): DescPipeIn =
-    if ((ref eq tree.ref) && (attr eq tree.attr)) {
+  def apply(tree: DescPipeIn)(ref: Tree, attr: List[Tree], specOpt: Option[Tree]): DescPipeIn =
+    if ((ref eq tree.ref) && (attr eq tree.attr) && (specOpt eq tree.specOpt)) {
       tree
     } else {
       assert(attr.forall(_.isInstanceOf[Attr]))
+      assert(specOpt.forall(_.isInstanceOf[Expr]))
       tree.copy(
         ref = ref.asInstanceOf[Ref],
-        attr = attr.asInstanceOf[List[Attr]]
+        attr = attr.asInstanceOf[List[Attr]],
+        specOpt = specOpt.asInstanceOf[Option[Expr]]
       ) withLocOf tree
     }
 
-  def apply(tree: DescPipeOut)(ref: Tree, attr: List[Tree]): DescPipeOut =
-    if ((ref eq tree.ref) && (attr eq tree.attr)) {
+  def apply(tree: DescPipeOut)(ref: Tree, attr: List[Tree], specOpt: Option[Tree]): DescPipeOut =
+    if ((ref eq tree.ref) && (attr eq tree.attr) && (specOpt eq tree.specOpt)) {
       tree
     } else {
       assert(attr.forall(_.isInstanceOf[Attr]))
+      assert(specOpt.forall(_.isInstanceOf[Expr]))
       tree.copy(
         ref = ref.asInstanceOf[Ref],
-        attr = attr.asInstanceOf[List[Attr]]
+        attr = attr.asInstanceOf[List[Attr]],
+        specOpt = specOpt.asInstanceOf[Option[Expr]]
       ) withLocOf tree
     }
 
@@ -473,10 +477,10 @@ object TreeCopier {
       tree
     } else {
       assert(attr.forall(_.isInstanceOf[Attr]))
-      DescGenScope(
-        ref.asInstanceOf[Ref],
-        attr.asInstanceOf[List[Attr]],
-        body
+      tree.copy(
+        ref = ref.asInstanceOf[Ref],
+        attr = attr.asInstanceOf[List[Attr]],
+        body = body
       ) withLocOf tree
     }
 
@@ -581,6 +585,26 @@ object TreeCopier {
     } else {
       tree.copy(
         spec = spec.asInstanceOf[Expr]
+      ) withLocOf tree
+    }
+
+  def apply(tree: DeclPipeIn)(pipeVars: List[Tree]): DeclPipeIn =
+    if (pipeVars eq tree.pipeVars) {
+      tree
+    } else {
+      assert(pipeVars.forall(_.isInstanceOf[Expr]))
+      tree.copy(
+        pipeVars = pipeVars.asInstanceOf[List[Expr]]
+      ) withLocOf tree
+    }
+
+  def apply(tree: DeclPipeOut)(pipeVars: List[Tree]): DeclPipeOut =
+    if (pipeVars eq tree.pipeVars) {
+      tree
+    } else {
+      assert(pipeVars.forall(_.isInstanceOf[Expr]))
+      tree.copy(
+        pipeVars = pipeVars.asInstanceOf[List[Expr]]
       ) withLocOf tree
     }
 
@@ -827,7 +851,7 @@ object TreeCopier {
       tree.copy(expr = expr.asInstanceOf[Expr]) withLocOf tree
     }
 
-  def apply(tree: UsingGenLoopBody)(expr: Tree): UsingGenLoopBody =
+  def apply(tree: UsingGenBody)(expr: Tree): UsingGenBody =
     if (expr eq tree.expr) {
       tree
     } else {

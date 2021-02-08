@@ -145,8 +145,10 @@ trait TreePrintOps {
     case DescOut(_, _, spec, fct, st, None) => s"desc out ${v(fct)}${v(st)}${v(spec)} $name"
     case DescOut(_, _, spec, fct, st, Some(init)) => s"desc out ${v(fct)}${v(st)}${v(spec)} $name = ${v(init)}"
     case DescPipeVar(_, _, spec) => s"desc pipeline ${v(spec)} $name"
-    case DescPipeIn(_, _, fct) => s"desc in ${v(fct)}pipeline $name"
-    case DescPipeOut(_, _, fct, st) => s"desc out ${v(fct)}${v(st)}pipeline $name"
+    case DescPipeIn(_, _, None, fct) => s"desc in ${v(fct)}pipeline $name"
+    case DescPipeIn(_, _, Some(spec), fct) => s"desc in ${v(fct)}pipeline(${v(spec)}) $name"
+    case DescPipeOut(_, _, None, fct, st) => s"desc out ${v(fct)}${v(st)}pipeline $name"
+    case DescPipeOut(_, _, Some(spec), fct, st) => s"desc out ${v(fct)}${v(st)}pipeline(${v(spec)}) $name"
     case DescParam(_, _, spec, None, _) => s"desc param ${v(spec)} $name"
     case DescParam(_, _, spec, Some(init), _) => s"desc param ${v(spec)} $name = ${v(init)}"
     case DescParamType(_, _, None, _) => s"desc param type $name"
@@ -165,7 +167,7 @@ trait TreePrintOps {
     case DescGenIf(_, _, cases, defaults) => cases.map(v(_)).mkString(s"gen : $name ", " else ", block(" else", defaults))
     case DescGenFor(_, _, inits, cond, steps, body) => block(s"gen for (${vs(inits)}; ${v(cond)} ; ${vs(steps)}) : $name", body)
     case DescGenRange(_, _, init, op, end, body) => block(s"gen for (${v(init)} $op ${v(end)}) : $name", body)
-    case DescGenScope(_, _, body) => block(s"gen scope $name", body)
+    case DescGenScope(_, _, body, wasLoop) => block(s"gen scope wasLoop=$wasLoop $name", body)
     case DescAlias(_, _, expr, exprt) => s"desc alias ${v(expr)} as $name${if (exprt) " export" else ""}"
     case DescParametrized(_, _, desc, symbolTable) => s"desc parametrized $name : ${v(desc)} with ${symbolTable.toString.replaceAll("\n", "\n" + "  " * indent)}"
   }
@@ -199,8 +201,8 @@ trait TreePrintOps {
     case DeclIn(_, spec, fct) => s"decl in ${v(fct)}${v(spec)} $name;"
     case DeclOut(_, spec, fct, st) => s"decl out ${v(fct)}${v(st)}${v(spec)} $name;"
     case DeclPipeVar(_, spec) => s"decl pipeline ${v(spec)} $name;"
-    case DeclPipeIn(_, fct) => s"decl in ${v(fct)}pipeline $name;"
-    case DeclPipeOut(_, fct, st) => s"decl out ${v(fct)}${v(st)}pipeline $name;"
+    case DeclPipeIn(_, pipeVars, fct) => s"decl in ${v(fct)}pipeline(${vs(pipeVars)}) $name;"
+    case DeclPipeOut(_, pipeVars, fct, st) => s"decl out ${v(fct)}${v(st)}pipeline(${vs(pipeVars)}) $name;"
     case DeclConst(_, spec) => s"decl const ${v(spec)} $name;"
     case DeclArray(_, elem, size) => s"decl ${v(elem)} $name[$size];"
     case DeclSram(_, elem, size, st) => s"decl sram ${v(st)}${v(elem)} $name[$size];"
@@ -264,7 +266,7 @@ trait TreePrintOps {
     case UsingOne(expr, Some(ident)) => s"using ${v(expr)} as ${v(ident)};"
     case UsingOne(expr, None) => s"using ${v(expr)};"
     case UsingAll(expr, exprt) => s"using ${v(expr)}.*${if (exprt) " export" else ""};"
-    case UsingGenLoopBody(expr, exclude) => s"using ${v(expr)}.*#[*] except ${exclude mkString ","};"
+    case UsingGenBody(expr, exclude) => s"using ${v(expr)}.*#[*] except ${exclude mkString ","};"
   }
   // format: on
 

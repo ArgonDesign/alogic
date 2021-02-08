@@ -21,6 +21,7 @@ import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.core.Types._
+import com.argondesign.alogic.util.IteratorOps._
 import com.argondesign.alogic.util.unreachable
 
 import scala.annotation.tailrec
@@ -72,10 +73,12 @@ final class LowerPipelineStage(
   }
 
   override protected def replace(symbol: Symbol): Boolean = symbol.kind match {
-    case TypePipeIn(FlowControlTypeNone)     => pipeInSymbols.nonEmpty // Otherwise will be removed
-    case TypePipeOut(FlowControlTypeNone, _) => pipeOutSymbols.nonEmpty // Otherwise will be removed
-    case _: TypePipeIn | _: TypePipeOut      => true
-    case _                                   => false
+    case TypePipeIn(_, FlowControlTypeNone) =>
+      pipeInSymbols.nonEmpty // Otherwise will be removed
+    case TypePipeOut(_, FlowControlTypeNone, _) =>
+      pipeOutSymbols.nonEmpty // Otherwise will be removed
+    case _: TypePipeIn | _: TypePipeOut => true
+    case _                              => false
   }
 
   override protected def enter(tree: Tree): Option[Tree] = tree match {
@@ -128,7 +131,7 @@ final class LowerPipelineStage(
 
   override def transform(tree: Tree): Tree = tree match {
     // Update pipeline port Decl/Defn
-    case DeclPipeIn(symbol, fc) =>
+    case DeclPipeIn(symbol, _, fc) =>
       iPortType match {
         case TypeVoid =>
           if (fc == FlowControlTypeNone) {
@@ -147,7 +150,7 @@ final class LowerPipelineStage(
       } else {
         DefnIn(symbol) regularize tree.loc
       }
-    case DeclPipeOut(symbol, fc, st) =>
+    case DeclPipeOut(symbol, _, fc, st) =>
       oPortType match {
         case TypeVoid =>
           if (fc == FlowControlTypeNone) {
@@ -274,7 +277,25 @@ final class LowerPipelineHost extends StatefulTreeTransformer {
         // Collect pipeline variable symbols referenced in each stage
         val useSets = stages map { stage =>
           Set from {
-            stage.defn collect { case ExprSym(symbol) if symbol.kind.isPipeVar => symbol }
+            stage.defn flatCollect {
+              case ExprSym(symbol) =>
+                Iterator.when(symbol.kind.isPipeVar) thenSingle { symbol }
+              case ExprSel(ExprSym(symbol), selector) =>
+                if (symbol.kind.isPipeVar) {
+                  Iterator.single(symbol)
+                } else {
+                  val selected = symbol.kind pipe {
+                    case TypePipeIn(pipelineVariables, _)     => pipelineVariables
+                    case TypePipeOut(pipelineVariables, _, _) => pipelineVariables
+                    case _                                    => Nil
+                  } pipe {
+                    _.find(_.name == selector)
+                  }
+                  Iterator.when(selected.exists(_.kind.isPipeVar)) thenIterator {
+                    selected.iterator
+                  }
+                }
+            }
           }
         }
 

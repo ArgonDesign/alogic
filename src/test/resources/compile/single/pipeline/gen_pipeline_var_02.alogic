@@ -1,0 +1,54 @@
+network gen_pipeline_var_02 {
+  in  u2 i;
+  out u2 o;
+
+  gen if (true) {
+    new fsm a {
+      out pipeline;
+      void main() {
+        {p, q} = i.read();
+        out.write();
+        fence;
+      }
+    }
+    pipeline bool p;
+  }
+
+  a -> b;
+
+  gen if (true) {
+    new fsm b {
+      in pipeline;
+      void main() {
+        in.read();
+        o.write({q, p});
+        fence;
+      }
+    }
+    pipeline bool q;
+  }
+}
+// @fec/golden {{{
+// module gen_pipeline_var_02(
+//   input  wire        clk,
+//   input  wire        rst,
+//   input  wire  [1:0] i,
+//   output reg   [1:0] o
+// );
+//
+//   reg pa_q;
+//   reg qa_q;
+//
+//   always @(posedge clk) begin
+//     if (rst) begin
+//       pa_q <= 1'b0;
+//       qa_q <= 1'b0;
+//       o <= 2'b0;
+//     end else begin
+//       {pa_q, qa_q} <= i;
+//       o <= {qa_q, pa_q};
+//     end
+//   end
+//
+// endmodule
+// }}}

@@ -11,9 +11,9 @@ import com.argondesign.alogic.ast.Trees._
 trait UsingOps { this: Using =>
 
   def cpy(expr: Expr): Using = this match {
-    case node: UsingOne         => node.copy(expr = expr)
-    case node: UsingAll         => node.copy(expr = expr)
-    case node: UsingGenLoopBody => node.copy(expr = expr)
+    case node: UsingOne     => node.copy(expr = expr)
+    case node: UsingAll     => node.copy(expr = expr)
+    case node: UsingGenBody => node.copy(expr = expr)
   }
 
 }

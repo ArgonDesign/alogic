@@ -38,11 +38,11 @@ final class PortCheck(implicit cc: CompilerContext) extends StatelessTreeTransfo
       case (_, _ :: Nil) => false // Single sink
       case (rhs, _) =>
         rhs.tpe match {
-          case TypeIn(_, FlowControlTypeReady)      => true
-          case TypeOut(_, FlowControlTypeReady, _)  => true
-          case TypePipeIn(FlowControlTypeReady)     => true
-          case TypePipeOut(FlowControlTypeReady, _) => true
-          case _                                    => false
+          case TypeIn(_, FlowControlTypeReady)         => true
+          case TypeOut(_, FlowControlTypeReady, _)     => true
+          case TypePipeIn(_, FlowControlTypeReady)     => true
+          case TypePipeOut(_, FlowControlTypeReady, _) => true
+          case _                                       => false
         }
     } foreach {
       case (expr, conns) =>
@@ -106,7 +106,7 @@ final class PortCheck(implicit cc: CompilerContext) extends StatelessTreeTransfo
       cc.error(tree, "'sync ready' port cannot use 'wire' storage specifier")
       Some(tree)
 
-    case DeclPipeOut(_, FlowControlTypeReady, StorageTypeWire) =>
+    case DeclPipeOut(_, _, FlowControlTypeReady, StorageTypeWire) =>
       cc.error(tree, "'sync ready' port cannot use 'wire' storage specifier")
       Some(tree)
 

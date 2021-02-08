@@ -80,8 +80,8 @@ object Trees {
   case class DescIn(ref: Ref, attr: List[Attr], spec: Expr, fc: FlowControlType) extends Desc
   case class DescOut(ref: Ref, attr: List[Attr], spec: Expr, fc: FlowControlType, st: StorageType, initOpt: Option[Expr]) extends Desc
   case class DescPipeVar(ref: Ref, attr: List[Attr], spec: Expr) extends Desc
-  case class DescPipeIn(ref: Ref, attr: List[Attr], fc: FlowControlType) extends Desc
-  case class DescPipeOut(ref: Ref, attr: List[Attr], fc: FlowControlType, st: StorageType) extends Desc
+  case class DescPipeIn(ref: Ref, attr: List[Attr], specOpt: Option[Expr], fc: FlowControlType) extends Desc
+  case class DescPipeOut(ref: Ref, attr: List[Attr], specOpt: Option[Expr], fc: FlowControlType, st: StorageType) extends Desc
   case class DescParam(ref: Ref, attr: List[Attr], spec: Expr, initOpt: Option[Expr], finished: Boolean) extends Desc
   case class DescParamType(ref: Ref, attr: List[Attr], initOpt: Option[Expr], finished: Boolean) extends Desc
   case class DescConst(ref: Ref, attr: List[Attr], spec: Expr, init: Expr) extends Desc
@@ -98,7 +98,7 @@ object Trees {
   case class DescGenIf(ref: Ref, attr: List[Attr], cases: List[GenCase], defaults: List[Tree]) extends Desc
   case class DescGenFor(ref: Ref, attr: List[Attr], inits: List[Desc], cond: Expr, steps: List[Stmt], body: List[Tree]) extends Desc
   case class DescGenRange(ref: Ref, attr: List[Attr], init: Desc, op: String, end: Expr, body: List[Tree]) extends Desc
-  case class DescGenScope(ref: Ref, attr: List[Attr], body: List[Tree]) extends Desc
+  case class DescGenScope(ref: Ref, attr: List[Attr], body: List[Tree], wasLoopBody: Boolean) extends Desc
   case class DescAlias(ref: Ref, attr: List[Attr], expr: Expr, exprt: Boolean) extends Desc
   case class DescParametrized(ref: Ref, attr: List[Attr], desc: Desc, symtab: SymbolTable) extends Desc
   // format: on
@@ -135,8 +135,8 @@ object Trees {
   case class DeclIn(symbol: Symbol, spec: Expr, fc: FlowControlType) extends Decl
   case class DeclOut(symbol: Symbol, spec: Expr, fc: FlowControlType, st: StorageType) extends Decl
   case class DeclPipeVar(symbol: Symbol, spec: Expr) extends Decl
-  case class DeclPipeIn(symbol: Symbol, fc: FlowControlType) extends Decl
-  case class DeclPipeOut(symbol: Symbol, fc: FlowControlType, st: StorageType) extends Decl
+  case class DeclPipeIn(symbol: Symbol, pipeVars: List[Expr], fc: FlowControlType) extends Decl
+  case class DeclPipeOut(symbol: Symbol, pipeVars: List[Expr], fc: FlowControlType, st: StorageType) extends Decl
   case class DeclConst(symbol: Symbol, spec: Expr) extends Decl
   case class DeclArray(symbol: Symbol, elem: Expr, size: Long) extends Decl
   case class DeclSram(symbol: Symbol, elem: Expr, size: Long, st: StorageType) extends Decl
@@ -197,7 +197,7 @@ object Trees {
 
   case class UsingOne(expr: Expr, identOpt: Option[Ident]) extends Using
   case class UsingAll(expr: Expr, exprt: Boolean) extends Using
-  case class UsingGenLoopBody(expr: Expr, exclude: Set[Symbol]) extends Using
+  case class UsingGenBody(expr: Expr, exclude: Set[Symbol]) extends Using
 
   //////////////////////////////////////////////////////////////////////////////
   // From

@@ -11,7 +11,6 @@ package com.argondesign.alogic.frontend
 
 import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
-import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.util.unreachable
 
 final class SyntaxNormalize extends StatelessTreeTransformer {
@@ -22,10 +21,9 @@ final class SyntaxNormalize extends StatelessTreeTransformer {
   private def adjUnnamed(desc: Desc, isLoop: Boolean): Thicket = {
     require(desc.ref == Ident("", Nil))
     val name = tmpNames.next()
-    val usng = if (isLoop) UsingGenLoopBody(_, Set.empty) else UsingAll(_, exprt = true)
     Thicket(
       desc.copyRef(ref = Ident(name, Nil) withLocOf desc) withLocOf desc,
-      usng(ExprIdent(name, Nil) withLoc Loc.synthetic) withLoc Loc.synthetic
+      UsingGenBody(ExprIdent(name, Nil) withLocOf desc, Set.empty) withLocOf desc
     )
   }
 
@@ -39,12 +37,12 @@ final class SyntaxNormalize extends StatelessTreeTransformer {
     Thicket(
       makeDesc(
         Ident(newName, Nil) withLocOf ident,
-        (DescGenScope(ident, attr, body) withLocOf ident) :: Nil
+        (DescGenScope(ident, attr, body, wasLoopBody = false) withLocOf ident) :: Nil
       ),
-      UsingGenLoopBody(
-        ExprIdent(newName, Nil) withLoc Loc.synthetic,
+      UsingGenBody(
+        ExprIdent(newName, Nil) withLocOf ident,
         Set.empty
-      ) withLoc Loc.synthetic
+      ) withLocOf ident
     )
   }
 

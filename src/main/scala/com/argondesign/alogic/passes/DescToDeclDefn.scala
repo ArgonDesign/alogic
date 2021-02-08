@@ -9,6 +9,7 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
+import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.ParOrSeqIterable
 import com.argondesign.alogic.core.TypeAssigner
@@ -46,6 +47,19 @@ object DescToDeclDefnTransform extends StatelessTreeTransformer {
     case _ => None
   }
 
+  def getPipeVars(spec: Expr, loc: Loc): List[Expr] = spec match {
+    case ExprSym(symbol) =>
+      symbol.desc pipe {
+        case DescEntity(_, _, _, body)    => body
+        case DescSingleton(_, _, _, body) => body
+        case _                            => Nil
+      } collect {
+        case EntSplice(d: Desc) if d.symbol.kind.isPipeVar =>
+          TypeAssigner(ExprSym(d.symbol) withLoc loc)
+      }
+    case _ => unreachable
+  }
+
   override protected def transform(tree: Tree): Tree = tree match {
     case desc: Desc =>
       desc pipe {
@@ -61,10 +75,10 @@ object DescToDeclDefnTransform extends StatelessTreeTransformer {
           (DeclOut(symbol, spec, fc, st), DefnOut(symbol, initOpt))
         case DescPipeVar(Sym(symbol), _, spec) =>
           (DeclPipeVar(symbol, spec), DefnPipeVar(symbol))
-        case DescPipeIn(Sym(symbol), _, fc) =>
-          (DeclPipeIn(symbol, fc), DefnPipeIn(symbol))
-        case DescPipeOut(Sym(symbol), _, fc, st) =>
-          (DeclPipeOut(symbol, fc, st), DefnPipeOut(symbol))
+        case DescPipeIn(Sym(symbol), _, Some(spec), fc) =>
+          (DeclPipeIn(symbol, getPipeVars(spec, tree.loc), fc), DefnPipeIn(symbol))
+        case DescPipeOut(Sym(symbol), _, Some(spec), fc, st) =>
+          (DeclPipeOut(symbol, getPipeVars(spec, tree.loc), fc, st), DefnPipeOut(symbol))
         case DescParam(Sym(symbol), _, spec, initOpt, _) =>
           // Note: we are changing to 'const'
           (DeclConst(symbol, spec), DefnConst(symbol, initOpt.get))
