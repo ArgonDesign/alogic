@@ -129,15 +129,6 @@ class FunctionCompile extends HttpFunction {
       timeoutMs: Long = 60000 // 1 minute
     ): Unit = {
 
-    // Log a warning if invoked from outside playground
-    request.getHeaders
-      .getOrDefault("Origin", noOrigin)
-      .forEach { origin =>
-        if (origin != "https://alogic.app") {
-          logger.warning("Request from outside playground: " + origin)
-        }
-      }
-
     def replyBadRequest(reason: String): Unit = {
       logger.info(s"Reply bad request: $reason")
       response.setStatusCode(HttpURLConnection.HTTP_BAD_REQUEST, reason)

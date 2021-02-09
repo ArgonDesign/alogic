@@ -1,6 +1,3 @@
-[![Build](https://github.com/alogic/alogic/workflows/Build/badge.svg)](https://github.com/alogic/alogic/actions?query=workflow%3ABuild)
-[![codecov](https://codecov.io/gh/alogic/alogic/branch/4.0.x/graph/badge.svg)](https://app.codecov.io/gh/alogic/alogic)
-
 # Alogic
 
 Alogic is a Medium Level Synthesis language for digital logic that compiles
