@@ -24,6 +24,8 @@ read in linear order to provide an introduction to Alogic.
 - [SRAMs](srams.md)
 - [Assertions](assert.md)
 - [Built-in functions](builtins.md)
+- [The 'using' directive](using.md)
+- [The import mechanism](import.md)
 - [Compile time code generation](gen.md)
 - [Foreign function interface](ffi.md)
 - [Verilog interoperability](interop.md)
