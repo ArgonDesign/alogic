@@ -1,0 +1,9 @@
+fsm recon_store {
+  in u6 p_in;
+  in u6 p_in_2;
+  out u6 p_out;
+  void main() {
+    p_out = p_in - ((p_in==1) ? ((|p_in_2) ? 1 : 2) + 3 : 2);
+    fence;
+  }
+}

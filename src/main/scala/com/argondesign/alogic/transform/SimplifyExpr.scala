@@ -1067,7 +1067,7 @@ object SimplifyExpr extends StatelessTreeTransformer {
             val signedness = if (signed) "signed" else "unsigned"
             throw Fatal(tree, s"Value $value cannot be represented with $width $signedness bits")
           } else {
-            ExprInt(signed, width.toInt, value) withLoc tree.loc
+            TypeAssigner(ExprInt(signed, width.toInt, value)) withLoc tree.loc
           }
         }
 
@@ -1082,6 +1082,21 @@ object SimplifyExpr extends StatelessTreeTransformer {
           case ExprCast(_, ExprInt(_, eWidth, v)) =>
             require(width.toInt >= eWidth)
             mkValue(v)
+          case expr @ ExprUnary(op @ ("+" | "-" | "~"), sexpr) if sexpr.tpe.isNum =>
+            val newsexpr = walk(sexpr cast kind).asInstanceOf[Expr];
+            expr.copy(expr = newsexpr)
+          case expr @ ExprBinary(
+                lhs,
+                op @ ("*" | "/" | "%" | "+" | "-" | "&" | "|" | "^"),
+                rhs
+              ) if lhs.tpe.isNum && rhs.tpe.isNum =>
+            val newlhs = walk(lhs cast kind).asInstanceOf[Expr];
+            val newrhs = walk(rhs cast kind).asInstanceOf[Expr];
+            expr.copy(lhs = newlhs, rhs = newrhs)
+          case expr @ ExprCond(_, thenExpr, elseExpr) if thenExpr.tpe.isNum && elseExpr.tpe.isNum =>
+            val newTE = walk(thenExpr cast kind).asInstanceOf[Expr];
+            val newEE = walk(elseExpr cast kind).asInstanceOf[Expr];
+            expr.copy(thenExpr = newTE, elseExpr = newEE)
           case _ =>
             val kWidth = width.toInt
             val eWidth = expr.tpe.width.toInt
