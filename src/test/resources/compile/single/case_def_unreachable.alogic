@@ -1,0 +1,12 @@
+fsm quant {
+  void main() {
+    gen for (uint i < 2) {
+      u29 tmp3 = 0;
+      case (2'd0) {
+        2'd0: tmp3 = 29'd0;
+        default: unreachable;
+      }
+    }
+    fence;
+  }
+}
