@@ -1,0 +1,24 @@
+struct bar_t {
+  param uint useless_param;
+
+  u4 a;
+  u4 b;
+
+  bool baz() {
+    return a || b;
+  }
+}
+
+fsm example {
+  u1 state = 0;
+  void main() {
+    if (state) {
+      bar_t(useless_param=1) bar;
+      bool foo = bar.baz();
+      fence;
+    }
+  }
+}
+
+// :8: ERROR: Left hand operand of '\|\|' yields 4 bits, a 1 bit value is expected
+// :8: ERROR: Right hand operand of '\|\|' yields 4 bits, a 1 bit value is expected

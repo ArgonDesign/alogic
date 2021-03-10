@@ -542,6 +542,8 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
       if (!tree.hasTpe) {
         TypeAssigner(tree)
       }
+    } else if (hadError) {
+      error
     }
 
     // Never re-write the tree during type checking
@@ -569,7 +571,8 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
         if (!stmt.hasTpe) {
           walk(stmt)
         }
-        stmt.tpe.isCtrlStmt
+        // walk might not assign a type if an error has occured
+        stmt.hasTpe && stmt.tpe.isCtrlStmt
       case _ => unreachable
     }
 

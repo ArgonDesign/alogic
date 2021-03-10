@@ -1,0 +1,27 @@
+struct job_sequencer_t {
+  param bool IS_BIG;
+  const uint BAR = IS_BIG ? 4 : 2;
+
+  const u3[BAR] foo_rst_val = {3'd2, 3'd4, 3'd5, 3'd2};
+  
+  u3[BAR] foo;
+
+  void reset() {
+    foo = foo_rst_val;
+  }
+}
+
+fsm example {
+  in sync ready void p_in;
+  out sync ready u32 p_out;
+  void main() {
+    if (p_in.valid) {
+      job_sequencer_t(IS_BIG=0) blk_seq;
+      p_out.write('blk_seq.foo);
+      p_in.read();
+    }
+    fence;
+  }
+}
+
+// :5: ERROR: Initializer expression yields 12 bits, a 6 bit value is expected
