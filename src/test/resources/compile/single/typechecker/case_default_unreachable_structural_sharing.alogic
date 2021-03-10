@@ -1,0 +1,11 @@
+fsm case_default_unreachable_structural_sharing {
+  void main() {
+    gen for (uint i < 2) { // 'gen' can cause structural sharing of the body
+      case (2'd0) {
+        2'd0: $display("...");
+        default: unreachable;
+      }
+    }
+    fence;
+  }
+}
