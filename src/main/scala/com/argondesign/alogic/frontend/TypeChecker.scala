@@ -371,6 +371,13 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
     }
   }
 
+  private def propagateChildErrorIfAny(tree: Tree): Unit = {
+    // If any of the children have a type error, propagate it upwards
+    if (tree.children.exists(child => child.hasTpe && child.tpe.isError)) {
+      error(tree)
+    }
+  }
+
   override def enter(tree: Tree): Option[Tree] = {
     implicit val theTree: Tree = tree
     tree pipe {
@@ -472,7 +479,10 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
         // Apply pre-order checks
         preOrder(tree)
         // Stop if error or unresolved
-        Option.when(!okSoFar || rAcc.nonEmpty)(tree)
+        Option.when(!okSoFar || rAcc.nonEmpty) {
+          propagateChildErrorIfAny(tree)
+          tree
+        }
     } tap {
       case Some(_) => UnaryTickContext.pop(tree)
       case None    => assert(!tree.hasTpe, tree.tpe)
@@ -521,10 +531,7 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
     implicit val theTree: Tree = tree
     val alreadyHadError = hadError
 
-    // If any of the children have a type error, propagate it upwards
-    if (tree.children.exists(child => child.hasTpe && child.tpe.isError)) {
-      error
-    }
+    propagateChildErrorIfAny(tree)
 
     // Bail quickly if we already had an unknown
     if (rAcc.isEmpty && okSoFar) {
@@ -555,27 +562,36 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
   // Walks as many statements as necessary to determine whether ambiguous
   // 'unreachable' statements in the list are control statements or comb
   // statements. It is a control statement if there are any other control
-  // statements in the list. Returns 'true' if the 'unreachable' statement
-  // should be treated as a control statement
-  private def computeTypeOfAmbiguousUnreachableStatements(stmts: List[Tree]): Boolean =
-    stmts.exists {
-      // Type of 'unreachable' statement might be already set when walking the
-      // body of a StmtBlock or StmtLet contained in an outer statement.
-      case stmt @ StmtSplice(AssertionUnreachable(None, _, _)) if !stmt.hasTpe =>
-        false
-      case StmtSplice(DescGenScope(_, _, body, _)) =>
-        computeTypeOfAmbiguousUnreachableStatements(body)
-      case StmtBlock(body) =>
-        computeTypeOfAmbiguousUnreachableStatements(body)
-      case StmtLet(_, body) =>
-        computeTypeOfAmbiguousUnreachableStatements(body)
-      case stmt: Stmt =>
-        if (!stmt.hasTpe) {
-          walk(stmt)
-        }
-        stmt.tpe.isCtrlStmt
-      case _ => unreachable
-    }
+  // statements in the list. Returns 'Some(true)' if the 'unreachable'
+  // statement should be treated as a control statement, 'None' if currently
+  // not determinable.
+  private def computeTypeOfAmbiguousUnreachableStatements(stmts: List[Tree]): Option[Boolean] = {
+    stmts.iterator
+      .map {
+        // Type of 'unreachable' statement might be already set when walking the
+        // body of a StmtBlock or StmtLet contained in an outer statement.
+        case stmt @ StmtSplice(AssertionUnreachable(None, _, _)) if !stmt.hasTpe =>
+          Some(false)
+        case StmtSplice(DescGenScope(_, _, body, _)) =>
+          computeTypeOfAmbiguousUnreachableStatements(body)
+        case StmtBlock(body) =>
+          computeTypeOfAmbiguousUnreachableStatements(body)
+        case StmtLet(_, body) =>
+          computeTypeOfAmbiguousUnreachableStatements(body)
+        case stmt: Stmt =>
+          if (!stmt.hasTpe) {
+            walk(stmt)
+          }
+          // walk might not assign a type if an error has occurred
+          Option.when(stmt.hasTpe)(stmt.tpe.isCtrlStmt)
+        case _ => unreachable
+      }
+      .foldLeft[Option[Boolean]](Some(false)) {
+        case (None, _) | (_, None)             => None
+        case (Some(true), _) | (_, Some(true)) => Some(true)
+        case _                                 => Some(false)
+      }
+  }
 
   // Set the types of ambiguous 'unreachable' statements
   private def setTypeOfAmbiguousUnreachableStatements(stmts: List[Tree], ctrl: Boolean): Unit =
@@ -625,39 +641,56 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
     // in the enclosing statement
 
     case StmtBlock(body) =>
-      val ctrl = computeTypeOfAmbiguousUnreachableStatements(body)
-      setTypeOfAmbiguousUnreachableStatements(body, ctrl)
+      computeTypeOfAmbiguousUnreachableStatements(body) foreach { ctrl =>
+        setTypeOfAmbiguousUnreachableStatements(body, ctrl)
+      }
     case StmtIf(_, thenStmts, elseStmts) =>
-      val ctrl = computeTypeOfAmbiguousUnreachableStatements(thenStmts) ||
-        computeTypeOfAmbiguousUnreachableStatements(elseStmts)
-      setTypeOfAmbiguousUnreachableStatements(thenStmts, ctrl)
-      setTypeOfAmbiguousUnreachableStatements(elseStmts, ctrl)
+      computeTypeOfAmbiguousUnreachableStatements(thenStmts) foreach { ctrlThen =>
+        computeTypeOfAmbiguousUnreachableStatements(elseStmts) foreach { ctrlElse =>
+          val ctrl = ctrlThen || ctrlElse
+          setTypeOfAmbiguousUnreachableStatements(thenStmts, ctrl)
+          setTypeOfAmbiguousUnreachableStatements(elseStmts, ctrl)
+        }
+      }
     case StmtCase(_, cases) =>
-      val ctrl = cases.exists {
-        case CaseRegular(_, stmts) => computeTypeOfAmbiguousUnreachableStatements(stmts)
-        case CaseDefault(stmts)    => computeTypeOfAmbiguousUnreachableStatements(stmts)
-        case _: CaseSplice         => unreachable // Removed by Elaborate
-      }
-      cases foreach {
-        case CaseRegular(_, stmts) => setTypeOfAmbiguousUnreachableStatements(stmts, ctrl)
-        case CaseDefault(stmts)    => setTypeOfAmbiguousUnreachableStatements(stmts, ctrl)
-        case _: CaseSplice         => unreachable // Removed by Elaborate
-      }
+      cases.iterator
+        .map {
+          case CaseRegular(_, stmts) => computeTypeOfAmbiguousUnreachableStatements(stmts)
+          case CaseDefault(stmts)    => computeTypeOfAmbiguousUnreachableStatements(stmts)
+          case _: CaseSplice         => unreachable // Removed by Elaborate
+        }
+        .foldLeft[Option[Boolean]](Some(false)) {
+          case (None, _) | (_, None)             => None
+          case (Some(true), _) | (_, Some(true)) => Some(true)
+          case _                                 => Some(false)
+        }
+        .foreach { ctrl =>
+          cases foreach {
+            case CaseRegular(_, stmts) => setTypeOfAmbiguousUnreachableStatements(stmts, ctrl)
+            case CaseDefault(stmts)    => setTypeOfAmbiguousUnreachableStatements(stmts, ctrl)
+            case _: CaseSplice         => unreachable // Removed by Elaborate
+          }
+        }
     case StmtLoop(body) =>
-      val ctrl = computeTypeOfAmbiguousUnreachableStatements(body)
-      setTypeOfAmbiguousUnreachableStatements(body, ctrl)
+      computeTypeOfAmbiguousUnreachableStatements(body) foreach { ctrl =>
+        setTypeOfAmbiguousUnreachableStatements(body, ctrl)
+      }
     case StmtWhile(_, body) =>
-      val ctrl = computeTypeOfAmbiguousUnreachableStatements(body)
-      setTypeOfAmbiguousUnreachableStatements(body, ctrl)
+      computeTypeOfAmbiguousUnreachableStatements(body) foreach { ctrl =>
+        setTypeOfAmbiguousUnreachableStatements(body, ctrl)
+      }
     case StmtFor(_, _, _, body) =>
-      val ctrl = computeTypeOfAmbiguousUnreachableStatements(body)
-      setTypeOfAmbiguousUnreachableStatements(body, ctrl)
+      computeTypeOfAmbiguousUnreachableStatements(body) foreach { ctrl =>
+        setTypeOfAmbiguousUnreachableStatements(body, ctrl)
+      }
     case StmtDo(_, body) =>
-      val ctrl = computeTypeOfAmbiguousUnreachableStatements(body)
-      setTypeOfAmbiguousUnreachableStatements(body, ctrl)
+      computeTypeOfAmbiguousUnreachableStatements(body) foreach { ctrl =>
+        setTypeOfAmbiguousUnreachableStatements(body, ctrl)
+      }
     case StmtLet(_, body) =>
-      val ctrl = computeTypeOfAmbiguousUnreachableStatements(body)
-      setTypeOfAmbiguousUnreachableStatements(body, ctrl)
+      computeTypeOfAmbiguousUnreachableStatements(body) foreach { ctrl =>
+        setTypeOfAmbiguousUnreachableStatements(body, ctrl)
+      }
 
     // Type check the lhs up front
     case StmtAssign(lhs, _) =>

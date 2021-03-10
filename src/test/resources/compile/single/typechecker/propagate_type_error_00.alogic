@@ -1,0 +1,18 @@
+struct s_t {
+  param uint WIDTH;
+  const uint(WIDTH) C = 12'd0;
+}
+
+fsm propagate_type_error_00 {
+  void main() {
+    if (true) {
+    if (true) {
+      s_t(WIDTH=6) blk_seq;
+      const uint X = @bits(blk_seq);
+    }
+    }
+    fence;
+  }
+}
+
+// :3: ERROR: Initializer expression yields 12 bits, a 6 bit value is expected
