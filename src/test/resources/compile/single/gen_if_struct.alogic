@@ -1,0 +1,19 @@
+struct job_sequencer_t {
+  param bool IS_BIG;
+  gen if (IS_BIG) {
+    const uint BAR = 4;
+  } else {
+    const uint BAR = 2;
+  }
+  const uint BAZ = IS_BIG ? 1 : 2;
+  uint(BAR+BAZ) foo;
+}
+
+fsm example {
+  out sync ready u8 p_out;
+  void main() {
+    job_sequencer_t(IS_BIG=true) blk_seq;
+    p_out.write('blk_seq.foo);
+    fence;
+  }
+}
