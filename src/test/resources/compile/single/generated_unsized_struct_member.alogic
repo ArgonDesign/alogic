@@ -1,0 +1,24 @@
+struct s_t {
+  gen if (true) {
+    const uint C = 1;
+  }
+  uint(C) x;
+}
+
+fsm generated_unsized_struct_member {
+  in        s_t  i;
+  out wire  bool o;
+  void main() {
+    o = i.x;
+    fence;
+  }
+}
+
+// @fec/golden {{{
+//  module generated_unsized_struct_member(
+//    input  wire i__x,
+//    output wire o
+//  );
+//    assign o = i__x;
+//  endmodule
+// }}}

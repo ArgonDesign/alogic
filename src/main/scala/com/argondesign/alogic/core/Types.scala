@@ -195,7 +195,8 @@ trait TypeVectorImpl { this: TypeVector =>
 trait TypeRecordImpl { this: TypeRecord =>
   final def publicSymbols: List[Symbol] = members
 
-  final lazy val dataMembers: List[Symbol] = members.filter(_.kind.isFund)
+  final lazy val dataMembers: List[Symbol] =
+    members.filter(sym => (sym.kind.isFund && sym.kind.isPacked))
 }
 
 trait TypeEntityImpl { this: TypeEntity =>
