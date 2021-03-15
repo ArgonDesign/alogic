@@ -492,8 +492,12 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
           }
           error(expr, s"Parametrized $what requires parameter list")
         }
-        if (!tree.isInstanceOf[Expr] && expr.tpe.underlying.isNum) {
-          evaluate(expr, "Expression of unsized integer type")
+        if (!tree.isInstanceOf[Expr]) {
+          expr visit {
+            case t if !t.hasTpe => // Stop descent
+            case e: Expr if e.tpe.underlying.isNum =>
+              evaluate(e, "Expression of unsized integer type")
+          }
         }
       case _ =>
     }

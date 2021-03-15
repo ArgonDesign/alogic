@@ -1,0 +1,9 @@
+fsm non_const_unsized_00 {
+  in  u6 i;
+  out u6 o;
+  void main() {
+    o = i - ((i==1) ? 1 : 2);
+    fence;
+  }
+}
+// :5: ERROR: Expression of unsized integer type must be a compile time constant

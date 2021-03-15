@@ -78,6 +78,8 @@ case class Loc(
     }
   }
 
+  def context: String = context("", "") // For debug use
+
   // Check if this Loc range contains the given Loc range
   def contains(that: Loc): Boolean =
     this.file == that.file && this.start <= that.start && that.end <= this.end

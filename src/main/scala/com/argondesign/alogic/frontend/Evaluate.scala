@@ -40,11 +40,11 @@ private[frontend] object Evaluate {
 
         override protected def enter(tree: Tree): Option[Tree] = tree match {
           case _ if bad.isDefined => Some(tree) // Bail quickly, on issue
-          case ExprSym(symbol)    => evaluate(symbol, tree.loc) orElse Some(tree)
+          case ExprSym(symbol)    => evaluate(symbol, expr.loc) orElse Some(tree)
           case ExprSymSel(_, tSymbol) =>
             tSymbol.desc match {
               case _: DescVal | _: DescParam | _: DescConst | _: DescGenVar =>
-                evaluate(tSymbol, tree.loc) orElse Some(tree)
+                evaluate(tSymbol, expr.loc) orElse Some(tree)
               case DescAlias(_, _, expr, _) => Some(walk(expr))
               case _                        => None
             }

@@ -52,9 +52,6 @@ class FunctionCompile extends HttpFunction {
   // Logger
   private val logger = Logger.getLogger(getClass.getName)
 
-  // Placeholder in case no Origin header is present in HTTP request
-  private val noOrigin = java.util.Arrays.asList("<no-origin>")
-
   // For timeout handling
   private val executorService = Executors.newSingleThreadExecutor()
 
