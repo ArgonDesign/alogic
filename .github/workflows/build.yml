@@ -101,37 +101,6 @@ jobs:
           restore-keys: format-SBT-
       - name: Check code formatting
         run: sbt scalafmtCheckAll scalafmtSbtCheck
-  coverage:
-    name: Measure test suite code coverage
-    needs: build
-    runs-on: ubuntu-20.04
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Set up JDK 11
-        uses: actions/setup-java@v1
-        with:
-          java-version: 11
-      - name: Cache SBT
-        uses: actions/cache@v2
-        with:
-          path: |
-            ~/.sbt
-            ~/.cache/coursier
-            ~/.ivy2/cache
-          key: coverage-SBT-${{ hashFiles('**/build.sbt') }}
-          restore-keys: coverage-SBT-
-      - name: Compile - with coverage
-        run: sbt coverageOn clean compile Test/compile
-      - name: Run tests - with coverage
-        run: sbt coverageOn test
-      - name: Generate coverage report
-        run: sbt coverageOn coverageReport
-      - name: Upload coverage to codecov.io
-        uses: codecov/codecov-action@v1
-        with:
-          fail_ci_if_error: true
-          verbose: true
   deploy:
     name: Deploy Cloud Function for playground
     needs: build
