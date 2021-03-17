@@ -266,18 +266,22 @@ object Clarify {
           if (!exprs.exists(_.tpe.underlying.isNum)) {
             tree
           } else {
-            val kind = exprs.collectFirst { case e if e.tpe.isPacked => e.tpe }.get
-            val newExpr = if (expr.tpe.isPacked) expr else castToMatchWidth(expr, kind)
-            val newCases = cases map {
-              case c @ CaseRegular(cond, _) if cond.exists(_.tpe.underlying.isNum) =>
-                val newCond = cond map {
-                  case e if e.tpe.isPacked => e
-                  case e                   => castToMatchWidth(e, kind)
+            exprs
+              .collectFirst { case e if e.tpe.isPacked => e.tpe }
+              .map { kind =>
+                val newExpr = if (expr.tpe.isPacked) expr else castToMatchWidth(expr, kind)
+                val newCases = cases map {
+                  case c @ CaseRegular(cond, _) if cond.exists(_.tpe.underlying.isNum) =>
+                    val newCond = cond map {
+                      case e if e.tpe.isPacked => e
+                      case e                   => castToMatchWidth(e, kind)
+                    }
+                    TypeAssigner(c.copy(cond = newCond) withLocOf c)
+                  case other => other
                 }
-                TypeAssigner(c.copy(cond = newCond) withLocOf c)
-              case other => other
-            }
-            StmtCase(newExpr, newCases)
+                StmtCase(newExpr, newCases)
+              }
+              .getOrElse(tree)
           }
 
         case expr @ ExprIndex(tgt, idx) if idx.tpe.underlying.isNum =>

@@ -1,0 +1,21 @@
+fsm unsized_case_values {
+  in       bool i;
+  out wire bool o;
+
+  void main() {
+    case (1) {
+      0: o =  i;
+      1: o = ~i;
+    }
+    fence;
+  }
+}
+
+// @fec/golden {{{
+//  module unsized_case_values(
+//    input  wire i,
+//    output wire o
+//  );
+//    assign o = ~i;
+//  endmodule
+// }}}
