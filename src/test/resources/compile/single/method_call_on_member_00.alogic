@@ -2,6 +2,7 @@ struct a {
   u1 f(u1 i) {
     return ~i;
   }
+  bool d;
 }
 
 struct b {

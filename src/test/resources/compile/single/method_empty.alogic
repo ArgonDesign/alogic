@@ -1,5 +1,6 @@
 struct s {
   void empty() {}
+  bool f;
 }
 
 fsm method_empty {

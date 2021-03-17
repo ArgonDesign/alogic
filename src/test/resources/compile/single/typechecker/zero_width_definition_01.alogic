@@ -1,0 +1,16 @@
+struct maybe_empty_t {
+  param bool P;
+  gen if (P) {
+    bool x;
+  }
+}
+
+fsm zero_width_definition_01 {
+  void main() {
+    maybe_empty_t(true)  x;
+    maybe_empty_t(false) y;
+    fence;
+  }
+}
+
+// :11: ERROR: 'y' has width 0

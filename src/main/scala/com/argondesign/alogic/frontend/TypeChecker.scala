@@ -14,6 +14,8 @@ import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
+import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeReady
+import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeValid
 import com.argondesign.alogic.core.FuncVariant
 import com.argondesign.alogic.core.Locatable
 import com.argondesign.alogic.core.Messages.Error
@@ -798,7 +800,7 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
       //}
 
       desc match {
-        case DescFunc(Sym(symbol), _, variant, _, _, body) =>
+        case DescFunc(Sym(symbol), _, variant, ret, _, body) =>
           if (symbol.kind.isCtrlFunc) {
             if (body.isEmpty) {
               error(
@@ -822,6 +824,20 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
             }
           } else if (!symbol.kind.isXenoFunc) {
             throw Ice(tree, "Unknown function definition")
+          }
+          symbol.kind.asCallable.retType match {
+            case TypeVoid => // OK
+            case kind if kind.isPacked && kind.width == 0 =>
+              error(ret, s"return type of '${symbol.name}' has width 0")
+            case _ => // Ok
+          }
+
+        case d @ Desc(Sym(symbol)) if symbol.kind.isPacked && symbol.kind.width == 0 =>
+          symbol.kind match {
+            case TypeIn(TypeVoid, FlowControlTypeValid | FlowControlTypeReady)     => // Ok
+            case TypeOut(TypeVoid, FlowControlTypeValid | FlowControlTypeReady, _) => // OK
+            case _ =>
+              error(s"'${symbol.name}' has width 0")
           }
 
         case desc: DescParamType =>

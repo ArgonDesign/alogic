@@ -6,6 +6,7 @@ fsm method_static_3 {
     static void f(bool x) {
       o = x;
     }
+    bool d;
   }
 
   s ss;

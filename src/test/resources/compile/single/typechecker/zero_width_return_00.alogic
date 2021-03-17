@@ -1,0 +1,5 @@
+struct empty_t {}
+
+empty_t f() {}
+
+// :3: ERROR: return type of 'f' has width 0

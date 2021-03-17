@@ -1,0 +1,5 @@
+struct empty_t {}
+
+void f(empty_t x) {}
+
+// :3: ERROR: 'x' has width 0

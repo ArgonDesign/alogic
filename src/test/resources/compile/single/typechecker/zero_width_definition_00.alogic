@@ -1,0 +1,10 @@
+struct empty_t {}
+
+fsm zero_width_definition_00 {
+  void main() {
+    empty_t x = 0;
+    fence;
+  }
+}
+
+// :5: ERROR: 'x' has width 0

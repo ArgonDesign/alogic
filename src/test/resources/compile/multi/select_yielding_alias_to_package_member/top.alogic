@@ -5,6 +5,7 @@ fsm top {
   struct s {
     import "a" as a;
     using a.C;
+    bool f;
   }
 
   s x;
