@@ -106,27 +106,37 @@ final class InlineKnownVars(combOnly: Boolean = true) extends StatelessTreeTrans
         }
       }
 
-    // Selects on structs are removed by SplitStruct but InlineKnownVars might
-    // be called prior, e.g. from InlineMethods, so handle them if we can.
-    case e @ ExprSel(expr, sel) if expr.tpe.underlying.isRecord =>
-      Some {
-        walk(expr).asInstanceOf[Expr].simplify match {
-          case known: ExprInt =>
-            val kind = expr.tpe.underlying.asRecord
-            val dataMembers = kind.dataMembers.reverse // Reverse for big-endian packing
-            val fieldIndex = dataMembers.indexWhere(_.name == sel)
-            val fieldSymbol = dataMembers(fieldIndex)
-            val width = fieldSymbol.kind.width.toInt
-            val signed = fieldSymbol.kind.isSigned
-            val lsb = (dataMembers.iterator map { _.kind.width.toInt })
-              .scanLeft(0)(_ + _)
-              .drop(fieldIndex)
-              .next()
-            TypeAssigner(
-              ExprInt(signed, width, known.value.extract(lsb, width, signed)) withLoc tree.loc
-            )
-          case other => TypeAssigner(e.copy(expr = other) withLoc tree.loc)
+    case e @ ExprSel(expr, sel) =>
+      if (e.tpe.isCallable) {
+        // If the result of the select is a callable, then don't try to inline
+        // the subject. E.g: 'input_port.read'
+        Some(tree)
+      } else if (expr.tpe.underlying.isRecord) {
+        // Selects on structs are removed by SplitStruct but InlineKnownVars
+        // might be called prior, e.g. from InlineMethods, so handle them if
+        // we can.
+        Some {
+          walkSame(expr).simplify match {
+            case known: ExprInt =>
+              val kind = expr.tpe.underlying.asRecord
+              val dataMembers = kind.dataMembers.reverse // Reverse for big-endian packing
+              val fieldIndex = dataMembers.indexWhere(_.name == sel)
+              val fieldSymbol = dataMembers(fieldIndex)
+              val width = fieldSymbol.kind.width.toInt
+              val signed = fieldSymbol.kind.isSigned
+              val lsb = dataMembers.iterator
+                .map(_.kind.width.toInt)
+                .scanLeft(0)(_ + _)
+                .drop(fieldIndex)
+                .next()
+              TypeAssigner(
+                ExprInt(signed, width, known.value.extract(lsb, width, signed)) withLoc tree.loc
+              )
+            case other => TypeAssigner(e.copy(expr = other) withLoc tree.loc)
+          }
         }
+      } else {
+        None
       }
 
     //

@@ -1,0 +1,19 @@
+fsm inline_known_port_00 {
+  in        bool i;
+  out wire  bool o;
+  void main() {
+    o = false;
+    if (i) {
+      o = i.read();
+    }
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module inline_known_port_00(
+//    input  wire i,
+//    output wire o
+//  );
+//    assign o = i;
+//  endmodule
+// }}}
