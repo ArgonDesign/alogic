@@ -129,7 +129,5 @@ final class LowerLoops extends StatelessTreeTransformer {
 object LowerLoops extends EntityTransformerPass(declFirst = true, parallel = true) {
   val name = "lower-loops"
 
-  override def skip(decl: DeclEntity, defn: DefnEntity): Boolean = decl.functions.isEmpty
-
   def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer = new LowerLoops
 }

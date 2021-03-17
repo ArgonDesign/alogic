@@ -43,13 +43,13 @@ object Passes extends ChainingSyntax {
         Fold andThen
         CombineStatements andThen
         Desugar andThen
+        LowerLoops andThen
         NormalizeFunctions andThen
         InlineMethods andThen
         NormalizeReferences() andThen
         PortCheck andThen
         LowerPipeline andThen
         ExtractTypes andThen
-        LowerLoops andThen
         NormalizeControl andThen
         AnalyseCallGraph andThen
         ConvertCtrlFuncArgret andThen

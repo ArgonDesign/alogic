@@ -1,0 +1,36 @@
+fsm comb_func_in_loop_cond_00 {
+  out wire u3 o;
+
+  void main() {
+    u3 x = 0;
+    u3 get_x() { return x; }
+    o = x;
+    x++;
+    do {
+      o = x;
+      x++;
+    } while (get_x() < 4);
+  }
+}
+
+// @fec/golden {{{
+//  module comb_func_in_loop_cond_00(
+//    input  wire       clk,
+//    input  wire       rst,
+//    output wire [2:0] o
+//  );
+//
+//    reg [1:0] s_q;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        s_q <= 2'd0;
+//      end else begin
+//        s_q <= s_q + 2'd1;
+//      end
+//    end
+//
+//    assign o = {1'd0, s_q};
+//
+//  endmodule
+// }}}

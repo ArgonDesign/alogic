@@ -228,20 +228,7 @@ final class NormalizeFunctions(implicit cc: CompilerContext) extends StatelessTr
         stmt.copy(body = reachable) withLoc tree.loc
       } getOrElse tree
 
-    case stmt @ StmtWhile(_, body) =>
-      trimUnreachable(body) { reachable =>
-        stmt.copy(body = reachable) withLoc tree.loc
-      } getOrElse tree
-
-    case stmt @ StmtFor(_, _, _, body) =>
-      trimUnreachable(body) { reachable =>
-        stmt.copy(body = reachable) withLoc tree.loc
-      } getOrElse tree
-
-    case stmt @ StmtDo(_, body) =>
-      trimUnreachable(body) { reachable =>
-        stmt.copy(body = reachable) withLoc tree.loc
-      } getOrElse tree
+    // StmtWhile, StmtFor and StmtDo removed by LowerLoop
 
     // StmtLet removed in Desugar
 
