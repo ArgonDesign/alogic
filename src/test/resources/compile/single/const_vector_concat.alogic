@@ -1,0 +1,22 @@
+const bool[1] A = true;
+const bool[1] B = false;
+const bool[2] LUT = {B, A};
+
+fsm const_vector_concat {
+  in       bool i;
+  out wire bool o;
+
+  void main() {
+    o = LUT[i];
+    fence;
+  }
+}
+
+// @fec/golden {{{
+//  module const_vector_concat(
+//    input  wire i,
+//    output wire o
+//  );
+//    assign o = ~i;
+//  endmodule
+// }}}

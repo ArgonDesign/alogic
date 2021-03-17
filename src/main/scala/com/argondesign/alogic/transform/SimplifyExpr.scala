@@ -975,16 +975,18 @@ object SimplifyExpr extends StatelessTreeTransformer {
 
   private def transformCat(tree: ExprCat): Expr = tree match {
     ////////////////////////////////////////////////////////////////////////////
-    // Remove pointless $signed/$unsigned from Cat arguments
+    // Remove pointless $signed/$unsigned/cast from Cat arguments
     ////////////////////////////////////////////////////////////////////////////
 
     case ExprCat(args) if args exists {
           case ExprBuiltin(DollarSigned | DollarUnsigned, _) => true
+          case _: ExprCast                                   => true
           case _                                             => false
         } =>
       ExprCat {
         args map {
           case ExprBuiltin(DollarSigned | DollarUnsigned, args) => args.head.expr
+          case cast: ExprCast                                   => cast.expr
           case arg                                              => arg
         }
       } withLoc tree.loc
@@ -1020,11 +1022,14 @@ object SimplifyExpr extends StatelessTreeTransformer {
 
   private def transformRep(tree: ExprRep): Expr = tree match {
     ////////////////////////////////////////////////////////////////////////////
-    // Remove pointless $signed/$unsigned Rep arguments
+    // Remove pointless $signed/$unsigned/cast Rep arguments
     ////////////////////////////////////////////////////////////////////////////
 
     case ExprRep(count, ExprBuiltin(DollarSigned | DollarUnsigned, args)) =>
       ExprRep(count, args.head.expr) withLoc tree.loc
+
+    case ExprRep(count, cast: ExprCast) =>
+      ExprRep(count, cast.expr) withLoc tree.loc
 
     ////////////////////////////////////////////////////////////////////////////
     // Fold repetitions of count 1
