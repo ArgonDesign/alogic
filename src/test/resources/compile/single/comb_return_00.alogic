@@ -1,0 +1,31 @@
+bool f(bool a, bool b) {
+  if (a) {
+    return true;
+  } else {
+    if (b) {
+      return true;
+    }
+    return false;
+  }
+}
+
+fsm comb_return_00 {
+  in       bool a;
+  in       bool b;
+  out wire bool o;
+
+  void main() {
+    o = f(a, b);
+    fence;
+  }
+}
+
+// @fec/golden {{{
+//  module comb_return_00(
+//    input  wire a,
+//    input  wire b,
+//    output wire o
+//  );
+//    assign o = a | b;
+//  endmodule
+// }}}

@@ -12,7 +12,7 @@ import com.argondesign.alogic.util.unreachable
 trait StmtOps { this: Stmt =>
 
   // Indicates if this statement always terminates execution of a sequence of
-  // statements, e.g: returns or throws/stops the world, i.e.: statements
+  // statements, i.e: always returns or throws/stops the world, i.e.: statements
   // following it in a sequence of statements will have no effect
   lazy val alwaysTerminates: Boolean = this match {
     case _: StmtReturn | StmtSplice(_: AssertionUnreachable) => true
@@ -29,7 +29,7 @@ trait StmtOps { this: Stmt =>
   }
 
   // Indicates if this statement never terminates execution of a sequence of
-  // statements, e.g: returns or throws/stops the world, i.e.: statements
+  // statements, i.e: never returns or throws/stops the world, i.e.: statements
   // following it in a sequence of statements will have effect
   lazy val neverTerminates: Boolean = this match {
     case _: StmtReturn | StmtSplice(_: AssertionUnreachable) => false

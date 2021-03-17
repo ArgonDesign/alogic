@@ -155,8 +155,8 @@ final class NormalizeFunctions(implicit cc: CompilerContext) extends StatelessTr
 
       @tailrec
       def noEarlyReturn(stmts: List[Stmt]): Boolean = stmts match {
-        case _ :: Nil | Nil => true
-        case s :: ss        => if (s.neverTerminates) noEarlyReturn(ss) else false
+        case Nil     => true
+        case s :: ss => if (s.neverTerminates) noEarlyReturn(ss) else false
       }
 
       if (hadError) {
