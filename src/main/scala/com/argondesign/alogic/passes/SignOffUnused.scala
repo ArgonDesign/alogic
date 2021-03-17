@@ -51,7 +51,11 @@ object SignOffUnused extends PairsTransformerPass {
       case symbol if !symbol.kind.isPacked => Iterator.empty
       case symbol =>
         val usedBits = usedSymbolBits.getOrElse(symbol, 0)
-        if (usedBits == BigInt.mask(symbol.kind.width.toInt)) {
+        val mask = BigInt.mask(symbol.kind.width.toInt)
+        // Note: The compiler currently does not check out of bound accesses,
+        // hence the '& mask' is necessary on the left hand side of this
+        // comparison
+        if ((usedBits & mask) == mask) {
           Iterator.empty
         } else if (usedBits == 0) {
           Iterator.single(TypeAssigner(ExprSym(symbol) withLoc Loc.synthetic))

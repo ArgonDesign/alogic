@@ -1,0 +1,16 @@
+// TODO: This should be caught by the type checker. This test just ensures
+// the compiler doesn't crash...
+fsm signoff_unused_out_of_bounds {
+  in        bool  c;
+  in        u5    i;
+  out wire  bool  o;
+
+  void main() {
+    o = |i;
+    if (c) {
+      o = i[5];
+    }
+    fence;
+  }
+}
+// @verilator-lint-off
