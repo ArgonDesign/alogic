@@ -22,7 +22,6 @@ import com.google.cloud.functions.HttpRequest
 import com.google.cloud.functions.HttpResponse
 import io.circe.Json
 import io.circe.JsonObject
-import io.circe.generic.auto._
 import io.circe.syntax._
 
 import java.io.File
@@ -66,6 +65,10 @@ class FunctionCompile extends HttpFunction {
       lines: Seq[String],
       context: String)
 
+  @nowarn("msg=never used") // 2.13: This actually is used...
+  implicit private val responseMessageEncoder: io.circe.Encoder[ResponseMessage] =
+    io.circe.generic.semiauto.deriveEncoder
+
   // Turns a compiler Message into a ResponseMessage
   private def toResponseMessage(m: Message, sandboxDirPrefix: String): ResponseMessage = {
     require(sandboxDirPrefix.endsWith(File.separator))
@@ -96,11 +99,17 @@ class FunctionCompile extends HttpFunction {
       compilerVersion: String,
       buildTime: String)
 
+  implicit private val describeResultEncoder: io.circe.Encoder[DescribeResult] =
+    io.circe.generic.semiauto.deriveEncoder
+
   // Response to a 'compile' request
   private case class CompileResult(
       code: String,
       outputFiles: Map[String, String],
       messages: Seq[ResponseMessage])
+
+  implicit private val compileResultEncoder: io.circe.Encoder[CompileResult] =
+    io.circe.generic.semiauto.deriveEncoder
 
   // Create temporary directory, run 'f' passing the path, then delete it
   private def withTmpDir(f: Path => Unit): Unit = {

@@ -18,7 +18,7 @@ organization := "com.argondesign"
 
 scalaVersion := "2.13.4"
 
-crossScalaVersions := Seq(scalaVersion.value, "3.0.0-M3")
+crossScalaVersions := Seq(scalaVersion.value, "3.0.0-RC1")
 
 scalacOptions ++= Seq("-feature", "-unchecked")
 
@@ -51,7 +51,7 @@ unmanagedSources / excludeFilter := {
 // Library dependencies
 ////////////////////////////////////////////////////////////////////////////////
 
-libraryDependencies += "org.rogach" %% "scallop" % "4.0.1"
+libraryDependencies += "org.rogach" %% "scallop" % "4.0.2"
 
 libraryDependencies += {
   CrossVersion.partialVersion(scalaVersion.value) match {
@@ -65,7 +65,7 @@ libraryDependencies ++= Seq(
   "io.circe" %% "circe-generic",
   "io.circe" %% "circe-parser"
 ) map {
-  _ % "0.14.0-M3"
+  _ % "0.14.0-M4"
 }
 
 // Java 11 only
@@ -81,7 +81,7 @@ libraryDependencies ++= {
 // Testing dependencies
 ////////////////////////////////////////////////////////////////////////////////
 
-libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.3" % Test
+libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.6" % Test
 
 libraryDependencies += "org.mockito" % "mockito-core" % "3.7.7" % Test
 

@@ -223,7 +223,6 @@ final class Frontend private (
 
   def typeOf(symbol: Symbol, loc: Loc, refresh: Boolean = false): FinalResult[Type] =
     guardCircular(PendingTypeOf(symbol), loc) {
-      if (symbol.name.startsWith("@@@")) ???
       TypeOf(symbol, refresh)
     }
 

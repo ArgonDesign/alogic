@@ -21,7 +21,7 @@ jobs:
         java: [8, 11]
         os: [ubuntu-20.04]
         suite: [UnitTests, EndToEndTests, EndToEndParallelTests]
-        scala: [2.13.4, 3.0.0-M3]
+        scala: [2.13.4, 3.0.0-RC1]
     name: ${{ matrix.suite }} Scala ${{ matrix.scala }} Java ${{ matrix.java }}
     runs-on: ${{ matrix.os }}
     steps:
