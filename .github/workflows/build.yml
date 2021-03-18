@@ -104,7 +104,7 @@ jobs:
   deploy:
     name: Deploy Cloud Function for playground
     needs: build
-    if: ${{ github.repository == 'alogic/alogic' && github.event_name == 'push' && github.ref == 'refs/heads/4.0.x' }}
+    if: ${{ github.repository == 'ArgonDesign/alogic' && github.event_name == 'push' && github.ref == 'refs/heads/4.0.x' }}
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout
