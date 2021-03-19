@@ -1307,16 +1307,38 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
     case ExprBinary(lhs, "'", rhs) =>
       val rHint = "Right hand side operand of binary ' operator"
       val lHint = "Left hand side operand of binary ' operator"
-      checkPacked(rhs, rHint) // Evaluate eagerly up front
+      if (!rhs.tpe.underlying.isNum) {
+        checkPacked(rhs, rHint) // Evaluate eagerly up front
+      }
       val rhsOk = okSoFar
+      val s = rhs.tpe.isSigned
       evaluate(lhs, lHint)
         .filter(value => { checkPositive(value, lHint, lhs); okSoFar })
         .filter(_ => rhsOk)
-        .foreach {
-          case v if v < rhs.tpe.width =>
+        .foreach { lv =>
+          if (rhs.tpe.underlying.isNum) {
+            evaluate(rhs, "Expression of unsized integer type")
+              .foreach { rv =>
+                val lo = if (s) BigInt.iMin(lv.toInt) else BigInt.uMin(lv.toInt)
+                val hi = if (s) BigInt.iMax(lv.toInt) else BigInt.uMax(lv.toInt)
+                val ss = if (s) "signed" else "unsigned"
+                if (rv < lo) {
+                  error(
+                    s"Right hand operand of binary ' cannot be represented as a $lv bit $ss value ($rv < $lo)"
+                  )
+                } else if (rv > hi) {
+                  error(
+                    s"Right hand operand of binary ' cannot be represented as a $lv bit $ss value ($rv > $hi)"
+                  )
+                } else {
+                  tree withTpe TypeInt(s, lv.asLong)
+                }
+              }
+          } else if (lv < rhs.tpe.width) {
             error("Binary ' operator causes narrowing")
-          case v =>
-            tree withTpe TypeInt(rhs.tpe.isSigned, v.asLong)
+          } else {
+            tree withTpe TypeInt(s, lv.asLong)
+          }
         }
 
     case ExprBinary(lhs, op @ ("<<" | ">>" | "<<<" | ">>>"), rhs) =>

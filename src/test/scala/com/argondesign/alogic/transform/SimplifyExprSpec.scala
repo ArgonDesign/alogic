@@ -1542,6 +1542,19 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
           )
         }
       }
+
+      "' over unsized rhs" - {
+        checkExact(
+          // - unsigned
+          ("3'0", ExprInt(false, 3, 0)),
+          ("3'2", ExprInt(false, 3, 2)),
+          ("3'7", ExprInt(false, 3, 7)),
+          // - signed
+          ("3'-4s", ExprInt(true, 3, -4)),
+          ("3' 0s", ExprInt(true, 3, 0)),
+          ("3' 3s", ExprInt(true, 3, 3))
+        )
+      }
     }
 
     "ternary operator" - {

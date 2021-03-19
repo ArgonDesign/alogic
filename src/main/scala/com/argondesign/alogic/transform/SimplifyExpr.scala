@@ -512,9 +512,9 @@ object SimplifyExpr extends StatelessTreeTransformer {
         case Some(_)          => throw Ice(tree, "LHS of binary ' is non positive")
         case None             => throw Ice(tree, "Cannot compute value of LHS of binary '")
       }
-      val rhsWidth = rhs.tpe.width.toInt // Must be packed so must know width
-      require(width >= rhsWidth)
+      lazy val rhsWidth = rhs.tpe.width.toInt.ensuring(width >= _)
       rhs match {
+        case ExprNum(signed, value) => ExprInt(signed, width, value)
         case expr: ExprInt          => expr.copy(width = width)
         case _ if width == rhsWidth => rhs
         case _ if rhs.tpe.isSigned  => rhs sx width

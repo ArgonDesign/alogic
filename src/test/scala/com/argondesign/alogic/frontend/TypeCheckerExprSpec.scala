@@ -253,8 +253,8 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
             }
           }
 
-          "RHS is packed" - {
-            for ((rhs, ok) <- List(("1", false), ("bool", false), ("2'd0", true))) {
+          "RHS is packed or num" - {
+            for ((rhs, ok) <- List(("1", true), ("bool", false), ("2'd0", true))) {
               rhs in {
                 typeCheck {
                   s"""
@@ -285,6 +285,36 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
             }
             checkSingleError(
               "Binary ' operator causes narrowing" :: Nil
+            )
+          }
+
+          "too large unsized" in {
+            typeCheck {
+              """
+                |fsm a {
+                |  void main() {
+                |    $display("", 1'2);
+                |    fence;
+                |  }
+                |}""".stripMargin
+            }
+            checkSingleError(
+              "Right hand operand of binary ' cannot be represented as a 1 bit unsigned value (2 > 1)" :: Nil
+            )
+          }
+
+          "too small unsized" in {
+            typeCheck {
+              """
+                |fsm a {
+                |  void main() {
+                |    $display("", 1'-2s);
+                |    fence;
+                |  }
+                |}""".stripMargin
+            }
+            checkSingleError(
+              "Right hand operand of binary ' cannot be represented as a 1 bit signed value (-2 < -1)" :: Nil
             )
           }
         }

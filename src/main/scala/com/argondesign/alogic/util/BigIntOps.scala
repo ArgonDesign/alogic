@@ -64,6 +64,7 @@ object BigIntOps {
 
     def oneHot(width: Int): BigInt = BigInt(1) << width
 
+    def uMin(width: Int): BigInt = 0
     def uMax(width: Int): BigInt = mask(width)
 
     def iMin(width: Int): BigInt = BigInt(-1) << (width - 1)
