@@ -86,8 +86,8 @@ object SimplifyCatTransform extends StatelessTreeTransformer {
     case StmtAssign(ExprCat(oLhss), ExprCat(oRhss)) =>
       // Do not simplify if a symbol appears on both sides (eg {a, b} = {b, a})
       // as in this case the rhs must be read atomically
-      val lSymbols = (oLhss collect { case ExprSym(symbol) => symbol }).toSet
-      val rSymbols = (oRhss collect { case ExprSym(symbol) => symbol }).toSet
+      val lSymbols = oLhss.iterator.flatMap(_.collect { case ExprSym(symbol) => symbol }).toSet
+      val rSymbols = oRhss.iterator.flatMap(_.collect { case ExprSym(symbol) => symbol }).toSet
       lazy val pairs = pairUp(oLhss, oRhss)
       if ((lSymbols intersect rSymbols).nonEmpty || pairs.lengthIs == 1) {
         tree

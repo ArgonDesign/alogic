@@ -1,0 +1,17 @@
+fsm simplify_cat_00 {
+  in       u2 i;
+  out wire u2 o;
+  void main() {
+    o = i;
+    {o[1], o[0]} = {o[0], o[1]};
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module simplify_cat_00(
+//    input  wire [1:0] i,
+//    output wire [1:0] o
+//  );
+//    assign o = {i[0], i[1]};
+//  endmodule
+// }}}
