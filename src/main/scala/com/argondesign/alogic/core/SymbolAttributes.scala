@@ -122,6 +122,9 @@ class SymbolAttributes {
   // Flag indicating this is a temporary introduced by the compiler
   val tmp = new Attribute[Boolean]()
 
+  // Flag indicating this entity was entirely compiler generated
+  val compilerGenerated = new Attribute[Boolean]()
+
   // Iterator that enumerates all fields above
   private def attrIterator = Iterator(
     specializations,
@@ -160,7 +163,8 @@ class SymbolAttributes {
     dictResolutions,
     eliminated,
     elab,
-    tmp
+    tmp,
+    compilerGenerated
   )
 
   // Iterator that enumerates names of fields above
@@ -201,7 +205,8 @@ class SymbolAttributes {
     "dictResolutions",
     "eliminated",
     "elab",
-    "tmp"
+    "tmp",
+    "compilerGenerated"
   )
 
   // Copy values of attributes from another instance

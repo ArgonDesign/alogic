@@ -147,6 +147,7 @@ final class StackFactory {
     val defns = (pusDefn :: popDefn :: setDefn :: dDefn :: qDefn :: sDefns) map EntSplice.apply
 
     val entitySymbol = Symbol(s"stack_${depth}_${kind.toName}", loc)
+    entitySymbol.attr.compilerGenerated.set(true)
     val decl = DeclEntity(entitySymbol, decls) regularize loc
     val defn = DefnEntity(
       entitySymbol,

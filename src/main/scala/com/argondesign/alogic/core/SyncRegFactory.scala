@@ -121,6 +121,7 @@ final class SyncRegFactory {
     }
 
     val entitySymbol = Symbol(name, loc)
+    entitySymbol.attr.compilerGenerated.set(true)
     val decl = DeclEntity(entitySymbol, decls) regularize loc
     val defn = DefnEntity(
       entitySymbol,

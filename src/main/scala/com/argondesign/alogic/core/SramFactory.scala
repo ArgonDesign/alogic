@@ -111,6 +111,7 @@ final class SramFactory {
     val defns = List(ceDefn, weDefn, adDefn, wdDefn, rdDefn, stDefn) map EntSplice.apply
 
     val entitySymbol = Symbol(s"sram_${depth}x$width", loc)
+    entitySymbol.attr.compilerGenerated.set(true)
     val decl = DeclEntity(entitySymbol, decls) regularize loc
     val defn = DefnEntity(
       entitySymbol,

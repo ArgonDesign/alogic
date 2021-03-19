@@ -436,12 +436,23 @@ final class MakeVerilog(
   }
 
   def moduleSource: String = {
+    val symbol = decl.symbol
+
     val body = new CodeWriter
 
     body.emit(0)("`default_nettype none")
     body.ensureBlankLine()
 
-    body.emit(0)(s"module ${decl.symbol.name}(")
+    val cg = symbol.attr.compilerGenerated.isSet
+    body.emit(0) {
+      s"""// Source location:
+         |//  ${if (cg) "N.A. (compiler generated)" else symbol.loc.prefix}
+         |// Source entity:
+         |//  ${if (cg) "N.A. (compiler generated)" else symbol.hierName}""".stripMargin
+    }
+    body.ensureBlankLine()
+
+    body.emit(0)(s"module ${symbol.name}(")
     emitPortDeclarations(body)
     body.emit(0)(");")
     body.ensureBlankLine()

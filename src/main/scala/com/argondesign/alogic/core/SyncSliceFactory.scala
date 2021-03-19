@@ -292,6 +292,7 @@ final class SyncSliceFactory(implicit cc: CompilerContext) {
     }
 
     val entitySymbol = Symbol(name, loc)
+    entitySymbol.attr.compilerGenerated.set(true)
     val decl = DeclEntity(entitySymbol, decls) regularize loc
     val defn = DefnEntity(
       entitySymbol,
@@ -412,6 +413,7 @@ final class SyncSliceFactory(implicit cc: CompilerContext) {
     }
 
     val entitySymbol = Symbol(name, loc)
+    entitySymbol.attr.compilerGenerated.set(true)
     val decl = DeclEntity(entitySymbol, decls) regularize loc
     val defn = DefnEntity(
       entitySymbol,
