@@ -82,17 +82,21 @@ final class InlineKnownVars(combOnly: Boolean = true) extends StatelessTreeTrans
       None
 
     // Only substitute in index/slice target if the indices are known constants,
-    // and the target is either a constant or a simple symbol. This is to avoid
-    // creating non-constant indices into non-symbols.
+    // and the target is either a constant, simple symbol, or something that
+    // SimplifyExpr will reduce into an index/slice valid in Verilog. This is
+    // to avoid creating non-constant indices into non-symbols.
     case e @ ExprIndex(expr, index) =>
       Some {
         walkSame(index).simplify match {
           case newIdx: ExprInt =>
             walkSame(expr).simplify match {
-              case newExpr: ExprInt =>
+              case newExpr @ (
+                    _: ExprInt | //
+                    _: ExprSym | //
+                    ExprIndex(_: ExprSym, _) | //
+                    ExprSlice(_: ExprSym, _, _, _)
+                  ) =>
                 TypeAssigner(ExprIndex(newExpr, newIdx) withLoc tree.loc).simplify
-              case newExpr: ExprSym =>
-                TypeAssigner(ExprIndex(newExpr, newIdx) withLoc tree.loc)
               case _ =>
                 TypeAssigner(e.copy(index = newIdx) withLoc tree.loc)
             }
@@ -107,10 +111,13 @@ final class InlineKnownVars(combOnly: Boolean = true) extends StatelessTreeTrans
         walkSame(lIdx).simplify match {
           case newLIdx: ExprInt =>
             walkSame(expr).simplify match {
-              case newExpr: ExprInt =>
+              case newExpr @ (
+                    _: ExprInt | //
+                    _: ExprSym | //
+                    ExprIndex(_: ExprSym, _) | //
+                    ExprSlice(_: ExprSym, _, _, _)
+                  ) =>
                 TypeAssigner(e.copy(expr = newExpr, lIdx = newLIdx) withLoc tree.loc).simplify
-              case newExpr: ExprSym =>
-                TypeAssigner(e.copy(expr = newExpr, lIdx = newLIdx) withLoc tree.loc)
               case _ =>
                 TypeAssigner(e.copy(lIdx = newLIdx) withLoc tree.loc)
             }
