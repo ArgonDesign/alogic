@@ -78,7 +78,7 @@ final class SplitStructsA(
                 }
               }
               val widths = newSymbols map { _.kind.width }
-              val offsets = widths.scanLeft(BigInt(0))(_ + _)
+              val offsets = widths.tail.scanRight(BigInt(0))(_ + _)
               for ((newSymbol, offset) <- newSymbols lazyZip offsets) {
                 newSymbol.attr.fieldOffset set offset.toInt
               }
