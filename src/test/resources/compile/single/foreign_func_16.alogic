@@ -55,7 +55,24 @@ fsm foreign_func_16 {
 //      {
 //        "name" : "i",
 //        "width" : 32,
-//        "signed" : false
+//        "signed" : false,
+//        "fields" : {
+//          "x" : {
+//            "width" : 8,
+//            "signed" : true,
+//            "offset" : 24
+//          },
+//          "y" : {
+//            "width" : 16,
+//            "signed" : false,
+//            "offset" : 8
+//          },
+//          "z" : {
+//            "width" : 8,
+//            "signed" : false,
+//            "offset" : 0
+//          }
+//        }
 //      }
 //    ]
 //  }

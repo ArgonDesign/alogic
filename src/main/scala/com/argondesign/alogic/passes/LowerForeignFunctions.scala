@@ -165,10 +165,26 @@ object LowerForeignFunctions {
 
       override def finish(pairs: Pairs)(implicit cc: CompilerContext): Pairs = {
 
-        def desc(kind: Type) = Iterator(
-          "width" -> kind.width.toInt,
-          "signed" -> kind.isSigned
-        )
+        def fields(kind: TypeRecord): ListMap[String, Any] = ListMap.from {
+          val widths = kind.dataMembers.map(_.kind.width).tail.scanRight(BigInt(0))(_ + _)
+          kind.dataMembers.lazyZip(widths).iterator.map {
+            case (symbol, offset) => symbol.name -> (desc(symbol.kind) + ("offset" -> offset.toInt))
+          }
+        }
+
+        def desc(kind: Type): ListMap[String, Any] = kind match {
+          case k: TypeRecord =>
+            ListMap(
+              "width" -> kind.width.toInt,
+              "signed" -> kind.isSigned,
+              "fields" -> fields(k)
+            )
+          case _ =>
+            ListMap(
+              "width" -> kind.width.toInt,
+              "signed" -> kind.isSigned
+            )
+        }
 
         val foreignFunctions = ListMap from {
           encountered.toSeq.sortBy(_._1) map {
