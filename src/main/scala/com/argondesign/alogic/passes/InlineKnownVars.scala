@@ -18,7 +18,6 @@ import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.util.BigIntOps._
 
-import scala.annotation.tailrec
 import scala.collection.mutable
 
 final class InlineKnownVars(combOnly: Boolean = true) extends StatelessTreeTransformer {
@@ -83,26 +82,40 @@ final class InlineKnownVars(combOnly: Boolean = true) extends StatelessTreeTrans
       None
 
     // Only substitute in index/slice target if the indices are known constants,
-    // in which case fold them as well. This is to avoid creating non-constant
-    // indices into non-symbols
+    // and the target is either a constant or a simple symbol. This is to avoid
+    // creating non-constant indices into non-symbols.
     case e @ ExprIndex(expr, index) =>
       Some {
-        walk(index).asInstanceOf[Expr].simplify match {
-          case known: ExprInt =>
-            val newExpr = walk(expr).asInstanceOf[Expr]
-            TypeAssigner(ExprIndex(newExpr, known) withLoc tree.loc).simplify
-          case other => TypeAssigner(e.copy(index = other) withLoc tree.loc)
+        walkSame(index).simplify match {
+          case newIdx: ExprInt =>
+            walkSame(expr).simplify match {
+              case newExpr: ExprInt =>
+                TypeAssigner(ExprIndex(newExpr, newIdx) withLoc tree.loc).simplify
+              case newExpr: ExprSym =>
+                TypeAssigner(ExprIndex(newExpr, newIdx) withLoc tree.loc)
+              case _ =>
+                TypeAssigner(e.copy(index = newIdx) withLoc tree.loc)
+            }
+          case newIdx =>
+            TypeAssigner(e.copy(index = newIdx) withLoc tree.loc)
         }
       }
 
     case e @ ExprSlice(expr, lIdx, _, _) =>
       Some {
-        walk(lIdx).asInstanceOf[Expr].simplify match {
-          case known: ExprInt =>
-            val newExpr = walk(expr).asInstanceOf[Expr]
-            // Note: rIdx is always constant
-            TypeAssigner(e.copy(expr = newExpr, lIdx = known) withLoc tree.loc).simplify
-          case other => TypeAssigner(e.copy(lIdx = other) withLoc tree.loc)
+        // Note: rIdx is always constant
+        walkSame(lIdx).simplify match {
+          case newLIdx: ExprInt =>
+            walkSame(expr).simplify match {
+              case newExpr: ExprInt =>
+                TypeAssigner(e.copy(expr = newExpr, lIdx = newLIdx) withLoc tree.loc).simplify
+              case newExpr: ExprSym =>
+                TypeAssigner(e.copy(expr = newExpr, lIdx = newLIdx) withLoc tree.loc)
+              case _ =>
+                TypeAssigner(e.copy(lIdx = newLIdx) withLoc tree.loc)
+            }
+          case newLIdx =>
+            TypeAssigner(e.copy(lIdx = newLIdx) withLoc tree.loc)
         }
       }
 
@@ -164,10 +177,10 @@ final class InlineKnownVars(combOnly: Boolean = true) extends StatelessTreeTrans
       // to SplitStructs and LowerVectors.
       val bs: Symbol => Option[Expr] = bindings.top.get(_).filterNot(ignore)
 
-      @tailrec // Recursively replace with bound values
+      // Recursively replace with bound values
       def simplify(expr: Expr): Expr = (expr substitute bs).simplify match {
         case simplified: ExprInt => simplified
-        case simplified          => if (simplified eq expr) expr else simplify(simplified)
+        case simplified          => if (simplified eq expr) expr else walkSame(simplified)
       }
 
       bs(symbol) map simplify match {
