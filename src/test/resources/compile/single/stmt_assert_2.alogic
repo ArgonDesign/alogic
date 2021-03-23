@@ -19,5 +19,5 @@ fsm stmt_assert_2 {
 //  wire i = tick < 5;
 // }}}
 // @sim/expect {{{
-//  \[7000\] %Error: stmt_assert_2\.v:\d+: Assertion failed in TOP\.testbench\.dut: 'assert' failed\.
+//  \[7000\] %Error: stmt_assert_2\.v:\d+: Assertion failed in TOP\.testbench\.dut: 'assert' statement failed at .*stmt_assert_2\.alogic:4
 // }}}

@@ -19,5 +19,5 @@ fsm stmt_assert_7 {
 //  wire o__ready = 1'd0;
 // }}}
 // @sim/expect {{{
-//  \[2000\] %Error: stmt_assert_7\.v:\d+: Assertion failed in TOP\.testbench\.dut: 'assert' failed\.
+//  \[2000\] %Error: stmt_assert_7\.v:\d+: Assertion failed in TOP\.testbench\.dut: 'assert' statement failed at .*stmt_assert_7\.alogic:8
 // }}}

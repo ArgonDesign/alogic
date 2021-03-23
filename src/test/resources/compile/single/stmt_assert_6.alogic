@@ -23,5 +23,5 @@ fsm stmt_assert_6 {
 //  }
 // }}}
 // @sim/expect {{{
-//  \[2000\] %Error: stmt_assert_6\.v:\d+: Assertion failed in TOP\.testbench\.dut: 'assert' failed.
+//  \[2000\] %Error: stmt_assert_6\.v:\d+: Assertion failed in TOP\.testbench\.dut: 'assert' statement failed at .*stmt_assert_6\.alogic:11
 // }}}

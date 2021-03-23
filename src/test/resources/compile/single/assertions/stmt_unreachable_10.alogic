@@ -21,5 +21,5 @@ fsm stmt_unreachable_10 {
 //  wire i = tick < 4;
 // }}}
 // @sim/expect {{{
-//  \[6000\] %Error: stmt_unreachable_10\.v:\d+: Assertion failed in TOP\.testbench\.dut: 'assert' failed\.
+//  \[6000\] %Error: stmt_unreachable_10\.v:\d+: Assertion failed in TOP\.testbench\.dut: 'unreachable' statement executed at .*stmt_unreachable_10\.alogic:5
 // }}}

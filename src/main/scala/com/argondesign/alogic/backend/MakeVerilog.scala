@@ -213,14 +213,8 @@ final class MakeVerilog(
       body: CodeWriter,
       indent: Int,
       cond: Expr,
-      msgOpt: Option[String]
-    ): Unit = {
-    val elsePart = msgOpt match {
-      case None      => ""
-      case Some(msg) => s""" else $$error("$msg")"""
-    }
-    body.emit(indent)(s"assert (${vexpr(cond)})$elsePart;")
-  }
+      msg: String
+    ): Unit = body.emit(indent)(s"""assert (${vexpr(cond)}) else $$error("$msg");""")
 
   private def emitStatement(body: CodeWriter, indent: Int, stmt: Stmt): Unit = {
     def wrapIfCat(expr: Expr) = expr match {
@@ -282,11 +276,19 @@ final class MakeVerilog(
 
       // Procedural assertion - generic
       case StmtSplice(AssertionAssert(cond, msgOpt)) =>
-        emitAssertion(body, indent, cond, msgOpt)
+        val msg = msgOpt match {
+          case Some(m) => m
+          case None    => s"'assert' statement failed at ${stmt.loc.prefix}"
+        }
+        emitAssertion(body, indent, cond, msg)
 
       // Procedural assertion - unreachable
       case StmtSplice(AssertionUnreachable(_, Some(cond), msgOpt)) =>
-        emitAssertion(body, indent, cond, msgOpt)
+        val msg = msgOpt match {
+          case Some(m) => m
+          case None    => s"'unreachable' statement executed at ${stmt.loc.prefix}"
+        }
+        emitAssertion(body, indent, cond, msg)
 
       case other => throw Ice(other, "Don't know how to emit Verilog for statement", other.toString)
     }
