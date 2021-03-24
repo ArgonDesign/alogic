@@ -196,6 +196,11 @@ final class InlineKnownVars(combOnly: Boolean = true) extends StatelessTreeTrans
         // If the current ref is a temporary, and the replacement is simply
         // another symbol, replace the temporary with the other symbol
         case Some(expr: ExprSym) if symbol.attr.tmp.isSet => expr
+        // If the bound value is a flop, replace the reference. This allows
+        // us to remove more unused flops in RemoveUnused by making it
+        // more explicit if a flop is used other than in the _d = _q default
+        // assignment
+        case Some(expr @ ExprSym(symbol)) if symbol.attr.flop.isSet => expr
         // Replace temporaries explicitly marked to be dropped, even if they
         // are bound to a complex expression, but don't recursively expand
         // the bound value as that might introduce redundancy if the bound
