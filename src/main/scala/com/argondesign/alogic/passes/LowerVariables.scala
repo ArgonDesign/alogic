@@ -21,6 +21,7 @@ import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.enums.EntityVariant
 import com.argondesign.alogic.core.enums.ResetStyle
 
+import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
 
 final class LowerVariables(implicit cc: CompilerContext) extends StatelessTreeTransformer {
@@ -115,6 +116,25 @@ final class LowerVariables(implicit cc: CompilerContext) extends StatelessTreeTr
     case _ => None
   }
 
+  private def mergeClockEnables(stmts: List[Stmt]): List[Stmt] = {
+    val result = new ListBuffer[Stmt]
+    @tailrec
+    def loop(prev: Stmt, rest: List[Stmt]): Unit = rest match {
+      case Nil =>
+        result.append(prev)
+      case head :: tail =>
+        (prev, head) match {
+          case (StmtIf(ExprSym(ca), ba, Nil), StmtIf(ExprSym(cb), bb, Nil)) if ca eq cb =>
+            loop(StmtIf(ExprSym(ca), ba concat bb, Nil), tail)
+          case _ =>
+            result.append(prev)
+            loop(head, tail)
+        }
+    }
+    loop(stmts.head, stmts.tail)
+    result.toList
+  }
+
   override def transform(tree: Tree): Tree = tree match {
 
     //////////////////////////////////////////////////////////////////////////
@@ -145,9 +165,16 @@ final class LowerVariables(implicit cc: CompilerContext) extends StatelessTreeTr
           }
         }
         val dAssigns = {
-          val assigns = List from {
-            resetFlops.iterator map {
-              case (qSymbol, dSymbol, _) => StmtDelayed(ExprSym(qSymbol), ExprSym(dSymbol))
+          val assigns = mergeClockEnables {
+            List from {
+              resetFlops.iterator map {
+                case (qSymbol, dSymbol, _) =>
+                  val assign = StmtDelayed(ExprSym(qSymbol), ExprSym(dSymbol))
+                  qSymbol.attr.clockEnable.get match {
+                    case Some(symbol) => StmtIf(ExprSym(symbol), List(assign), Nil)
+                    case None         => assign
+                  }
+              }
             }
           }
           defn.go match {
@@ -175,9 +202,16 @@ final class LowerVariables(implicit cc: CompilerContext) extends StatelessTreeTr
       }
       val nonResetProcess = Option.when(nonResetFlops.nonEmpty) {
         val dAssigns = {
-          val assigns = List from {
-            nonResetFlops.iterator map {
-              case (qSymbol, dSymbol) => StmtDelayed(ExprSym(qSymbol), ExprSym(dSymbol))
+          val assigns = mergeClockEnables {
+            List from {
+              nonResetFlops.iterator map {
+                case (qSymbol, dSymbol) =>
+                  val assign = StmtDelayed(ExprSym(qSymbol), ExprSym(dSymbol))
+                  qSymbol.attr.clockEnable.get match {
+                    case Some(symbol) => StmtIf(ExprSym(symbol), List(assign), Nil)
+                    case None         => assign
+                  }
+              }
             }
           }
           defn.go match {

@@ -66,6 +66,10 @@ final class SyncRegFactory {
     lazy val opSymbol = Symbol("o_payload", loc) tap { _.kind = TypeOut(kind, fcn, stw) }
     val ovSymbol = Symbol(s"o_valid", loc) tap { _.kind = TypeOut(TypeUInt(1), fcn, stw) }
     lazy val pSymbol = Symbol("payload", loc) tap { _.kind = kind }
+    lazy val ceSymbol = Symbol("ce", loc) tap { symbol =>
+      symbol.kind = TypeUInt(1)
+      pSymbol.attr.clockEnable.set(symbol)
+    }
     val vSymbol = Symbol("valid", loc) tap { _.kind = TypeUInt(1) }
 
     lazy val ipDecl = ipSymbol.mkDecl regularize loc
@@ -73,6 +77,7 @@ final class SyncRegFactory {
     lazy val opDecl = opSymbol.mkDecl regularize loc
     val ovDecl = ovSymbol.mkDecl regularize loc
     lazy val pDecl = pSymbol.mkDecl regularize loc
+    lazy val ceDecl = ceSymbol.mkDecl regularize loc
     val vDecl = vSymbol.mkDecl regularize loc
 
     lazy val ipDefn = ipSymbol.mkDefn
@@ -80,6 +85,7 @@ final class SyncRegFactory {
     lazy val opDefn = opSymbol.mkDefn
     val ovDefn = ovSymbol.mkDefn
     lazy val pDefn = pSymbol.mkDefn
+    lazy val ceDefn = ceSymbol.mkDefn
     val vDefn = vSymbol.mkDefn(ExprInt(false, 1, 0))
 
     lazy val ipRef = ExprSym(ipSymbol)
@@ -87,35 +93,29 @@ final class SyncRegFactory {
     lazy val opRef = ExprSym(opSymbol)
     val ovRef = ExprSym(ovSymbol)
     lazy val pRef = ExprSym(pSymbol)
+    lazy val ceRef = ExprSym(ceSymbol)
     val vRef = ExprSym(vSymbol)
 
     val statements = if (kind != TypeVoid) {
-      List(
-        StmtIf(
-          ivRef,
-          List(StmtAssign(pRef, ipRef)),
-          Nil
-        ),
-        StmtAssign(vRef, ivRef)
-      )
+      List(StmtAssign(pRef, ipRef), StmtAssign(vRef, ivRef))
     } else {
       List(StmtAssign(vRef, ivRef))
     }
 
     val decls = if (kind != TypeVoid) {
-      List(ipDecl, ivDecl, opDecl, ovDecl, pDecl, vDecl)
+      List(ipDecl, ivDecl, opDecl, ovDecl, pDecl, ceDecl, vDecl)
     } else {
       List(ivDecl, ovDecl, vDecl)
     }
 
     val defns = if (kind != TypeVoid) {
-      List(ipDefn, ivDefn, opDefn, ovDefn, pDefn, vDefn) map EntSplice.apply
+      List(ipDefn, ivDefn, opDefn, ovDefn, pDefn, ceDefn, vDefn) map EntSplice.apply
     } else {
       List(ivDefn, ovDefn, vDefn) map EntSplice.apply
     }
 
     val assigns = if (kind != TypeVoid) {
-      List(EntAssign(opRef, pRef), EntAssign(ovRef, vRef))
+      List(EntAssign(opRef, pRef), EntAssign(ovRef, vRef), EntAssign(ceRef, ivRef))
     } else {
       List(EntAssign(ovRef, vRef))
     }

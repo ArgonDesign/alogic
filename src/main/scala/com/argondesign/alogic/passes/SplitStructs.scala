@@ -75,6 +75,7 @@ final class SplitStructsA(
                   symbol.attr.payloadOfPort.get foreach { s.attr.payloadOfPort.set }
                   symbol.attr.combSignal.get foreach { s.attr.combSignal.set }
                   symbol.attr.tmp.get foreach { s.attr.tmp.set }
+                  symbol.attr.clockEnable.get foreach { s.attr.clockEnable.set }
                 }
               }
               val widths = newSymbols map { _.kind.width }

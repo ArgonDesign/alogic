@@ -92,42 +92,24 @@ final class SyncSliceFactory(implicit cc: CompilerContext) {
       vRef: ExprSym
     ): List[Stmt] = ss match {
     case StorageSliceBub =>
-      // if (i_valid & ~valid) {
-      //   payload = i_payload;
-      // }
+      // payload = i_payload;
       // valid = ~valid & i_valid | valid & ~o_ready;
       List(
-        StmtIf(
-          ivRef & ~vRef,
-          List(StmtAssign(pRef, ipRef)),
-          Nil
-        ),
+        StmtAssign(pRef, ipRef),
         StmtAssign(vRef, ~vRef & ivRef | vRef & ~orRef)
       )
     case StorageSliceFwd =>
-      // if (i_valid & (~valid | o_ready)) {
-      //   payload = i_payload;
-      // }
+      // payload = i_payload;
       // valid = i_valid | valid & ~o_ready;
       List(
-        StmtIf(
-          ivRef & (~vRef | orRef),
-          List(StmtAssign(pRef, ipRef)),
-          Nil
-        ),
+        StmtAssign(pRef, ipRef),
         StmtAssign(vRef, ivRef | vRef & ~orRef)
       )
     case StorageSliceBwd =>
-      // if (i_valid & ~valid & ~o_ready) {
-      //   payload = i_payload;
-      // }
+      // payload = i_payload;
       // valid = (valid | i_valid) & ~o_ready;
       List(
-        StmtIf(
-          ivRef & ~vRef & ~orRef,
-          List(StmtAssign(pRef, ipRef)),
-          Nil
-        ),
+        StmtAssign(pRef, ipRef),
         StmtAssign(vRef, (vRef | ivRef) & ~orRef)
       )
   }
@@ -143,6 +125,7 @@ final class SyncSliceFactory(implicit cc: CompilerContext) {
       orRef: ExprSym,
       sRef: ExprSym,
       pRef: ExprSym,
+      ceRef: ExprSym,
       vRef: ExprSym
     ): List[EntAssign] = ss match {
     case StorageSliceBub =>
@@ -150,33 +133,39 @@ final class SyncSliceFactory(implicit cc: CompilerContext) {
       // o_valid <- valid;
       // i_ready <- ~valid;
       // space <- ~valid;
+      // ce <- i_valid & ~valid;
       List(
         EntAssign(ovRef, vRef),
         EntAssign(opRef, pRef),
         EntAssign(irRef, ~vRef),
-        EntAssign(sRef, ~vRef)
+        EntAssign(sRef, ~vRef),
+        EntAssign(ceRef, ivRef & ~vRef)
       )
     case StorageSliceFwd =>
       // o_payload <- payload;
       // o_valid <- valid;
       // i_ready <- ~valid | o_ready;
       // space <- ~valid;
+      // ce <- i_valid & (~valid | o_ready);
       List(
         EntAssign(opRef, pRef),
         EntAssign(ovRef, vRef),
         EntAssign(irRef, ~vRef | orRef),
-        EntAssign(sRef, ~vRef)
+        EntAssign(sRef, ~vRef),
+        EntAssign(ceRef, ivRef & (~vRef | orRef))
       )
     case StorageSliceBwd =>
       // o_payload <- valid ? payload : i_payload;
       // o_valid <- valid | i_valid;
       // i_ready <- ~valid;
       // space <- ~valid;
+      // ce <- i_valid & ~valid & ~o_ready;
       List(
         EntAssign(opRef, ExprCond(vRef, pRef, ipRef)),
         EntAssign(ovRef, vRef | ivRef),
         EntAssign(irRef, ~vRef),
-        EntAssign(sRef, ~vRef)
+        EntAssign(sRef, ~vRef),
+        EntAssign(ceRef, ivRef & ~vRef & ~orRef)
       )
   }
 
@@ -235,6 +224,10 @@ final class SyncSliceFactory(implicit cc: CompilerContext) {
     ovSymbol.attr.dontCareUnless set orSymbol
     val sSymbol = Symbol("space", loc) tap { _.kind = TypeOut(TypeUInt(1), fcn, stw) }
     lazy val pSymbol = Symbol("payload", loc) tap { _.kind = kind }
+    lazy val ceSymbol = Symbol("ce", loc) tap { symbol =>
+      symbol.kind = TypeUInt(1)
+      pSymbol.attr.clockEnable.set(symbol)
+    }
     val vSymbol = Symbol("valid", loc) tap { _.kind = TypeUInt(1) }
 
     lazy val ipDecl = ipSymbol.mkDecl regularize loc
@@ -245,6 +238,7 @@ final class SyncSliceFactory(implicit cc: CompilerContext) {
     val orDecl = orSymbol.mkDecl regularize loc
     val sDecl = sSymbol.mkDecl regularize loc
     lazy val pDecl = pSymbol.mkDecl regularize loc
+    lazy val ceDecl = ceSymbol.mkDecl regularize loc
     val vDecl = vSymbol.mkDecl regularize loc
 
     lazy val ipDefn = ipSymbol.mkDefn
@@ -255,6 +249,7 @@ final class SyncSliceFactory(implicit cc: CompilerContext) {
     val orDefn = orSymbol.mkDefn
     val sDefn = sSymbol.mkDefn
     lazy val pDefn = pSymbol.mkDefn
+    lazy val ceDefn = ceSymbol.mkDefn
     val vDefn = vSymbol.mkDefn(ExprInt(false, 1, 0))
 
     lazy val ipRef = ExprSym(ipSymbol)
@@ -265,6 +260,7 @@ final class SyncSliceFactory(implicit cc: CompilerContext) {
     val orRef = ExprSym(orSymbol)
     val sRef = ExprSym(sSymbol)
     lazy val pRef = ExprSym(pSymbol)
+    lazy val ceRef = ExprSym(ceSymbol)
     val vRef = ExprSym(vSymbol)
 
     val statements = if (kind != TypeVoid) {
@@ -274,19 +270,37 @@ final class SyncSliceFactory(implicit cc: CompilerContext) {
     }
 
     val decls = if (kind != TypeVoid) {
-      List(ipDecl, ivDecl, irDecl, opDecl, ovDecl, orDecl, sDecl, pDecl, vDecl)
+      List(ipDecl, ivDecl, irDecl, opDecl, ovDecl, orDecl, sDecl, pDecl, ceDecl, vDecl)
     } else {
       List(ivDecl, irDecl, ovDecl, orDecl, sDecl, vDecl)
     }
 
     val defns = if (kind != TypeVoid) {
-      List(ipDefn, ivDefn, irDefn, opDefn, ovDefn, orDefn, sDefn, pDefn, vDefn) map EntSplice.apply
+      List(
+        ipDefn,
+        ivDefn,
+        irDefn,
+        opDefn,
+        ovDefn,
+        orDefn,
+        sDefn,
+        pDefn,
+        ceDefn,
+        vDefn
+      ) map EntSplice.apply
     } else {
-      List(ivDefn, irDefn, ovDefn, orDefn, sDefn, vDefn) map EntSplice.apply
+      List(
+        ivDefn,
+        irDefn,
+        ovDefn,
+        orDefn,
+        sDefn,
+        vDefn
+      ) map EntSplice.apply
     }
 
     val connects = if (kind != TypeVoid) {
-      nonVoidAssigns(ss, ipRef, opRef, ivRef, irRef, ovRef, orRef, sRef, pRef, vRef)
+      nonVoidAssigns(ss, ipRef, opRef, ivRef, irRef, ovRef, orRef, sRef, pRef, ceRef, vRef)
     } else {
       voidAssigns(ss, ivRef, irRef, ovRef, orRef, sRef, vRef)
     }

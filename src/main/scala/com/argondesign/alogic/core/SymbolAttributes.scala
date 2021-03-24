@@ -92,6 +92,9 @@ class SymbolAttributes {
   // If this signal is a combinationally driven local signal
   val combSignal = new Attribute[Boolean]()
 
+  // Clock enable signal for variable, if any
+  val clockEnable = new Attribute[Symbol]()
+
   // The field offset if this symbol was split from a struct
   val fieldOffset = new Attribute[Int]()
 
@@ -154,6 +157,7 @@ class SymbolAttributes {
     memory,
     interconnect,
     combSignal,
+    clockEnable,
     fieldOffset,
     default,
     sram,
@@ -196,6 +200,7 @@ class SymbolAttributes {
     "memory",
     "interconnect",
     "combSignal",
+    "clockEnable",
     "fieldOffset",
     "default",
     "sram",
