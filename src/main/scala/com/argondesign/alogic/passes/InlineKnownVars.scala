@@ -26,6 +26,8 @@ final class InlineKnownVars(combOnly: Boolean = true) extends StatelessTreeTrans
   private var endOfCycleBindings: Bindings = _
   private var temporariesToDrop: Set[Symbol] = _
 
+  private var constantFlops: Map[Symbol, ExprInt] = Map.empty
+
   private val bindings = mutable.Stack[Bindings]()
 
   def computeEvaluation(stmt: Stmt): Unit = {
@@ -53,7 +55,67 @@ final class InlineKnownVars(combOnly: Boolean = true) extends StatelessTreeTrans
   }
 
   override def enter(tree: Tree): Option[Tree] = tree match {
-    case _ if bindings.isEmpty => Some(tree) // TODO: is this useful? empty bindigns should be rare
+    case _ if bindings.isEmpty => Some(tree) // TODO: is this useful? empty bindings should be rare
+
+    case defn: DefnEntity =>
+      if (!combOnly) {
+        // Figure out what flops are constant and what are their values
+        val flops = Set from {
+          defn.defns.iterator.collect {
+            case DefnVar(symbol, _) if symbol.attr.flop.isSet => symbol
+          }
+        }
+
+        val bindings =
+          defn.clockedProcesses
+            .map(walk)
+            .flatMap(
+              _.collect {
+                case StmtDelayed(lhs @ ExprSym(symbol), rhs) if flops(symbol) && lhs != rhs =>
+                  symbol -> rhs
+              }
+            )
+            .groupBy(_._1)
+            .view
+            .mapValues(_.map(_._2).distinct)
+            .toMap
+
+        constantFlops = Map from {
+          flops.iterator.flatMap { symbol =>
+            bindings.get(symbol) match {
+              case None =>
+                // It is possible that a flop has no driver at all due to earlier
+                // optimizations. Assign as if it was zero.
+                Some(
+                  symbol -> TypeAssigner(
+                    ExprInt(symbol.kind.isSigned, symbol.kind.width.toInt, 0) withLoc symbol.loc
+                  )
+                )
+              case Some((expr: ExprInt) :: Nil) =>
+                Some(symbol -> expr)
+              case _ => None
+            }
+          }
+        }
+
+        constantFlops.foreach {
+          case (symbol, _) =>
+            // If we are removing a _q, drop the suffix from the _d
+            symbol.attr.flop.get foreach { dSymbol =>
+              assert(dSymbol.name endsWith "_d")
+              dSymbol.name = dSymbol.name.dropRight(2)
+              dSymbol.attr.combSignal set true
+            }
+        }
+      }
+      None
+
+    // Drop Decl/Defn of constant flop
+    case Decl(symbol) if constantFlops contains symbol => Some(Stump)
+    case Defn(symbol) if constantFlops contains symbol => Some(Stump)
+
+    // Drop assignment to constant flop
+    case StmtDelayed(ExprSym(symbol), _) if constantFlops contains symbol => Some(Stump)
 
     // Don't fold constants on the lhs of assignment TODO: fold the read ones...
     case stmt @ StmtAssign(_, rhs) =>
@@ -190,7 +252,7 @@ final class InlineKnownVars(combOnly: Boolean = true) extends StatelessTreeTrans
         case simplified          => if (simplified eq expr) expr else walkSame(simplified)
       }
 
-      bs(symbol) map simplify match {
+      bs(symbol) map simplify pipe {
         // If the value is known, replace the ref
         case Some(expr: ExprInt) => expr
         // If the current ref is a temporary, and the replacement is simply
@@ -208,6 +270,9 @@ final class InlineKnownVars(combOnly: Boolean = true) extends StatelessTreeTrans
         case Some(expr) if temporariesToDrop(symbol) => expr
         //
         case _ => tree
+      } match {
+        case expr @ ExprSym(symbol) => constantFlops.getOrElse(symbol, expr)
+        case expr                   => expr
       }
 
     case _: Stmt =>
