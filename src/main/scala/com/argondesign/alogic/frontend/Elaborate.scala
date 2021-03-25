@@ -766,17 +766,16 @@ object Elaborate {
       }
   }
 
-  private def enclosingPipelineHost(symtab: SymbolTable, loc: Loc): FinalResult[Symbol] =
-    symtab.enclosingSymbols // We want the 2nd enclosing Entity or Singleton
+  private def enclosingPipelineHosts(symtab: SymbolTable, loc: Loc): FinalResult[List[Symbol]] =
+    symtab.enclosingSymbols // We want the 2nd enclosing Entity or Singleton and upwards
       .filter(_.desc match {
-        case _: DescEntity    => true
-        case _: DescSingleton => true
-        case _                => false
+        case _: DescEntity | _: DescSingleton => true
+        case _                                => false
       })
       .drop(1)
-      .nextOption() match {
-      case None         => Failure(loc, "'pipeline' port definition can only appear in nested entity")
-      case Some(symbol) => Complete(symbol)
+      .toList match {
+      case Nil     => Failure(loc, "'pipeline' port definition can only appear in nested entity")
+      case symbols => Complete(symbols)
     }
 
   def apply(
@@ -875,19 +874,19 @@ object Elaborate {
           d.copy(spec = s) withLocOf d
         }
       case d: DescPipeIn =>
-        if (d.specOpt.nonEmpty) {
+        if (d.hosts.nonEmpty) {
           Finished(d)
         } else {
-          enclosingPipelineHost(symtab, d.loc) map { symbol =>
-            d.copy(specOpt = Some(ExprSym(symbol) withLocOf d)) withLocOf d
+          enclosingPipelineHosts(symtab, d.loc) map { symbols =>
+            d.copy(hosts = symbols.map(symbol => ExprSym(symbol) withLocOf d)) withLocOf d
           }
         }
       case d: DescPipeOut =>
-        if (d.specOpt.nonEmpty) {
+        if (d.hosts.nonEmpty) {
           Finished(d)
         } else {
-          enclosingPipelineHost(symtab, d.loc) map { symbol =>
-            d.copy(specOpt = Some(ExprSym(symbol) withLocOf d)) withLocOf d
+          enclosingPipelineHosts(symtab, d.loc) map { symbols =>
+            d.copy(hosts = symbols.map(symbol => ExprSym(symbol) withLocOf d)) withLocOf d
           }
         }
       case d: DescParam =>

@@ -148,29 +148,29 @@ object TreeCopier {
       ) withLocOf tree
     }
 
-  def apply(tree: DescPipeIn)(ref: Tree, attr: List[Tree], specOpt: Option[Tree]): DescPipeIn =
-    if ((ref eq tree.ref) && (attr eq tree.attr) && (specOpt eq tree.specOpt)) {
+  def apply(tree: DescPipeIn)(ref: Tree, attr: List[Tree], hosts: List[Tree]): DescPipeIn =
+    if ((ref eq tree.ref) && (attr eq tree.attr) && (hosts eq tree.hosts)) {
       tree
     } else {
       assert(attr.forall(_.isInstanceOf[Attr]))
-      assert(specOpt.forall(_.isInstanceOf[Expr]))
+      assert(hosts.forall(_.isInstanceOf[Expr]))
       tree.copy(
         ref = ref.asInstanceOf[Ref],
         attr = attr.asInstanceOf[List[Attr]],
-        specOpt = specOpt.asInstanceOf[Option[Expr]]
+        hosts = hosts.asInstanceOf[List[Expr]]
       ) withLocOf tree
     }
 
-  def apply(tree: DescPipeOut)(ref: Tree, attr: List[Tree], specOpt: Option[Tree]): DescPipeOut =
-    if ((ref eq tree.ref) && (attr eq tree.attr) && (specOpt eq tree.specOpt)) {
+  def apply(tree: DescPipeOut)(ref: Tree, attr: List[Tree], hosts: List[Tree]): DescPipeOut =
+    if ((ref eq tree.ref) && (attr eq tree.attr) && (hosts eq tree.hosts)) {
       tree
     } else {
       assert(attr.forall(_.isInstanceOf[Attr]))
-      assert(specOpt.forall(_.isInstanceOf[Expr]))
+      assert(hosts.forall(_.isInstanceOf[Expr]))
       tree.copy(
         ref = ref.asInstanceOf[Ref],
         attr = attr.asInstanceOf[List[Attr]],
-        specOpt = specOpt.asInstanceOf[Option[Expr]]
+        hosts = hosts.asInstanceOf[List[Expr]]
       ) withLocOf tree
     }
 

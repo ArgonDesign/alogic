@@ -80,8 +80,8 @@ object Trees {
   case class DescIn(ref: Ref, attr: List[Attr], spec: Expr, fc: FlowControlType) extends Desc
   case class DescOut(ref: Ref, attr: List[Attr], spec: Expr, fc: FlowControlType, st: StorageType, initOpt: Option[Expr]) extends Desc
   case class DescPipeVar(ref: Ref, attr: List[Attr], spec: Expr) extends Desc
-  case class DescPipeIn(ref: Ref, attr: List[Attr], specOpt: Option[Expr], fc: FlowControlType) extends Desc
-  case class DescPipeOut(ref: Ref, attr: List[Attr], specOpt: Option[Expr], fc: FlowControlType, st: StorageType) extends Desc
+  case class DescPipeIn(ref: Ref, attr: List[Attr], hosts: List[Expr], fc: FlowControlType) extends Desc
+  case class DescPipeOut(ref: Ref, attr: List[Attr], hosts: List[Expr], fc: FlowControlType, st: StorageType) extends Desc
   case class DescParam(ref: Ref, attr: List[Attr], spec: Expr, initOpt: Option[Expr], finished: Boolean) extends Desc
   case class DescParamType(ref: Ref, attr: List[Attr], initOpt: Option[Expr], finished: Boolean) extends Desc
   case class DescConst(ref: Ref, attr: List[Attr], spec: Expr, init: Expr) extends Desc

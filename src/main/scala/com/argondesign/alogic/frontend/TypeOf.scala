@@ -122,37 +122,43 @@ private[frontend] object TypeOf {
   }
 
   private def pipelineVariableSymbolsWithin(
-      symbol: Symbol // The entity we are examining
+      symbols: List[Symbol] // The entities we are examining
     )(
       implicit
       fe: Frontend
     ): FinalResult[List[Symbol]] = {
-    val body = symbol.desc match {
-      case DescEntity(_, _, _, body)    => body
-      case DescSingleton(_, _, _, body) => body
-      case _                            => unreachable
-    }
-    // There is a circularity problem as definedSymbols will try to type check
-    // all definitions in the body, which includes the entity containing
-    // the pipeline port definition that invoked this check. As we are only
-    // interested in the pipeline variables in the body, we break the infinite
-    // descent, by ignoring everything but the pipeline variables. Note that we
-    // also need to consider ones created by 'gen', which we can tell from the
-    // form of the alias.
-    @tailrec
-    def consider(desc: Desc): Boolean = desc match {
-      case _: DescPipeVar                      => true
-      case DescAlias(_, _, ExprSym(symbol), _) => consider(symbol.desc)
-      case _                                   => false
-    }
-    definedSymbols(body, consider) map {
-      _ filter {
-        _.kind match {
-          case _: TypePipeVar => true
-          case _              => false
+    def gather(symbol: Symbol): FinalResult[List[Symbol]] = {
+      val body = symbol.desc match {
+        case DescEntity(_, _, _, body)    => body
+        case DescSingleton(_, _, _, body) => body
+        case _                            => unreachable
+      }
+
+      // There is a circularity problem as definedSymbols will try to type check
+      // all definitions in the body, which includes the entity containing
+      // the pipeline port definition that invoked this check. As we are only
+      // interested in the pipeline variables in the body, we break the infinite
+      // descent, by ignoring everything but the pipeline variables. Note that we
+      // also need to consider ones created by 'gen', which we can tell from the
+      // form of the alias.
+      @tailrec
+      def consider(desc: Desc): Boolean = desc match {
+        case _: DescPipeVar                      => true
+        case DescAlias(_, _, ExprSym(symbol), _) => consider(symbol.desc)
+        case _                                   => false
+      }
+
+      definedSymbols(body, consider) map {
+        _ filter {
+          _.kind match {
+            case _: TypePipeVar => true
+            case _              => false
+          }
         }
       }
     }
+
+    symbols.map(gather).distil.map(_.flatten.distinctBy(_.name))
   }
 
   def apply(
@@ -193,19 +199,19 @@ private[frontend] object TypeOf {
             spec,
             "Pipeline variable"
           ) map TypePipeVar.apply
-        case d @ DescPipeIn(_, _, specOpt, fc) =>
-          specOpt match {
-            case None => Unknown(ReasonUnelaborated(d))
-            case Some(ExprSym(symbol)) =>
-              pipelineVariableSymbolsWithin(symbol) map { TypePipeIn(_, fc) }
-            case _ => unreachable
+        case d @ DescPipeIn(_, _, hosts, fc) =>
+          if (hosts.isEmpty) {
+            Unknown(ReasonUnelaborated(d))
+          } else {
+            val symbols = hosts.collect { case ExprSym(symbol) => symbol }
+            pipelineVariableSymbolsWithin(symbols) map { TypePipeIn(_, fc) }
           }
-        case d @ DescPipeOut(_, _, specOpt, fc, st) =>
-          specOpt match {
-            case None => Unknown(ReasonUnelaborated(d))
-            case Some(ExprSym(symbol)) =>
-              pipelineVariableSymbolsWithin(symbol) map { TypePipeOut(_, fc, st) }
-            case _ => unreachable
+        case d @ DescPipeOut(_, _, hosts, fc, st) =>
+          if (hosts.isEmpty) {
+            Unknown(ReasonUnelaborated(d))
+          } else {
+            val symbols = hosts.collect { case ExprSym(symbol) => symbol }
+            pipelineVariableSymbolsWithin(symbols) map { TypePipeOut(_, fc, st) }
           }
         case d @ DescParam(_, _, _, None, _) =>
           // Missing parameter assignment caught in Elaborate

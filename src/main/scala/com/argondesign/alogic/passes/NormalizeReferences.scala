@@ -58,6 +58,8 @@ private object Analyze {
       } filter {
         case ExprSym(symbol) if symbol.kind.isIn       => true
         case ExprSym(symbol) if symbol.kind.isOut      => true
+        case ExprSym(symbol) if symbol.kind.isPipeIn   => true
+        case ExprSym(symbol) if symbol.kind.isPipeOut  => true
         case ExprSym(symbol) if symbol.kind.isConst    => true
         case ExprSym(symbol) if symbol.kind.isPipeVar  => false
         case ExprSym(symbol) if symbol.kind.isXenoFunc => true
@@ -221,14 +223,14 @@ final class NormalizeReferencesA(requiredSymbolsMap: Map[Symbol, Set[Symbol]])
             requiredSymbolsMap(eSymbol).iterator flatMap { requiredSymbol =>
               val outerSymbol = propMap.getOrElse((reSymbol, requiredSymbol), requiredSymbol)
               outerSymbol.kind match {
-                case _: TypeIn =>
+                case _: TypeIn | _: TypePipeIn =>
                   Some(
                     EntAssign(
                       ExprSym(defn.symbol) sel requiredSymbol.name,
                       ExprSym(outerSymbol)
                     ) regularize defn.loc
                   )
-                case _: TypeOut =>
+                case _: TypeOut | _: TypePipeOut =>
                   Some(
                     EntAssign(
                       ExprSym(outerSymbol),
