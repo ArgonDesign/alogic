@@ -4,7 +4,7 @@
 // See the LICENSE file for the precise wording of the license.
 //
 // DESCRIPTION:
-// Tie off undriven inputs that have a default attribute
+// Tie off undriven inputs
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.passes
@@ -13,9 +13,6 @@ import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.ast.Trees.Expr.InstancePortSel
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.TypeAssigner
-import com.argondesign.alogic.core.Symbol
-
-import scala.collection.mutable
 
 object TieOffInputs extends PairTransformerPass(parallel = true) {
   val name = "tie-off-inputs"
@@ -30,23 +27,21 @@ object TieOffInputs extends PairTransformerPass(parallel = true) {
     val entityDecl = decl.asInstanceOf[DeclEntity]
     val entityDefn = defn.asInstanceOf[DefnEntity]
 
-    val needsTieOff = mutable.LinkedHashSet[(Symbol, Symbol)]()
-
-    // Gather all instance flow control input ports
-    entityDecl.instances.iterator foreach {
-      case DeclInstance(iSymbol, _) =>
-        iSymbol.kind.asEntity.publicSymbols filter { pSymbol =>
-          pSymbol.kind.isIn && pSymbol.attr.default.isSet
-        } foreach { pSymbol =>
-          needsTieOff += ((iSymbol, pSymbol))
-        }
+    // Gather all instance input ports
+    val instanceInputPorts = Set from {
+      entityDecl.instances.iterator.flatMap {
+        case DeclInstance(iSymbol, _) =>
+          iSymbol.kind.asEntity.publicSymbols.iterator.collect {
+            case pSymbol if pSymbol.kind.isIn => (iSymbol, pSymbol)
+          }
+      }
     }
 
     // Remove all that are driven
-    entityDefn.assigns.iterator foreach {
-      case EntAssign(InstancePortSel(iSymbol, pSymbol), _) =>
-        needsTieOff -= ((iSymbol, pSymbol))
-      case _ =>
+    val needsTieOff = instanceInputPorts.removedAll {
+      entityDefn.assigns.iterator.collect {
+        case EntAssign(InstancePortSel(iSymbol, pSymbol), _) => (iSymbol, pSymbol)
+      }
     }
 
     if (needsTieOff.isEmpty) {
@@ -59,7 +54,8 @@ object TieOffInputs extends PairTransformerPass(parallel = true) {
             case (iSymbol, pSymbol) =>
               EntAssign(
                 ExprSym(iSymbol) sel pSymbol.name,
-                pSymbol.attr.default.value
+                pSymbol.attr.default
+                  .getOrElse(ExprInt(pSymbol.kind.isSigned, pSymbol.kind.width.toInt, 0))
               ) regularize iSymbol.loc
           }
         }
