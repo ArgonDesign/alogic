@@ -1,0 +1,28 @@
+struct s {
+  u1 unused;
+
+  u1 f() {
+    return 1'd0;
+  }
+}
+
+u1 g(s x) {
+  return x.f();
+}
+
+fsm method_bug_00 {
+  out wire bool o;
+  void main() {
+    s x;
+    o = g(x);
+    fence;
+  }
+}
+
+// @fec/golden {{{
+//  module method_bug_00(
+//    output wire o
+//  );
+//    assign o = 1'd0;
+//  endmodule
+// }}}

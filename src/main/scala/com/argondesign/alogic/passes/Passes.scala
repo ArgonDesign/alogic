@@ -45,7 +45,7 @@ object Passes extends ChainingSyntax {
         Desugar andThen
         LowerLoops andThen
         NormalizeFunctions andThen
-        InlineMethods andThen
+        InlineMethods() andThen
         NormalizeReferences() andThen
         PortCheck andThen
         LowerPipeline andThen

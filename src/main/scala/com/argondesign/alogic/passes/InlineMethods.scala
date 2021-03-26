@@ -11,6 +11,7 @@ import com.argondesign.alogic.analysis.WrittenSymbols
 import com.argondesign.alogic.ast.StatefulTreeTransformer
 import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.ast.TreeTransformer
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Loc
 import com.argondesign.alogic.core.Messages.Fatal
@@ -20,9 +21,7 @@ import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Types.Type
 import com.argondesign.alogic.core.Types.TypeCombFunc
 import com.argondesign.alogic.core.Types.TypeNormalMethod
-import com.argondesign.alogic.core.Types.TypeRecord
 import com.argondesign.alogic.core.Types.TypeStaticMethod
-import com.argondesign.alogic.core.Types.TypeType
 import com.argondesign.alogic.core.Types.TypeVoid
 import com.argondesign.alogic.transform.StatementFilter
 import com.argondesign.alogic.util.unreachable
@@ -313,29 +312,14 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatefulTreeTran
     extraStmts.pop()
   }
 
-  private def inRecordOrCombFunc: Boolean =
-    enclosingSymbols.exists(symbol =>
-      symbol.kind match {
-        case TypeType(_: TypeRecord) => true
-        case _: TypeCombFunc         => true
-        case _                       => false
-      }
-    )
-
-  private def mustInline(kind: Type): Boolean = kind match {
-    case _: TypeNormalMethod | _: TypeStaticMethod => true
-    case TypeCombFunc(symbol, _, _) =>
-      symbol.defnOption.nonEmpty // False for extension methods on ports/rams etc
-    case _ => false
-  }
-
   override def enter(tree: Tree): Option[Tree] = tree match {
-    // Do not descend into statements inside a record or combinational functoin
-    case _: Stmt if inRecordOrCombFunc => Some(tree)
+    // Do not descend into the definitions ve are inlining
+    case Decl(symbol) if InlineMethods.mustInline(symbol.kind) => Some(tree)
+    case Defn(symbol) if InlineMethods.mustInline(symbol.kind) => Some(tree)
 
     // Calls in statement position are replaced straight as they might not
     // have a return value, and even if they do it is not needed
-    case StmtExpr(call: ExprCall) if mustInline(call.expr.tpe) =>
+    case StmtExpr(call: ExprCall) if InlineMethods.mustInline(call.expr.tpe) =>
       processCallInStatementPosition(call) map { stmts =>
         Thicket(stmts.toList)
       } orElse Some(Stump)
@@ -344,15 +328,11 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatefulTreeTran
       extraStmts.push(new ListBuffer[Stmt])
       None
 
-    // Drop Method Decl/Defn
-    case Decl(symbol) if mustInline(symbol.kind) => Some(Stump)
-    case Defn(symbol) if mustInline(symbol.kind) => Some(Stump)
-
     case _ => None
   }
 
   override def transform(tree: Tree): Tree = tree match {
-    case ExprCall(tgt, args) if mustInline(tgt.tpe) =>
+    case ExprCall(tgt, args) if InlineMethods.mustInline(tgt.tpe) =>
       // The function symbol
       val fSymbol = tgt.tpe.asCallable.symbol
 
@@ -387,19 +367,39 @@ final class InlineMethods(implicit cc: CompilerContext) extends StatefulTreeTran
 
 }
 
-object InlineMethods extends PairTransformerPass(parallel = true) {
-  val name = "inline-methods"
+private object DropDefs extends StatelessTreeTransformer {
 
-  final protected def transform(
-      decl: Decl,
-      defn: Defn
-    )(
-      implicit
-      cc: CompilerContext
-    ): (Tree, Tree) = {
-    require(decl.symbol eq defn.symbol)
-    val transformer = new InlineMethods
-    (transformer(decl), transformer(defn))
+  override def enter(tree: Tree): Option[Tree] = tree match {
+    case Decl(symbol) if InlineMethods.mustInline(symbol.kind) => Some(Stump)
+    case Defn(symbol) if InlineMethods.mustInline(symbol.kind) => Some(Stump)
+
+    case _: Expr => Some(tree)
+
+    case _ => None
+  }
+
+}
+
+object InlineMethods {
+
+  def mustInline(kind: Type): Boolean = kind match {
+    case _: TypeNormalMethod | _: TypeStaticMethod => true
+    case TypeCombFunc(symbol, _, _) =>
+      symbol.defnOption.nonEmpty // False for extension methods on ports/rams etc
+    case _ => false
+  }
+
+  def apply(): Pass[Pairs, Pairs] = {
+    new EntityTransformerPass(declFirst = true, parallel = true) {
+      val name = "inline-methods"
+
+      def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer = new InlineMethods
+    } andThen new PairTransformerPass(parallel = true) {
+      val name = "drop-comb-function-definitions"
+
+      def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) =
+        (DropDefs(decl), DropDefs(defn))
+    }
   }
 
 }
