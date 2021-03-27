@@ -53,7 +53,21 @@ private object OptimizeClearOnSallTransform extends StatelessTreeTransformer {
           case _ => unreachable
         }
 
-        val inits = (branches map {
+        // Paths containing no stall statements can be treated as if they're a
+        // single path. Since we only care about the total number of distinct
+        // stall conditions on each path.
+        val (stallBranches, noStallBranches) = branches partition { x =>
+          x exists {
+            case StmtWait(_) => true
+            case _           => false
+          }
+        }
+
+        val mergedBranches =
+          if (noStallBranches.nonEmpty) List(noStallBranches.flatten) ::: stallBranches
+          else stallBranches
+
+        val inits = (mergedBranches map {
           init ::: _
         }).distinct
 
