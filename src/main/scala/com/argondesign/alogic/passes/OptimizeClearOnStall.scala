@@ -19,6 +19,7 @@ import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.transform.StatementFilter
 import com.argondesign.alogic.util.unreachable
 
+import scala.annotation.tailrec
 import scala.collection.mutable
 
 private object OptimizeClearOnSallTransform extends StatelessTreeTransformer {
@@ -30,22 +31,22 @@ private object OptimizeClearOnSallTransform extends StatelessTreeTransformer {
 
   // Given a list of statements, return a list of all linear paths through
   // these statements, without any branches or blocks
-  private def enumeratePaths(stmts: List[Stmt]): List[List[Stmt]] = {
+  private def enumeratePaths(stmts: List[Stmt]): LazyList[List[Stmt]] = {
     val (init, rest) = stmts span {
-      case _: StmtAssign => true
-      case _: StmtWait   => true
-      case _             => false
+      case _: StmtAssign | _: StmtWait => true
+      case _                           => false
     }
 
     rest match {
-      case Nil => List(init)
+      case Nil => LazyList(init)
       case branch :: tail =>
         val branches = branch match {
-          case StmtBlock(body) => enumeratePaths(body)
+          case StmtBlock(body) =>
+            enumeratePaths(body)
           case StmtIf(_, thenStmts, elseStmts) =>
-            enumeratePaths(thenStmts) ::: enumeratePaths(elseStmts)
+            enumeratePaths(thenStmts) concat enumeratePaths(elseStmts)
           case StmtCase(_, cases) =>
-            cases flatMap {
+            LazyList.from(cases) flatMap {
               case CaseRegular(_, ss) => enumeratePaths(ss)
               case CaseDefault(ss)    => enumeratePaths(ss)
               case _: CaseSplice      => unreachable
@@ -53,17 +54,13 @@ private object OptimizeClearOnSallTransform extends StatelessTreeTransformer {
           case _ => unreachable
         }
 
-        val inits = (branches map {
-          init ::: _
-        }).distinct
-
-        val tails = enumeratePaths(tail).distinct
+        val tails = enumeratePaths(tail)
 
         for {
-          init <- inits
+          branch <- branches
           tail <- tails
         } yield {
-          init ::: tail
+          init ::: branch ::: tail
         }
     }
   }
@@ -79,68 +76,84 @@ private object OptimizeClearOnSallTransform extends StatelessTreeTransformer {
 
       if (candidateSymbols.nonEmpty) {
         assert(defn.combProcesses.lengthIs == 1)
-        val block = StmtBlock(defn.combProcesses.head.stmts) regularize tree.loc
 
         // Discard everything that is not a StallStmt
         // or an assignment to one of our candidates
-        val filter = {
-          def leafStatement(stmt: Stmt): Boolean = stmt.children forall {
-            case _: Stmt => false
-            case _: Case => false
-            case _       => true
+        val trimmed = {
+          val block = StmtBlock(defn.combProcesses.head.stmts) regularize tree.loc
+
+          val filter = {
+            def leafStatement(stmt: Stmt): Boolean = stmt.children forall {
+              case _: Stmt => false
+              case _: Case => false
+              case _       => true
+            }
+
+            StatementFilter {
+              case _: StmtWait                    => true
+              case StmtAssign(ExprSym(symbol), _) => symbol.attr.clearOnStall contains true
+              case stmt if leafStatement(stmt)    => false // Discard other leaf statements
+            }
           }
 
-          StatementFilter {
-            case _: StmtWait                    => true
-            case StmtAssign(ExprSym(symbol), _) => symbol.attr.clearOnStall contains true
-            case stmt if leafStatement(stmt)    => false // Discard other leaf statements
+          filter(block) match {
+            case stmt: StmtBlock => stmt.body
+            case Stump           => Nil
+            case _               => unreachable
           }
-        }
-        val trimmed = filter(block) match {
-          case stmt: Stmt => List(stmt)
-          case Stump      => Nil
-          case _          => unreachable
         }
 
         // Check each path through the statements
-        for (path <- enumeratePaths(trimmed)) {
-          // Gather all the distinct stall conditions
-          val stallConditions = (path collect { case StmtWait(cond) => cond }).distinct
-          stallConditions match {
-            case Nil                              => // No stall conditions through this path, we are safe
-            case (cond @ ExprSym(sSymbol)) :: Nil =>
-              // There is a single stall condition. Remove candidates that are
-              // neither gated by this signal nor are assigned this signal.
-              // The point being is that if the signal is gated by the stall
-              // condition signal, then it's value is don't care if a stall is
-              // required, hence the signal in question can be anything when we
-              // stall, no need to clear it on stall.
-              path filterNot {
-                case StmtAssign(ExprSym(cand), rhs) =>
-                  (cand.attr.dontCareUnless.get contains sSymbol) || (rhs == cond)
-                case _ => false
-              } foreach {
-                case StmtAssign(ExprSym(s), _) => candidateSymbols remove s
-                case _                         =>
+        @tailrec
+        def loop(paths: Iterator[Iterable[Stmt]]): Unit =
+          if (paths.hasNext && candidateSymbols.nonEmpty) { // Terminate early if no candidates left
+            val path = paths.next()
+            // Gather all the distinct stall conditions
+            val stallConditions = path.iterator.collect { case StmtWait(cond) => cond }.distinct
+            if (!stallConditions.hasNext) {
+              // No stall conditions through this path, we are safe
+            } else {
+              val cond = stallConditions.next()
+              if (!stallConditions.hasNext) {
+                // Single stall condition
+                cond match {
+                  case ExprSym(sSymbol) =>
+                    // There is a single stall condition. Remove candidates that are
+                    // neither gated by this signal nor are assigned this signal.
+                    // The point being is that if the signal is gated by the stall
+                    // condition signal, then it's value is don't care if a stall is
+                    // required, hence the signal in question can be anything when we
+                    // stall, no need to clear it on stall.
+                    path.foreach {
+                      case StmtAssign(ExprSym(cand), rhs)
+                          if !(cand.attr.dontCareUnless.get contains sSymbol) && (rhs != cond) =>
+                        candidateSymbols remove cand
+                      case _ => //
+                    }
+                  case _ =>
+                    // There is a single generic stall condition on this path, remove
+                    // all candidates that are not assigned this condition.
+                    path.foreach {
+                      case StmtAssign(ExprSym(cand), c) if c != cond => candidateSymbols remove cand
+                      case _                                         =>
+                    }
+                }
+              } else {
+                // There are 2 or more stall conditions on this path, remove all
+                // candidates that are assigned anything on this path
+                path.foreach {
+                  case StmtAssign(ExprSym(s), _) => candidateSymbols remove s
+                  case _                         =>
+                }
               }
-            case cond :: Nil =>
-              // There is a single generic stall condition on this path, remove
-              // all candidates that are not assigned this condition.
-              path filter {
-                case StmtAssign(_: ExprSym, `cond`) => false
-                case _                              => true
-              } foreach {
-                case StmtAssign(ExprSym(s), _) => candidateSymbols remove s
-                case _                         =>
-              }
-            case _ =>
-              // There are 2 or more stall conditions on this path, remove all
-              // candidates that are assigned anything on this path
-              path foreach {
-                case StmtAssign(ExprSym(s), _) => candidateSymbols remove s
-                case _                         =>
-              }
+            }
+            loop(paths)
           }
+
+        // If no wait statements we can clear all clearOnStall flags, otherwise
+        // analyse the code.
+        if (trimmed.exists(_.exists { case _: StmtWait => true })) {
+          loop(enumeratePaths(trimmed).iterator)
         }
 
         // Remove attributes from the remaining candidates
