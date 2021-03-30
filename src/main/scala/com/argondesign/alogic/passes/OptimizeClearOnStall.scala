@@ -43,14 +43,25 @@ private object OptimizeClearOnSallTransform extends StatelessTreeTransformer {
         val branches = branch match {
           case StmtBlock(body) =>
             enumeratePaths(body)
+          case StmtIf(_, thenStmts, Nil) =>
+            // We can ignore the empty branch, as the non-empty branch will
+            // always yield a more conservative result.
+            enumeratePaths(thenStmts)
           case StmtIf(_, thenStmts, elseStmts) =>
             enumeratePaths(thenStmts) concat enumeratePaths(elseStmts)
           case StmtCase(_, cases) =>
-            LazyList.from(cases) flatMap {
-              case CaseRegular(_, ss) => enumeratePaths(ss)
-              case CaseDefault(ss)    => enumeratePaths(ss)
-              case _: CaseSplice      => unreachable
-            }
+            // We can ignore the empty branches, as the non-empty branch will
+            // always yield a more conservative result.
+            val ll = LazyList
+              .from(cases)
+              .collect {
+                case CaseRegular(_, ss) if ss.nonEmpty => enumeratePaths(ss)
+                case CaseDefault(ss) if ss.nonEmpty    => enumeratePaths(ss)
+              }
+              .flatten
+            // Note: we still need to yield an empty path if all branches are
+            // empty!
+            if (ll.nonEmpty) ll else LazyList(Nil)
           case _ => unreachable
         }
 
