@@ -1,0 +1,14 @@
+from "./types" import a_t;  // Not OK
+
+typedef uint(@bits(a_t)) b_t;
+
+u5 f(b_t r) {
+  gen for (int i = 10; i > 0; i -= $signed(@bits(r))) { }
+  return 0;
+}
+
+fsm example {
+  void main() {
+    fence;
+  }
+}

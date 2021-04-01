@@ -22,6 +22,7 @@ import com.argondesign.alogic.core.Types.TypeIn
 import com.argondesign.alogic.core.Types.TypeOut
 import com.argondesign.alogic.core.enums.EntityVariant
 import com.argondesign.alogic.core.Messages.Note
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Types.TypeNone
 import com.argondesign.alogic.core.Types.TypeType
 import com.argondesign.alogic.util.BigIntOps._
@@ -135,6 +136,8 @@ object Elaborate {
   private def assertProgressIsReal[T](input: T)(result: Result[T]): Unit = result match {
     case Complete(output) =>
       assert(output != input, s"Invalid Complete result in Elaboration: $input")
+    case Partial(output, _) =>
+      assert(output != input, s"Invalid Partial result in Elaboration: $input")
     case _ =>
   }
 
@@ -513,7 +516,7 @@ object Elaborate {
                 s"Condition of 'gen for' yields ${kind.width} bits, a 1 bit value is expected"
               )
             } else {
-              Complete(desc)
+              Finished(desc)
             }
           }
         } proceed { desc =>
@@ -536,7 +539,11 @@ object Elaborate {
               .distil
               .map(Bindings.from(_)) flatMap { bindings =>
               // Setup the step statements for evaluation, including if they are empty
-              val step = StmtBlock(steps) withLoc steps.head.loc.copy(end = steps.last.loc.end)
+              val step = Clarify {
+                TypeAssigner {
+                  StmtBlock(steps) withLoc steps.head.loc.copy(end = steps.last.loc.end)
+                }
+              }
 
               val iterationLimit = cc.settings.genLoopLimit
 
