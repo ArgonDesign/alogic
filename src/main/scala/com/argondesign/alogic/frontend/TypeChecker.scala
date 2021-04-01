@@ -373,8 +373,11 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
     }
   }
 
-  private def propagateChildErrorIfAny(tree: Tree): Unit = {
+  private def propagateChildErrorIfAny(tree: Tree, recursive: Boolean): Unit = {
     // If any of the children have a type error, propagate it upwards
+    if (recursive) {
+      tree.children.filterNot(_.hasTpe).foreach(propagateChildErrorIfAny(_, recursive = true))
+    }
     if (tree.children.exists(child => child.hasTpe && child.tpe.isError)) {
       error(tree)
     }
@@ -482,7 +485,7 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
         preOrder(tree)
         // Stop if error or unresolved
         Option.when(!okSoFar || rAcc.nonEmpty) {
-          propagateChildErrorIfAny(tree)
+          propagateChildErrorIfAny(tree, recursive = true)
           tree
         }
     } tap {
@@ -533,7 +536,7 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
     implicit val theTree: Tree = tree
     val alreadyHadError = hadError
 
-    propagateChildErrorIfAny(tree)
+    propagateChildErrorIfAny(tree, recursive = false)
 
     // Bail quickly if we already had an unknown
     if (rAcc.isEmpty && okSoFar) {
