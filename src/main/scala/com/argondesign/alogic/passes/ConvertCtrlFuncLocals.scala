@@ -245,7 +245,7 @@ final class ConvertCtrlFuncLocals(implicit cc: CompilerContext) extends Stateles
 
 }
 
-object ConvertCtrlFuncLocals extends EntityTransformerPass(declFirst = false, parallel = true) {
+object ConvertCtrlFuncLocals extends EntityTransformerPass(declFirst = false) {
   val name = "convert-ctrl-func-locals"
 
   override def skip(decl: DeclEntity, defn: DefnEntity): Boolean = defn.functions.isEmpty

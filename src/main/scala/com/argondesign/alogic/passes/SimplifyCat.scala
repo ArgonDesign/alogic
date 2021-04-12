@@ -140,7 +140,7 @@ object SimplifyCatTransform extends StatelessTreeTransformer {
 
 }
 
-object SimplifyCat extends EntityTransformerPass(declFirst = true, parallel = true) {
+object SimplifyCat extends EntityTransformerPass(declFirst = true) {
   val name = "simplify-cat"
 
   def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer = SimplifyCatTransform

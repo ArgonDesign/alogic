@@ -493,7 +493,7 @@ final class AnalyseCallGraph(implicit cc: CompilerContext) extends StatelessTree
 
 }
 
-object AnalyseCallGraph extends EntityTransformerPass(declFirst = false, parallel = true) {
+object AnalyseCallGraph extends EntityTransformerPass(declFirst = false) {
   val name = "analyse-call-graph"
 
   def create(symbol: Symbol)(implicit cc: CompilerContext) = new AnalyseCallGraph

@@ -127,7 +127,7 @@ final class PortCheck(implicit cc: CompilerContext) extends StatelessTreeTransfo
 
 }
 
-object PortCheck extends PairTransformerPass(parallel = true) {
+object PortCheck extends PairTransformerPass {
   val name = "port-check"
   def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) =
     (cc.portCheck(decl), defn)

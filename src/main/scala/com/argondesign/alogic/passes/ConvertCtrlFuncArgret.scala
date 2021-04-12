@@ -241,7 +241,7 @@ final class ConvertCtrlFuncArgret(implicit cc: CompilerContext) extends Stateful
 
 }
 
-object ConvertCtrlFuncArgret extends EntityTransformerPass(declFirst = false, parallel = true) {
+object ConvertCtrlFuncArgret extends EntityTransformerPass(declFirst = false) {
   val name = "convert-ctrl-func-argret"
 
   override def skip(decl: DeclEntity, defn: DefnEntity): Boolean = defn.functions.isEmpty

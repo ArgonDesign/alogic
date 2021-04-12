@@ -287,7 +287,7 @@ final class InlineKnownVars(combOnly: Boolean = true) extends StatelessTreeTrans
 object InlineKnownVars {
 
   def apply(combOnly: Boolean): EntityTransformerPass =
-    new EntityTransformerPass(declFirst = false, parallel = true) {
+    new EntityTransformerPass(declFirst = false) {
       val name = "inline-known-vars"
 
       override def skip(decl: DeclEntity, defn: DefnEntity): Boolean = defn.combProcesses.isEmpty

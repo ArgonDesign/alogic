@@ -14,7 +14,7 @@ import com.argondesign.alogic.ast.Trees.Expr.InstancePortSel
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.TypeAssigner
 
-object TieOffInputs extends PairTransformerPass(parallel = true) {
+object TieOffInputs extends PairTransformerPass {
   val name = "tie-off-inputs"
 
   override def skip(decl: Decl, defn: Defn)(implicit cc: CompilerContext): Boolean = defn match {

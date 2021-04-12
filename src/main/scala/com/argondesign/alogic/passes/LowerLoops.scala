@@ -126,7 +126,7 @@ final class LowerLoops extends StatelessTreeTransformer {
 
 }
 
-object LowerLoops extends EntityTransformerPass(declFirst = true, parallel = true) {
+object LowerLoops extends EntityTransformerPass(declFirst = true) {
   val name = "lower-loops"
 
   def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer = new LowerLoops

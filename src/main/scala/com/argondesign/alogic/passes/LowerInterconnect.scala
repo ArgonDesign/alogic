@@ -285,7 +285,7 @@ final class LowerInterconnect(implicit cc: CompilerContext)
 
 }
 
-object LowerInterconnect extends EntityTransformerPass(declFirst = false, parallel = true) {
+object LowerInterconnect extends EntityTransformerPass(declFirst = false) {
   val name = "lower-interconnect"
 
   def create(symbol: Symbol)(implicit cc: CompilerContext) = new LowerInterconnect

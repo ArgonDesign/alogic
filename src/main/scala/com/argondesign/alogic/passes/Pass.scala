@@ -104,7 +104,7 @@ trait PairsTransformerPass extends SimplePass[Pairs, Pairs] {
 
 }
 
-abstract class PairTransformerPass(parallel: Boolean = false) extends PairsTransformerPass {
+abstract class PairTransformerPass extends PairsTransformerPass {
 
   // Called before any pair has been transformed with the input pairs
   @nowarn("msg=parameter value cc .* is never used")
@@ -143,11 +143,7 @@ abstract class PairTransformerPass(parallel: Boolean = false) extends PairsTrans
     }
 
     // Apply the transformation
-    val transformed = if (parallel) {
-      pairs.asPar.flatMap(transformation)
-    } else {
-      pairs.asSeq.flatMap(transformation)
-    }
+    val transformed = pairs.asPar.flatMap(transformation)
 
     // Call finish
     finish(transformed) tapEach {
@@ -158,8 +154,7 @@ abstract class PairTransformerPass(parallel: Boolean = false) extends PairsTrans
 
 }
 
-abstract class EntityTransformerPass(declFirst: Boolean, parallel: Boolean = false)
-    extends PairTransformerPass(parallel) {
+abstract class EntityTransformerPass(declFirst: Boolean) extends PairTransformerPass {
 
   // Only process entities
   final override def skip(decl: Decl, defn: Defn)(implicit cc: CompilerContext): Boolean =

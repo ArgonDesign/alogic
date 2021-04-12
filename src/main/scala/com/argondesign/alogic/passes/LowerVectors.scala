@@ -321,12 +321,12 @@ object LowerVectors {
   def apply(): Pass[Pairs, Pairs] = {
     val globalReplacements = TrieMap[Symbol, Symbol]()
 
-    new EntityTransformerPass(declFirst = true, parallel = true) {
+    new EntityTransformerPass(declFirst = true) {
       val name = "lower-vectors-a"
 
       def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
         new LowerVectorsA(globalReplacements)
-    } andThen new EntityTransformerPass(declFirst = true, parallel = true) {
+    } andThen new EntityTransformerPass(declFirst = true) {
       val name = "lower-vectors-b"
 
       def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =

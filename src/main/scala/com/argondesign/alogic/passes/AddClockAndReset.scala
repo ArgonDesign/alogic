@@ -137,12 +137,12 @@ object AddClockAndReset {
 
     val globalReplacements = TrieMap[Symbol, Symbol]()
 
-    new EntityTransformerPass(declFirst = true, parallel = true) {
+    new EntityTransformerPass(declFirst = true) {
       val name = "add-clock-and-reset-a"
 
       def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =
         new AddClockAndResetA(globalReplacements)
-    } andThen new EntityTransformerPass(declFirst = true, parallel = true) {
+    } andThen new EntityTransformerPass(declFirst = true) {
       val name = "add-clock-and-reset-b"
 
       override def skip(decl: DeclEntity, defn: DefnEntity): Boolean = decl.instances.isEmpty

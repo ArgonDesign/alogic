@@ -162,7 +162,7 @@ object CombineStatementsTranform extends StatelessTreeTransformer {
 
 }
 
-object CombineStatements extends PairTransformerPass(parallel = true) {
+object CombineStatements extends PairTransformerPass {
   val name = "combine-statements"
   def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) =
     (decl, CombineStatementsTranform(defn))

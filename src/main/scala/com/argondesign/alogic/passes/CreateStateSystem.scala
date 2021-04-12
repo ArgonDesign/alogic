@@ -343,7 +343,7 @@ final class CreateStateSystem(implicit cc: CompilerContext) extends StatefulTree
 
 }
 
-object CreateStateSystem extends EntityTransformerPass(declFirst = false, parallel = true) {
+object CreateStateSystem extends EntityTransformerPass(declFirst = false) {
   val name = "create-state-system"
 
   override def skip(decl: DeclEntity, defn: DefnEntity): Boolean = decl.states.isEmpty

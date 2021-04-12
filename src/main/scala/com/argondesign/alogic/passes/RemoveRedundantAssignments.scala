@@ -89,7 +89,7 @@ final class RemoveRedundantAssignments extends StatelessTreeTransformer {
 
 }
 
-object RemoveRedundantAssignments extends PairTransformerPass(parallel = true) {
+object RemoveRedundantAssignments extends PairTransformerPass {
   val name = "remove-redundant-assignments"
 
   override def skip(decl: Decl, defn: Defn)(implicit cc: CompilerContext): Boolean = defn match {

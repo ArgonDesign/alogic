@@ -390,11 +390,11 @@ object InlineMethods {
   }
 
   def apply(): Pass[Pairs, Pairs] = {
-    new EntityTransformerPass(declFirst = true, parallel = true) {
+    new EntityTransformerPass(declFirst = true) {
       val name = "inline-methods"
 
       def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer = new InlineMethods
-    } andThen new PairTransformerPass(parallel = true) {
+    } andThen new PairTransformerPass {
       val name = "drop-comb-function-definitions"
 
       def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) =

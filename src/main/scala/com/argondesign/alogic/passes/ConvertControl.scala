@@ -529,7 +529,7 @@ final class ConvertControl extends StatelessTreeTransformer {
 
 }
 
-object ConvertControl extends EntityTransformerPass(declFirst = false, parallel = true) {
+object ConvertControl extends EntityTransformerPass(declFirst = false) {
   val name = "convert-control"
 
   override def skip(decl: DeclEntity, defn: DefnEntity): Boolean = decl.functions.isEmpty

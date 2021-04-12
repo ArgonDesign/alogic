@@ -213,7 +213,7 @@ final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer 
 
 }
 
-object Fold extends PairTransformerPass(parallel = true) {
+object Fold extends PairTransformerPass {
   val name = "fold"
 
   def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {

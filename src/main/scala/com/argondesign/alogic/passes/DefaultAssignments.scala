@@ -21,7 +21,7 @@ import com.argondesign.alogic.util.BigIntOps._
 
 import scala.collection.mutable
 
-object DefaultAssignments extends PairTransformerPass(parallel = true) {
+object DefaultAssignments extends PairTransformerPass {
   val name = "default-assignments"
 
   override def skip(decl: Decl, defn: Defn)(implicit cc: CompilerContext): Boolean = defn match {

@@ -257,7 +257,7 @@ final class LowerVariables(implicit cc: CompilerContext) extends StatelessTreeTr
 
 }
 
-object LowerVariables extends EntityTransformerPass(declFirst = false, parallel = true) {
+object LowerVariables extends EntityTransformerPass(declFirst = false) {
   val name = "lower-variables"
 
   override def skip(decl: DeclEntity, defn: DefnEntity): Boolean = defn.variant != EntityVariant.Fsm

@@ -180,7 +180,7 @@ private object OptimizeClearOnSallTransform extends StatelessTreeTransformer {
   override def enter(tree: Tree): Option[Tree] = Some(tree)
 }
 
-object OptimizeClearOnStall extends EntityTransformerPass(declFirst = true, parallel = true) {
+object OptimizeClearOnStall extends EntityTransformerPass(declFirst = true) {
   val name = "optimize-clear-on-stall"
 
   def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer =

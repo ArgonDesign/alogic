@@ -29,7 +29,7 @@ object RemoveAssumeTransform extends StatelessTreeTransformer {
 
 }
 
-object RemoveAssume extends EntityTransformerPass(declFirst = false, parallel = true) {
+object RemoveAssume extends EntityTransformerPass(declFirst = false) {
   val name = "remove-assume"
 
   def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer = RemoveAssumeTransform

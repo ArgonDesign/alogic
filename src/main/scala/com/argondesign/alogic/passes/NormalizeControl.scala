@@ -160,7 +160,7 @@ object NormalizeControlTransform extends StatelessTreeTransformer {
 
 }
 
-object NormalizeControl extends EntityTransformerPass(declFirst = true, parallel = true) {
+object NormalizeControl extends EntityTransformerPass(declFirst = true) {
   val name = "normalize-control"
 
   override def skip(decl: DeclEntity, defn: DefnEntity): Boolean = defn.variant != EntityVariant.Fsm

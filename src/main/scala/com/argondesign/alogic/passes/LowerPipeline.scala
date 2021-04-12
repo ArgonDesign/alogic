@@ -366,7 +366,7 @@ final class LowerPipelineHost extends StatefulTreeTransformer {
 
 }
 
-object LowerPipeline extends EntityTransformerPass(declFirst = false, parallel = true) {
+object LowerPipeline extends EntityTransformerPass(declFirst = false) {
   val name = "lower-pipeline"
 
   def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer = new LowerPipelineHost

@@ -54,7 +54,7 @@ final class ExtractTypes extends StatelessTreeTransformer {
 
 }
 
-object ExtractTypes extends PairTransformerPass(parallel = true) {
+object ExtractTypes extends PairTransformerPass {
   val name = "extract-types"
 
   protected def transform(decl: Decl, defn: Defn)(implicit cc: CompilerContext): (Tree, Tree) = {

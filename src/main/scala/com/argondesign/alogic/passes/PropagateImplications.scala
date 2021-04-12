@@ -46,9 +46,12 @@ object PropagateImplicationsTransform extends StatelessTreeTransformer {
         (a, b, pbSymbol) <- paSymbol.attr.implications.enumerate
         nbSymbol <- map get pbSymbol
         lifted = (a, b, nbSymbol)
-        if !(naSymbol.attr.implications.enumerate contains lifted)
       } {
-        naSymbol.attr.implications append lifted
+        naSymbol.attr.implications.synchronized {
+          if (!(naSymbol.attr.implications.enumerate contains lifted)) {
+            naSymbol.attr.implications append lifted
+          }
+        }
       }
 
     case _ =>

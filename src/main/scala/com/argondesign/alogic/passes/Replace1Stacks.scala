@@ -73,7 +73,7 @@ final class Replace1Stacks extends StatelessTreeTransformer {
 
 }
 
-object Replace1Stacks extends EntityTransformerPass(declFirst = true, parallel = true) {
+object Replace1Stacks extends EntityTransformerPass(declFirst = true) {
   val name = "replace-1-stacks"
 
   def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer = new Replace1Stacks

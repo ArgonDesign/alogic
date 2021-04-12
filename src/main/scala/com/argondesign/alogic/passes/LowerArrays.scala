@@ -151,7 +151,7 @@ final class LowerArrays extends StatelessTreeTransformer {
 
 }
 
-object LowerArrays extends EntityTransformerPass(declFirst = true, parallel = true) {
+object LowerArrays extends EntityTransformerPass(declFirst = true) {
   val name = "lower-arrays"
 
   override def skip(decl: DeclEntity, defn: DefnEntity): Boolean = defn.variant != EntityVariant.Fsm

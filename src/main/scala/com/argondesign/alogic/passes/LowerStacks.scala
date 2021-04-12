@@ -185,7 +185,7 @@ final class LowerStacks(implicit cc: CompilerContext) extends StatelessTreeTrans
 
 }
 
-object LowerStacks extends EntityTransformerPass(declFirst = true, parallel = true) {
+object LowerStacks extends EntityTransformerPass(declFirst = true) {
   val name = "lower-stacks"
 
   override def skip(decl: DeclEntity, defn: DefnEntity): Boolean = defn.variant != EntityVariant.Fsm

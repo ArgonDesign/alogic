@@ -147,7 +147,7 @@ object LowerForeignFunctions {
 
     val encountered = mutable.Map[String, (TypeXenoFunc, List[String])]()
 
-    new PairTransformerPass(parallel = true) {
+    new PairTransformerPass {
       val name = "lower-foreign-functions"
 
       override protected def transform(

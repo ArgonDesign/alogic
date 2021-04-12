@@ -590,7 +590,7 @@ object LowerFlowControl {
     val globalReplacements = TrieMap[Symbol, Symbol]()
     val portMaps = TrieMap[Symbol, mutable.Map[Symbol, LoweredSymbols]]()
 
-    new EntityTransformerPass(declFirst = true, parallel = true) {
+    new EntityTransformerPass(declFirst = true) {
       val name = "lower-flow-control-a"
 
       def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer = {
@@ -598,7 +598,7 @@ object LowerFlowControl {
         portMaps(symbol) = portMap
         new LowerFlowControlA(globalReplacements, portMap)
       }
-    } andThen new EntityTransformerPass(declFirst = true, parallel = true) {
+    } andThen new EntityTransformerPass(declFirst = true) {
       val name = "lower-flow-control-b"
 
       // Remap the keys to their replacements
