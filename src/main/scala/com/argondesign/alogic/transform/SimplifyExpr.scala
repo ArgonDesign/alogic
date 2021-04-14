@@ -141,16 +141,21 @@ object SimplifyExpr extends StatelessTreeTransformer {
         (walk(tgt), walk(idx)) match {
           case (Integral(_, _, tgtValue), Integral(_, _, idxValue)) =>
             // Fold known index into known value TODO: error on out of range
-            TypeAssigner {
-              tgt.tpe match {
-                case TypeVector(eKind, _) =>
-                  val eSigned = eKind.isSigned
-                  val eWidth = eKind.width.toInt
-                  val result = tgtValue.extract((eWidth * idxValue).toInt, eWidth, eSigned)
-                  ExprInt(eSigned, eWidth, result) withLoc tree.loc
-                case _ =>
+            tgt.tpe match {
+              case TypeVector(eKind, _) =>
+                val eSigned = eKind.isSigned
+                val eWidth = eKind.width.toInt
+                val result = tgtValue.extract((eWidth * idxValue).toInt, eWidth, eSigned)
+                val rExpr = TypeAssigner(ExprInt(eSigned, eWidth, result) withLoc tree.loc)
+                eKind match {
+                  case _: TypeInt                    => rExpr
+                  case _: TypeVector | _: TypeRecord => rExpr.cast(eKind)
+                  case _                             => unreachable
+                }
+              case _ =>
+                TypeAssigner {
                   ExprInt(false, 1, (tgtValue >> idxValue.toInt) & 1) withLoc tree.loc
-              }
+                }
             }
           case (newTgt, newIdx) if (newTgt eq tgt) && (newIdx eq idx) =>
             // If all children are final, simply apply the transform to the input
@@ -192,6 +197,7 @@ object SimplifyExpr extends StatelessTreeTransformer {
             TypeAssigner {
               tgt.tpe match {
                 case TypeVector(eKind, _) =>
+                  // FIXME: This doesn't work if the element type is itself a vector
                   val rWidth = (eKind.width * width).toInt
                   val result = tgtValue.extract((eKind.width * lsb).toInt, rWidth)
                   ExprInt(false, rWidth, result) withLoc tree.loc
@@ -259,6 +265,7 @@ object SimplifyExpr extends StatelessTreeTransformer {
                 case Nil          => unreachable
               }
             val lsb = lessSigFieldTpes.map(_.width).sum.toInt
+            // FIXME: This doesn't work if the field type is vector or struct
             val result = value.extract(lsb, fieldTpe.width.toInt, fieldTpe.isSigned)
             TypeAssigner {
               ExprInt(fieldTpe.isSigned, fieldTpe.width.toInt, result) withLoc tree.loc
