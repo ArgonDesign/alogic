@@ -30,6 +30,7 @@ import com.argondesign.alogic.util.unreachable
 import com.argondesign.alogic.util.BooleanOps._
 import com.argondesign.alogic.util.BigIntOps._
 
+import scala.annotation.tailrec
 import scala.collection.immutable.Set
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -782,25 +783,20 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
     //////////////////////////////////////////////////////////////////////////
 
     case desc: Desc =>
-      // if (ok) {
-      // TODO: Add these back
-      //          checkNameHidingByExtensionType(decl)
+      // TODO: Add back checkNameHidingByExtensionType(decl)
 
-      //          @tailrec
-      //          def elem(kind: Type): Type = kind match {
-      //            case TypeVector(e, _) => elem(e)
-      //            case TypeArray(e, _)  => elem(e)
-      //            case _                => kind
-      //          }
-      //
-      //          decl match {
-      //            case kind: TypeVector if elem(kind).underlying.isRecord =>
-      //              cc.error(tree, "Vector element cannot have a struct type")
-      //            case kind: TypeArray if elem(kind).underlying.isRecord =>
-      //              cc.error(tree, "Memory element cannot have a struct type")
-      //            case _ => ()
-      //          }
-      //}
+      @tailrec
+      def elem(kind: Type): Type = kind match {
+        case TypeVector(e, _) => elem(e)
+        case TypeArray(e, _)  => elem(e)
+        case _                => kind
+      }
+
+      desc match {
+        case DescArray(_, _, e, _) if elem(e.tpe.asType.kind).isRecord =>
+          error(e, "Memory element must not have 'struct' type")
+        case _ =>
+      }
 
       desc match {
         case DescFunc(Sym(symbol), _, variant, ret, _, body) =>
