@@ -76,6 +76,8 @@ object DescToDeclDefnTransform extends StatelessTreeTransformer {
           (DeclIn(symbol, spec, fc), DefnIn(symbol))
         case DescOut(Sym(symbol), _, spec, fc, st, initOpt) =>
           (DeclOut(symbol, spec, fc, st), DefnOut(symbol, initOpt))
+        case DescSnoop(Sym(symbol), _, spec, _) =>
+          (DeclSnoop(symbol, spec), DefnSnoop(symbol))
         case DescPipeVar(Sym(symbol), _, spec) =>
           (DeclPipeVar(symbol, spec), DefnPipeVar(symbol))
         case DescPipeIn(Sym(symbol), _, hosts, fc) =>

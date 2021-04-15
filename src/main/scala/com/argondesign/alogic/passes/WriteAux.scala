@@ -13,8 +13,7 @@ import com.argondesign.alogic.BuildInfo
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FlowControlTypes._
-import com.argondesign.alogic.core.Types.TypeIn
-import com.argondesign.alogic.core.Types.TypeOut
+import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.enums.ResetStyle
 import com.argondesign.alogic.lib.Json
 import com.argondesign.alogic.util.unreachable
@@ -113,6 +112,7 @@ object WriteAux extends PairsTransformerPass {
             case TypeOut(_, FlowControlTypeNone, _)  => ("out", "none")
             case TypeOut(_, FlowControlTypeValid, _) => ("out", "sync")
             case TypeOut(_, FlowControlTypeReady, _) => ("out", "sync ready")
+            case _: TypeSnoop                        => ("snoop", "sync ready")
             case _                                   => unreachable
           }
           pSymbol.origName -> ListMap("dir" -> dir, "flow-control" -> fc)

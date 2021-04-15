@@ -79,6 +79,7 @@ object Trees {
   case class DescStatic(ref: Ref, attr: List[Attr], spec: Expr, initOpt: Option[Expr]) extends Desc
   case class DescIn(ref: Ref, attr: List[Attr], spec: Expr, fc: FlowControlType) extends Desc
   case class DescOut(ref: Ref, attr: List[Attr], spec: Expr, fc: FlowControlType, st: StorageType, initOpt: Option[Expr]) extends Desc
+  case class DescSnoop(ref: Ref, attr: List[Attr], spec: Expr, fc: FlowControlType) extends Desc
   case class DescPipeVar(ref: Ref, attr: List[Attr], spec: Expr) extends Desc
   case class DescPipeIn(ref: Ref, attr: List[Attr], hosts: List[Expr], fc: FlowControlType) extends Desc
   case class DescPipeOut(ref: Ref, attr: List[Attr], hosts: List[Expr], fc: FlowControlType, st: StorageType) extends Desc
@@ -134,6 +135,7 @@ object Trees {
   case class DeclStatic(symbol: Symbol, spec: Expr) extends Decl
   case class DeclIn(symbol: Symbol, spec: Expr, fc: FlowControlType) extends Decl
   case class DeclOut(symbol: Symbol, spec: Expr, fc: FlowControlType, st: StorageType) extends Decl
+  case class DeclSnoop(symbol: Symbol, spec: Expr) extends Decl
   case class DeclPipeVar(symbol: Symbol, spec: Expr) extends Decl
   case class DeclPipeIn(symbol: Symbol, pipeVars: List[Expr], fc: FlowControlType) extends Decl
   case class DeclPipeOut(symbol: Symbol, pipeVars: List[Expr], fc: FlowControlType, st: StorageType) extends Decl
@@ -164,6 +166,7 @@ object Trees {
   case class DefnStatic(symbol: Symbol, initOpt: Option[Expr]) extends Defn
   case class DefnIn(symbol: Symbol) extends Defn
   case class DefnOut(symbol: Symbol, initOpt: Option[Expr]) extends Defn
+  case class DefnSnoop(symbol: Symbol) extends Defn
   case class DefnPipeVar(symbol: Symbol) extends Defn
   case class DefnPipeIn(symbol: Symbol) extends Defn
   case class DefnPipeOut(symbol: Symbol) extends Defn

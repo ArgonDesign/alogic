@@ -34,7 +34,7 @@ final class PortCheck(implicit cc: CompilerContext) extends StatelessTreeTransfo
 
   // Check ports that can only have a single sink indeed only have a single sink
   private def checkMultipleSinks(assigns: List[EntAssign]): Unit = {
-    assigns.groupBy(_.rhs).iterator filter {
+    assigns.filterNot(_.lhs.tpe.isSnoop).groupBy(_.rhs).iterator filter {
       case (_, _ :: Nil) => false // Single sink
       case (rhs, _) =>
         rhs.tpe match {

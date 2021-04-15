@@ -1,0 +1,4 @@
+network snoop_03 {
+  snoop bool s;
+}
+// :2: ERROR: 'snoop' port must use 'sync ready' flow control

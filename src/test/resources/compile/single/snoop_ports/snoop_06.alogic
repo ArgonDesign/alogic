@@ -1,0 +1,34 @@
+// @ignore
+network snoop_06 {
+  in  sync ready bool i;
+  out sync ready bool o;
+
+  out wire bool move;
+
+  new fsm inner {
+    snoop sync ready bool s;
+    void main() {
+      move = s.move;
+      fence;
+    }
+  }
+
+  i -> o;
+  o -> inner.s;
+}
+// @fec/golden {{{
+//  module snoop_06(
+//    input  wire i,
+//    input  wire i__valid,
+//    output wire i__ready,
+//    output wire o,
+//    output wire o__valid,
+//    input  wire o__ready,
+//    output wire move
+//  );
+//    assign o = i;
+//    assign o__valid = i__valid;
+//    assign i__ready = o__ready;
+//    assign move = i__valid & o__ready;
+//  endmodule
+// }}}

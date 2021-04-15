@@ -121,6 +121,7 @@ TYPEDEF     : 'typedef';
 STRUCT      : 'struct';
 IN          : 'in';
 OUT         : 'out';
+SNOOP       : 'snoop';
 CONST       : 'const' ;
 PARAM       : 'param' ;
 FENCE       : 'fence' ;

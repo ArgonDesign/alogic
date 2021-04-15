@@ -1,0 +1,19 @@
+fsm snoop_01 {
+  snoop sync ready void s;
+
+  out wire bool o;
+
+  void main() {
+    o = s.move;
+    fence;
+  }
+}
+// @fec/golden {{{
+//  module snoop_01(
+//    input  wire s__valid,
+//    input  wire s__ready,
+//    output wire o
+//  );
+//    assign o = s__valid & s__ready;
+//  endmodule
+// }}}

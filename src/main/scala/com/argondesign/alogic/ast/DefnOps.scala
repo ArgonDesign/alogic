@@ -27,6 +27,7 @@ trait DefnOps { this: Defn =>
     case node: DefnStatic    => node.copy(symbol = symbol)
     case node: DefnIn        => node.copy(symbol = symbol)
     case node: DefnOut       => node.copy(symbol = symbol)
+    case node: DefnSnoop     => node.copy(symbol = symbol)
     case node: DefnPipeVar   => node.copy(symbol = symbol)
     case node: DefnPipeIn    => node.copy(symbol = symbol)
     case node: DefnPipeOut   => node.copy(symbol = symbol)

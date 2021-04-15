@@ -163,6 +163,7 @@ final class UnusedCheck extends StatelessTreeTransformer {
         case _: DescVar | _: DescVal | _: DescStatic => "Variable"
         case _: DescIn                               => "Input port"
         case _: DescOut                              => "Output port"
+        case _: DescSnoop                            => "Snoop port"
         case _: DescPipeVar                          => "Pipeline variable"
         case _: DescPipeIn                           => "Pipeline input port"
         case _: DescPipeOut                          => "Pipeline output port"

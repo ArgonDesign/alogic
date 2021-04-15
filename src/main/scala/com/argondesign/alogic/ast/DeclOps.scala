@@ -18,6 +18,7 @@ trait DeclOps { this: Decl =>
     case node: DeclStatic    => node.copy(symbol = symbol)
     case node: DeclIn        => node.copy(symbol = symbol)
     case node: DeclOut       => node.copy(symbol = symbol)
+    case node: DeclSnoop     => node.copy(symbol = symbol)
     case node: DeclPipeVar   => node.copy(symbol = symbol)
     case node: DeclPipeIn    => node.copy(symbol = symbol)
     case node: DeclPipeOut   => node.copy(symbol = symbol)

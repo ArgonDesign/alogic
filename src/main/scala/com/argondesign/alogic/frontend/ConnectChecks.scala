@@ -73,6 +73,7 @@ object ConnectChecks {
       case TypeIn(_, fc)                          => Some(fc)
       case TypeOut(_, FlowControlTypeNone, _)     => None
       case TypeOut(_, fc, _)                      => Some(fc)
+      case _: TypeSnoop                           => Some(FlowControlTypeReady)
       case TypePipeIn(_, FlowControlTypeNone)     => None
       case TypePipeIn(_, fc)                      => Some(fc)
       case TypePipeOut(_, FlowControlTypeNone, _) => None
@@ -145,6 +146,8 @@ object ConnectChecks {
                 case _: TypeOut | _: TypePipeOut => Iterator.empty // OK
                 case _: TypeIn | _: TypePipeIn =>
                   error("It is an input of the referenced instance.")
+                case _: TypeSnoop =>
+                  error("It is a snoop port of the referenced instance.")
                 case _ => unreachable
               }
             } else if (expr.tpe.isPacked) {
@@ -197,7 +200,7 @@ object ConnectChecks {
           case ExprDot(tgt, _, _) =>
             if (tgt.tpe.isEntity) {
               expr.tpe match {
-                case _: TypeIn | _: TypePipeIn => Iterator.empty // OK
+                case _: TypeIn | _: TypePipeIn | _: TypeSnoop => Iterator.empty // OK
                 case _: TypeOut | _: TypePipeOut =>
                   error("It is an output of the referenced instance.")
                 case _ => unreachable
@@ -299,7 +302,7 @@ object ConnectChecks {
         case Some(FlowControlTypeNone)  => unreachable
         case Some(FlowControlTypeValid) => Iterator.empty
         case Some(FlowControlTypeReady) =>
-          Iterator.when(rhss.lengthIs > 1) thenSingle {
+          Iterator.when(rhss.filterNot(_.tpe.isSnoop).lengthIs > 1) thenSingle {
             val loc = lhs.loc.copy(end = rhss.last.loc.end)
             Error(loc, s"Port with 'sync ready' flow control cannot have multiple sinks")
           }

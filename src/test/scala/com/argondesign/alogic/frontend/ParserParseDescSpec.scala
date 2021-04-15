@@ -282,6 +282,37 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
         }
       }
 
+      "snoop" - {
+        "no flow control" in {
+          "snoop i2 a;".asTree[Desc]() shouldBe {
+            DescSnoop(Ident("a", Nil), Nil, ExprType(TypeSInt(2)), FlowControlTypeNone)
+          }
+        }
+
+        "valid flow control" in {
+          "snoop sync i2 a;".asTree[Desc]() shouldBe {
+            DescSnoop(Ident("a", Nil), Nil, ExprType(TypeSInt(2)), FlowControlTypeValid)
+          }
+        }
+
+        "valid/ready flow control" in {
+          "snoop sync ready i2 a;".asTree[Desc]() shouldBe {
+            DescSnoop(Ident("a", Nil), Nil, ExprType(TypeSInt(2)), FlowControlTypeReady)
+          }
+        }
+
+        "with attribute" in {
+          "(* foo *) snoop i2 a;".asTree[Desc]() shouldBe {
+            DescSnoop(
+              Ident("a", Nil),
+              List(AttrBool("foo")),
+              ExprType(TypeSInt(2)),
+              FlowControlTypeNone
+            )
+          }
+        }
+      }
+
       "pipe var" - {
         "plain" in {
           "pipeline u8 a;".asTree[Desc]() shouldBe {

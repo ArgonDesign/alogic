@@ -876,6 +876,10 @@ object Elaborate {
             }
           } getOrElse Finished(d)
         }
+      case d: DescSnoop =>
+        elaborate(d.spec, symtab) map { s =>
+          d.copy(spec = s) withLocOf d
+        }
       case d: DescPipeVar =>
         elaborate(d.spec, symtab) map { s =>
           d.copy(spec = s) withLocOf d

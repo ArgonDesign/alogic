@@ -136,6 +136,18 @@ object TreeCopier {
       ) withLocOf tree
     }
 
+  def apply(tree: DescSnoop)(ref: Tree, attr: List[Tree], spec: Tree): DescSnoop =
+    if ((ref eq tree.ref) && (attr eq tree.attr) && (spec eq tree.spec)) {
+      tree
+    } else {
+      assert(attr.forall(_.isInstanceOf[Attr]))
+      tree.copy(
+        ref = ref.asInstanceOf[Ref],
+        attr = attr.asInstanceOf[List[Attr]],
+        spec = spec.asInstanceOf[Expr]
+      ) withLocOf tree
+    }
+
   def apply(tree: DescPipeVar)(ref: Tree, attr: List[Tree], spec: Tree): DescPipeVar =
     if ((ref eq tree.ref) && (attr eq tree.attr) && (spec eq tree.spec)) {
       tree
@@ -571,6 +583,15 @@ object TreeCopier {
     }
 
   def apply(tree: DeclOut)(spec: Tree): DeclOut =
+    if (spec eq tree.spec) {
+      tree
+    } else {
+      tree.copy(
+        spec = spec.asInstanceOf[Expr]
+      ) withLocOf tree
+    }
+
+  def apply(tree: DeclSnoop)(spec: Tree): DeclSnoop =
     if (spec eq tree.spec) {
       tree
     } else {

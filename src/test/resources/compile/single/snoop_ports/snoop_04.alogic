@@ -1,0 +1,38 @@
+network snoop_04 {
+  snoop sync ready bool s;
+
+  out wire bool p;
+  out wire bool o;
+
+  new fsm inner {
+    void main() {
+      p = s;
+      o = s.move;
+      fence;
+    }
+  }
+}
+// @fec/golden {{{
+//  module snoop_04(
+//    input  wire s,
+//    input  wire s__valid,
+//    input  wire s__ready,
+//    output wire p,
+//    output wire o
+//  );
+//    assign p = s;
+//    assign o = s__valid & s__ready;
+//  endmodule
+// }}}
+// @manifest/top-levels|snoop_04|ports|s {{{
+//  { "dir": "snoop", "flow-control": "sync ready" }
+// }}}
+// @manifest/top-levels|snoop_04|signals|s {{{
+//  { "port" : "s", "component" : "payload", "width" : 1, "signed" : false, "offset" : 0 }
+// }}}
+// @manifest/top-levels|snoop_04|signals|s__valid {{{
+//  { "port" : "s", "component" : "valid" }
+// }}}
+// @manifest/top-levels|snoop_04|signals|s__ready {{{
+//  { "port" : "s", "component" : "ready" }
+// }}}

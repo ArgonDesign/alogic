@@ -56,6 +56,7 @@ final class LowerAssertions(implicit cc: CompilerContext) extends StatelessTreeT
     // Derived
     case _: TypeIn          => false
     case TypeOut(_, fct, _) => fct == FlowControlTypeNone
+    case _: TypeSnoop       => false
     case _: TypeConst       => false
     case _: TypeArray       => false
     case _: TypeSram        => false

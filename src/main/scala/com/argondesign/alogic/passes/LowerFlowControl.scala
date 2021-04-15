@@ -211,6 +211,31 @@ final class LowerFlowControlA(
               case _ => unreachable
             }
 
+          case TypeSnoop(kind) =>
+            // Allocate payload, valid and ready signals
+            val loc = tree.loc
+            val pName = symbol.name
+            val vName = pName + sep + "valid"
+            val rName = pName + sep + "ready"
+            lazy val pSymbol = Symbol(pName, loc) tap { s =>
+              s.kind = TypeIn(kind, fctn)
+              s.attr.payloadOfPort set symbol
+            }
+            val vSymbol = Symbol(vName, loc) tap { s =>
+              s.kind = TypeIn(TypeUInt(1), fctn)
+              s.attr.validOfPort set symbol
+            }
+            val rSymbol = Symbol(rName, loc) tap { s =>
+              s.kind = TypeIn(TypeUInt(1), fctn)
+              s.attr.readyOfPort set symbol
+            }
+            val newSymbols = if (kind != TypeVoid) {
+              (Some(pSymbol), vSymbol, rSymbol)
+            } else {
+              (None, vSymbol, rSymbol)
+            }
+            portMap(symbol) = (newSymbols._1, Some(newSymbols._2), Some(newSymbols._3))
+
           ////////////////////////////////////////////////////////////////////////////
           // Other decls
           ////////////////////////////////////////////////////////////////////////////
@@ -329,6 +354,12 @@ final class LowerFlowControlA(
         } getOrElse {
           tree
         }
+
+      case ExprSel(ExprSym(symbol), "move") =>
+        portMap.get(symbol) map {
+          case (_, Some(vSymbol), Some(rSymbol)) => ExprSym(vSymbol) & ExprSym(rSymbol)
+          case _                                 => unreachable
+        } getOrElse tree
 
       //////////////////////////////////////////////////////////////////////////
       // Add decl of the expanded symbols and storage component
@@ -457,7 +488,7 @@ final class LowerFlowControlB(
     assert(this.extractor eq payloadSymbol)
     assert(!abortExtraction)
     this.extractor = extractor
-    val result = walk(expr).asInstanceOf[Expr]
+    val result = walkSame(expr)
     if (abortExtraction) None else Some(result)
   } tap { _ =>
     this.extractor = payloadSymbol
@@ -507,32 +538,36 @@ final class LowerFlowControlB(
     case EntAssign(lhs, rhs) =>
       Some {
         // Expand inter-entity connections
-        val pRhs = extract(rhs, payloadSymbol)
-        val pLhs = extract(lhs, payloadSymbol)
+        val pRhsOpt = extract(rhs, payloadSymbol)
+        val pLhsOpt = extract(lhs, payloadSymbol)
 
-        val vRhs = extract(rhs, validSymbol)
-        val vLhs = extract(lhs, validSymbol)
+        val vRhsOpt = extract(rhs, validSymbol)
+        val vLhsOpt = extract(lhs, validSymbol)
 
-        val bRhs = extract(rhs, readySymbol)
-        val bLhs = extract(lhs, readySymbol)
+        val rRhsOpt = extract(rhs, readySymbol)
+        val rLhsOpt = extract(lhs, readySymbol)
 
-        val pConn = pRhs flatMap { rhs =>
-          pLhs map { lhs =>
-            EntAssign(lhs, rhs) regularize tree.loc
+        val pConn = pRhsOpt flatMap { pRhs =>
+          pLhsOpt map { pLhs =>
+            EntAssign(pLhs, pRhs) regularize tree.loc
           }
         }
-        val vConn = vRhs flatMap { rhs =>
-          vLhs map { lhs =>
-            EntAssign(lhs, rhs) regularize tree.loc
+        val vConn = vRhsOpt flatMap { vRhs =>
+          vLhsOpt map { vLhs =>
+            EntAssign(vLhs, vRhs) regularize tree.loc
           }
         }
-        val bConn = bRhs flatMap { lhs =>
-          bLhs map { rhs =>
-            EntAssign(lhs, rhs) regularize tree.loc
+        val rConn = rRhsOpt flatMap { rRhs =>
+          rLhsOpt map { rLhs =>
+            if (lhs.tpe.isSnoop) {
+              EntAssign(rLhs, rRhs) regularize tree.loc
+            } else {
+              EntAssign(rRhs, rLhs) regularize tree.loc
+            }
           }
         }
 
-        Thicket(List.concat(pConn, vConn, bConn))
+        Thicket(List.concat(pConn, vConn, rConn))
       }
 
     //

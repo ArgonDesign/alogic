@@ -11,6 +11,7 @@ package com.argondesign.alogic.frontend
 
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
+import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeReady
 import com.argondesign.alogic.core.FuncVariant
 import com.argondesign.alogic.core.Locatable
 import com.argondesign.alogic.core.Messages.Error
@@ -115,8 +116,8 @@ private[frontend] object TypeOf {
     ): FinalResult[List[Symbol]] = definedSymbols(trees) map {
     _ filter {
       _.kind match {
-        case _: TypeIn | _: TypePipeIn | _: TypeOut | _: TypePipeOut => true
-        case _                                                       => false
+        case _: TypeIn | _: TypePipeIn | _: TypeOut | _: TypePipeOut | _: TypeSnoop => true
+        case _                                                                      => false
       }
     }
   }
@@ -194,6 +195,14 @@ private[frontend] object TypeOf {
               Complete(_)
             }
           } map { TypeOut(_, fc, st) }
+        case d @ DescSnoop(_, _, spec, fc) =>
+          simpleTypeFrom(spec) flatMap ensureNotNum(spec, "Snoop port") flatMap { kind =>
+            if (fc != FlowControlTypeReady) {
+              Failure(d, s"'snoop' port must use 'sync ready' flow control")
+            } else {
+              Complete(kind)
+            }
+          } map { TypeSnoop(_) }
         case DescPipeVar(_, _, spec) =>
           simpleTypeFrom(spec) flatMap ensureNotNumNorVoid(
             spec,

@@ -238,6 +238,23 @@ equivalent to the corresponding `.write()` call.
   a = true; // Same as "a.write(true);"
 ```
 
+### Snooping on `sync ready` ports
+
+A special port direction `snoop` is available for ports with `sync ready`
+flow control. `snoop` ports treat all of the payload, `valid` and `ready`
+signals as inputs to the declaring entity. They can be used to
+monitor `sync ready` connections. `snoop` port provide the `.valid` and `.move`
+attributes, which reference the `valid` signal, and `valid & ready`
+respectively.
+
+```
+  snoop sync ready bool p;
+  ...
+  if (p.move) {
+    ...
+  }
+```
+
 ### Direct port access
 
 It is possible to access input port payload directly, by referencing the name of

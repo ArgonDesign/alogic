@@ -49,6 +49,7 @@ object Types {
   // format: off
   case class TypeIn(kind: TypeFund, fc: FlowControlType) extends Type with TypeInImpl
   case class TypeOut(kind: TypeFund, fc: FlowControlType, st: StorageType) extends Type with TypeOutImpl
+  case class TypeSnoop(kind: TypeFund) extends Type with TypeSnoopImpl
   case class TypePipeVar(kind: TypeFund) extends Type
   case class TypeParam(kind: TypeFund) extends Type
   case class TypeConst(kind: TypeFund) extends Type
@@ -206,6 +207,7 @@ trait TypeEntityImpl { this: TypeEntity =>
     _.kind match {
       case _: TypeIn      => true
       case _: TypeOut     => true
+      case _: TypeSnoop   => true
       case _: TypePipeIn  => true
       case _: TypePipeOut => true
       case _              => false
@@ -300,6 +302,18 @@ trait TypeOutImpl extends ExtensionType { this: TypeOut =>
         space.kind = TypeUInt(nSlices)
         List(write, valid, full, empty, space)
     }
+  }
+
+}
+
+trait TypeSnoopImpl extends ExtensionType { this: TypeSnoop =>
+
+  final lazy val extensionSymbols: List[Symbol] = {
+    val valid = new Symbol("valid")
+    valid.kind = TypeUInt(1)
+    val move = new Symbol("move")
+    move.kind = TypeUInt(1)
+    List(valid, move)
   }
 
 }

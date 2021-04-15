@@ -43,6 +43,7 @@ descbase
   : (sttc='static')? expr ident ('=' init=expr)? ';'                            # DescVar
   | in='in' fct? (spec=expr | 'pipeline') ident? ';'                            # DescIn
   | out='out' fct? stt? (spec=expr | 'pipeline') ident? ('=' init=expr)? ';'    # DescOut
+  | snoop='snoop' fct? spec=expr ident ';'                                      # DescSnoop
   | 'pipeline' expr ident ';'                                                   # DescPipeVar
   | 'param' expr ident ('=' init=expr)?  ';'                                    # DescParam
   | 'param' 'type' ident ('=' init=expr)?  ';'                                  # DescParamType

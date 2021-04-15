@@ -99,6 +99,7 @@ final class Symbol(initialName: String, val loc: Loc = Loc.synthetic) {
         case DeclStatic(_, spec)              => spec.tpe.asType.kind
         case DeclIn(_, spec, fc)              => TypeIn(spec.tpe.asType.kind, fc)
         case DeclOut(_, spec, fc, st)         => TypeOut(spec.tpe.asType.kind, fc, st)
+        case DeclSnoop(_, spec)               => TypeSnoop(spec.tpe.asType.kind)
         case DeclPipeVar(_, spec)             => TypePipeVar(spec.tpe.asType.kind)
         case DeclPipeIn(_, pipeVars, fc)      => TypePipeIn(pipeVars.map(getSymbol), fc)
         case DeclPipeOut(_, pipeVars, fc, st) => TypePipeOut(pipeVars.map(getSymbol), fc, st)

@@ -831,10 +831,11 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
             case _ => // Ok
           }
 
-        case d @ Desc(Sym(symbol)) if symbol.kind.isPacked && symbol.kind.width == 0 =>
+        case Desc(Sym(symbol)) if symbol.kind.isPacked && symbol.kind.width == 0 =>
           symbol.kind match {
             case TypeIn(TypeVoid, FlowControlTypeValid | FlowControlTypeReady)     => // Ok
             case TypeOut(TypeVoid, FlowControlTypeValid | FlowControlTypeReady, _) => // OK
+            case TypeSnoop(TypeVoid)                                               => // OK
             case _ =>
               error(s"'${symbol.name}' has width 0")
           }

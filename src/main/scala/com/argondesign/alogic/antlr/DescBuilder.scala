@@ -151,6 +151,14 @@ object DescBuilder extends BaseBuilder[DescContext, Desc] with ChainingSyntax {
         }
       }
 
+      override def visitDescSnoop(ctx: DescSnoopContext): Desc = {
+        val ident = IdentBuilder(ctx.ident)
+        val fct = FCTVisitor(ctx.fct)
+        val loc = ctx.loc.copy(point = ident.loc.start)
+        val spec = ExprBuilder(ctx.spec)
+        DescSnoop(ident, Nil, spec, fct) withLoc loc
+      }
+
       override def visitDescPipeVar(ctx: DescPipeVarContext): Desc = {
         val ident = IdentBuilder(ctx.ident)
         val spec = ExprBuilder(ctx.expr)
