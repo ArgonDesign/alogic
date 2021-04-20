@@ -184,14 +184,16 @@ object RenameSymbols {
             // deterministic output.
             val sequenceNumbers = Iterator.from(0)
             eDecls.iterator.toSeq.sortBy(_.loc) foreach {
-              case DeclEntity(eSymbol, decls) =>
+              case eDecl @ DeclEntity(eSymbol, _) =>
                 ////////////////////////////////////////////////////////////////////
                 // Rename the member symbols
                 ////////////////////////////////////////////////////////////////////
 
                 val publicSymbols = Set.from(eSymbol.kind.asType.kind.asEntity.publicSymbols)
 
-                val symbols = decls.map(_.symbol)
+                val symbols = List.from(eDecl.collectAll {
+                  case Decl(symbol) if symbol ne eSymbol => symbol
+                })
 
                 def rename(symbol: Symbol, newName: String): Unit = {
                   // Memorize mapping of renamed public symbols
