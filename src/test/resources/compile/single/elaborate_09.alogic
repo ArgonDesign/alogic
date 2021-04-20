@@ -1,0 +1,29 @@
+struct s_t {
+  param uint MODE;
+
+  static bool f() {
+    gen if (MODE >= 5) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+}
+
+fsm elaborate_09 {
+  const bool C = s_t(5).f();
+  out wire bool o;
+  void main() {
+    o = C;
+    fence;
+  }
+}
+// :14: ERROR: Cannot evaluate function call at elaboration time
+
+// @fec/golden {{{
+//  module elaborate_09(
+//    output wire o
+//  );
+//    assign o = 1'b0;
+//  endmodule
+// }}}

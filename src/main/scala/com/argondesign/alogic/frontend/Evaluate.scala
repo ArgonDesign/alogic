@@ -49,7 +49,10 @@ private[frontend] object Evaluate {
               case _                        => None
             }
           case _: ExprIdent | _: ExprDot | _: ExprSel => unreachable
-          case _                                      => None
+          case _: ExprCall =>
+            bad = Some(Failure(tree, "Cannot evaluate function call at elaboration time"))
+            Some(tree)
+          case _ => None
         }
       }
 
