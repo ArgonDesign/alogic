@@ -1,0 +1,31 @@
+fsm manifest_ports_00 {
+  in       bool i;
+  out wire bool o;
+
+  void main() {
+    o = i;
+    fence;
+  }
+}
+
+// @fec/golden {{{
+//  module manifest_ports_00(
+//    input  wire i,
+//    output wire o
+//  );
+//    assign o = i;
+//  endmodule
+// }}}
+
+// @manifest/top-levels|manifest_ports_00|ports|i {{{
+//  { "dir": "in", "flow-control": "none" }
+// }}}
+// @manifest/top-levels|manifest_ports_00|ports|o {{{
+//  { "dir": "out", "flow-control": "none" }
+// }}}
+// @manifest/top-levels|manifest_ports_00|signals|i {{{
+//  { "port" : "i", "component" : "payload", "width" : 1, "signed" : false, "offset" : 0 }
+// }}}
+// @manifest/top-levels|manifest_ports_00|signals|o {{{
+//  { "port" : "o", "component" : "payload", "width" : 1, "signed" : false, "offset" : 0 }
+// }}}

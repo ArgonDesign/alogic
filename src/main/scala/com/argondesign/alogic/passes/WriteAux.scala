@@ -90,7 +90,14 @@ object WriteAux extends PairsTransformerPass {
               "width" -> sSymbol.kind.width,
               "signed" -> sSymbol.kind.isSigned,
               "offset" -> (sSymbol.attr.fieldOffset getOrElse 0)
-            )
+            ) concat sSymbol.attr.vectShape.get.iterator.flatMap {
+              case (dims, signed) =>
+                Iterator(
+                  "dimensions" -> dims,
+                  "elementSize" -> (sSymbol.kind.width / dims.product),
+                  "elementSigned" -> signed
+                )
+            }
           }
           sSymbol.name -> value
         }

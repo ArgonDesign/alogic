@@ -98,6 +98,9 @@ class SymbolAttributes {
   // The field offset if this symbol was split from a struct
   val fieldOffset = new Attribute[Int]()
 
+  // The original vector shape and element signedness if this symbol was a vector
+  val vectShape = new Attribute[(List[Long], Boolean)]()
+
   // The default value of this symbol, if required
   val default = new Attribute[Expr]() // TODO: Treeify
 
@@ -159,6 +162,7 @@ class SymbolAttributes {
     combSignal,
     clockEnable,
     fieldOffset,
+    vectShape,
     default,
     sram,
     liftSrams,
@@ -202,6 +206,7 @@ class SymbolAttributes {
     "combSignal",
     "clockEnable",
     "fieldOffset",
+    "vectShape",
     "default",
     "sram",
     "liftSrams",

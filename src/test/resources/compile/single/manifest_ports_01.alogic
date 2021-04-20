@@ -1,0 +1,49 @@
+fsm manifest_ports_01 {
+  in       u2[2] i;
+  out wire i2[2] o;
+
+  void main() {
+    o = i;
+    fence;
+  }
+}
+
+// @fec/golden {{{
+//  module manifest_ports_01(
+//    input  wire [3:0] i,
+//    output wire [3:0] o
+//  );
+//    assign o = i;
+//  endmodule
+// }}}
+
+// @manifest/top-levels|manifest_ports_01|ports|i {{{
+//  { "dir": "in", "flow-control": "none" }
+// }}}
+// @manifest/top-levels|manifest_ports_01|ports|o {{{
+//  { "dir": "out", "flow-control": "none" }
+// }}}
+// @manifest/top-levels|manifest_ports_01|signals|i {{{
+//  {
+//    "port" : "i",
+//    "component" : "payload",
+//    "width" : 4,
+//    "signed" : false,
+//    "offset" : 0,
+//    "dimensions" : [2],
+//    "elementSize" : 2,
+//    "elementSigned" : false
+//  }
+// }}}
+// @manifest/top-levels|manifest_ports_01|signals|o {{{
+//  {
+//    "port" : "o",
+//    "component" : "payload",
+//    "width" : 4,
+//    "signed" : false,
+//    "offset" : 0,
+//    "dimensions" : [2],
+//    "elementSize" : 2,
+//    "elementSigned" : true
+//  }
+// }}}

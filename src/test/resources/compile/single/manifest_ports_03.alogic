@@ -1,0 +1,67 @@
+struct i_t {
+  bool     a;
+  i2[3][4] b;
+}
+
+struct o_t {
+  u4[3][2] a;
+  bool     b;
+}
+
+fsm manifest_ports_03 {
+  in       i_t i;
+  out wire o_t o;
+
+  void main() {
+    o = i;
+    fence;
+  }
+}
+
+// @fec/golden {{{
+//  module manifest_ports_03(
+//    input  wire        i__a,
+//    input  wire [23:0] i__b,
+//    output wire [23:0] o__a,
+//    output wire        o__b
+//  );
+//    assign {o__a, o__b} = {i__a, i__b};
+//  endmodule
+// }}}
+
+// @manifest/top-levels|manifest_ports_03|ports|i {{{
+//  { "dir": "in", "flow-control": "none" }
+// }}}
+// @manifest/top-levels|manifest_ports_03|ports|o {{{
+//  { "dir": "out", "flow-control": "none" }
+// }}}
+// @manifest/top-levels|manifest_ports_03|signals|i__a {{{
+//  { "port" : "i", "component" : "payload", "width" : 1, "signed" : false, "offset" : 24 }
+// }}}
+// @manifest/top-levels|manifest_ports_03|signals|i__b {{{
+//  {
+//    "port" : "i",
+//    "component" : "payload",
+//    "width" : 24,
+//    "signed" : false,
+//    "offset" : 0,
+//    "dimensions" : [3, 4],
+//    "elementSize" : 2,
+//    "elementSigned" : true
+//  }
+// }}}
+// @manifest/top-levels|manifest_ports_03|signals|o__a {{{
+//  {
+//    "port" : "o",
+//    "component" : "payload",
+//    "width" : 24,
+//    "signed" : false,
+//    "offset" : 1,
+//    "dimensions" : [3, 2],
+//    "elementSize" : 4,
+//    "elementSigned" : false
+//  }
+// }}}
+// @manifest/top-levels|manifest_ports_03|signals|o__b {{{
+//  { "port" : "o", "component" : "payload", "width" : 1, "signed" : false, "offset" : 0 }
+// }}}

@@ -161,6 +161,14 @@ final class LowerVectorsA(globalReplacements: TrieMap[Symbol, Symbol]) extends L
     ExprType(TypeUInt(symbol.kind.width))
   }
 
+  private def vectShape(kind: TypeVector): (List[Long], Boolean) = kind.kind match {
+    case eKind: TypeVector =>
+      val (dims, signed) = vectShape(eKind)
+      (kind.size :: dims, signed)
+    case eKind =>
+      (kind.size :: Nil, eKind.isSigned)
+  }
+
   override def transform(tree: Tree): Tree = tree pipe {
     // TODO: handle arrays as well
 
@@ -172,9 +180,11 @@ final class LowerVectorsA(globalReplacements: TrieMap[Symbol, Symbol]) extends L
       decl.copy(spec = vecSpec(symbol)) regularize tree.loc
 
     case decl @ DeclIn(symbol, _, _) if symbol.kind.underlying.isVector =>
+      symbol.attr.vectShape set vectShape(symbol.kind.underlying.asVector)
       decl.copy(spec = vecSpec(symbol)) regularize tree.loc
 
     case decl @ DeclOut(symbol, _, _, _) if symbol.kind.underlying.isVector =>
+      symbol.attr.vectShape set vectShape(symbol.kind.underlying.asVector)
       decl.copy(spec = vecSpec(symbol)) regularize tree.loc
 
     case decl @ DeclConst(symbol, _) if symbol.kind.underlying.isVector =>
