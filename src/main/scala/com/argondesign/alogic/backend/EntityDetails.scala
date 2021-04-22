@@ -8,7 +8,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 package com.argondesign.alogic.backend
 
-import com.argondesign.alogic.analysis.WrittenSymbols
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.ast.Trees.Expr.InstancePortSel
 import com.argondesign.alogic.core.Symbol
@@ -58,67 +57,18 @@ final class EntityDetails(val decl: DeclEntity, val defn: DefnEntity) {
   }
 
   // Group and sort interconnect symbols by instance, then by port declaration order
-  lazy val groupedInterconnectSymbols: List[(Symbol, List[Symbol])] = {
-    // Calculate (instance symbol, port name, interconnect symbol) triplets
-    val trip = decl.decls map {
-      _.symbol
-    } filter {
-      _.attr.interconnect.isSet
-    } flatMap { nSymbol =>
-      defn.assigns collectFirst {
-        case EntAssign(lhs, ExprSel(ExprSym(iSymbol), sel))
-            if WrittenSymbols(lhs) contains nSymbol =>
-          (iSymbol, sel, nSymbol)
-        case EntAssign(ExprSel(ExprSym(iSymbol), sel), rhs)
-            if rhs.isLValueExpr && (WrittenSymbols(rhs) contains nSymbol) =>
-          (iSymbol, sel, nSymbol)
-      }
-    }
-
-    // Group by instance, loose instance symbol from values
-    val groups = trip.groupMap(_._1) { case (_, s, n) => (s, n) }
-
-    // Sort by groups by instance order
-    val sortedInstances = {
-      // Sorting map for instance symbols
-      val ordering = Map from {
-        for {
-          (decl, i) <- decl.instances.iterator.zipWithIndex
-        } yield {
-          decl.symbol -> i
+  lazy val groupedInterconnectSymbols: List[(Symbol, List[Symbol])] =
+    decl.decls
+      .flatMap { decl => // Calculate (instance symbol, port symbol, interconnect symbol) triplets
+        decl.symbol.attr.interconnect.get.map {
+          case (iSymbol, pSymbol) => (iSymbol, pSymbol, decl.symbol)
         }
       }
-      // Sort by instance
-      groups.toList sortBy { case (i, _) => ordering(i) }
-    }
-
-    // Sort within group by port definition order
-    sortedInstances map {
-      case (iSymbol, list) =>
-        // Sorting map for port selectors
-        val ordering = Map from {
-          for {
-            (symbol, i) <- iSymbol.kind.asEntity.publicSymbols.iterator.zipWithIndex
-          } yield {
-            symbol.name -> i
-          }
-        }
-        // Sort by port selector, then loose them, note that some interconnect
-        // symbols can remain as placeholders in concatenations while their
-        // corresponding ports have ben removed. We put these at the end sorted
-        // lexically.
-        val sortedSymbols = list sortWith {
-          case ((a, _), (b, _)) =>
-            (ordering.get(a), ordering.get(b)) match {
-              case (Some(oa), Some(ob)) => oa < ob
-              case (Some(_), None)      => true
-              case (None, Some(_))      => false
-              case (None, None)         => a < b
-            }
-        } map { _._2 }
-        (iSymbol, sortedSymbols)
-    }
-  }
+      .groupBy(_._1) // Group by instance
+      .view
+      .mapValues(_.sortBy(_._2).map(_._3)) // Sort within groups by port, keep interconnect
+      .toList
+      .sortBy(_._1) // Sort groups by instance
 
   // Function from 'instance symbol => port selector => connected expression'
   lazy val instancePortExpr: Map[Symbol, Map[String, Expr]] = {

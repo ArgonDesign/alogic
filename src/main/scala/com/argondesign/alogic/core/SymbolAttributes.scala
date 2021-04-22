@@ -86,8 +86,8 @@ class SymbolAttributes {
   // If this is a memory _q symbol, the corresponding we, waddr and wdata symbols
   val memory = new Attribute[(Symbol, Symbol, Symbol)]() // TODO: Treeify
 
-  // If this is an interconnect signal, the corresponding instance symbol and port name
-  val interconnect = new Attribute[Boolean]()
+  // If this is an interconnect signal, the corresponding instance and port symbol
+  val interconnect = new Attribute[(Symbol, Symbol)]()
 
   // If this signal is a combinationally driven local signal
   val combSignal = new Attribute[Boolean]()

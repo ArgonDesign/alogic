@@ -18,23 +18,20 @@
 
 package com.argondesign.alogic.passes
 
-import com.argondesign.alogic.ast.StatefulTreeTransformer
+import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.ast.Trees.Expr.InstancePortSel
 import com.argondesign.alogic.core.CompilerContext
-import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Symbol
+import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Types._
-import com.argondesign.alogic.util.PartialMatch
-import com.argondesign.alogic.util.unreachable
 
+import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-final class LowerInterconnect(implicit cc: CompilerContext)
-    extends StatefulTreeTransformer
-    with PartialMatch {
+final class LowerInterconnect(implicit cc: CompilerContext) extends StatelessTreeTransformer {
 
   // Map from (instance symbol, selector) to the new interconnect symbol
   private val newSymbols = mutable.LinkedHashMap[(Symbol, String), Symbol]()
@@ -42,34 +39,32 @@ final class LowerInterconnect(implicit cc: CompilerContext)
   // List of new Connect instances to emit
   private val newAssigns = new ListBuffer[EntAssign]()
 
-  // Keep a stack of booleans indicating that we should
-  // be allocating interconnect symbols in a connect expression
-  private val enableStack = mutable.Stack[Boolean]()
-
-  // Keep track of whether we are in a connect expression
-  private var inAssign = false
-
   // Convert interconnectClearOnStall attribute to a set
-  private lazy val interconnectClearOnStall = {
-    entitySymbol.attr.interconnectClearOnStall.getOrElse(Nil).toSet
+  private var interconnectClearOnStall: Set[(Symbol, String)] = _
+
+  override protected def start(tree: Tree): Unit = tree match {
+    case defn: DefnEntity =>
+      interconnectClearOnStall = defn.symbol.attr.interconnectClearOnStall.getOrElse(Nil).toSet
+    case _ =>
+      assert(interconnectClearOnStall != null)
   }
 
-  // Return the interconnect symbol for 'iSymbol.sel', if any. If the
-  // interconnect symbol does not exist and alloc is true, allocate
-  // it and connect it up
-  def handlePortSelect(select: ExprSel, alloc: Boolean): Option[Symbol] = select match {
-    case ExprSel(ExprSym(iSymbol), sel) =>
-      val key = (iSymbol, sel)
-      if (!alloc) {
-        newSymbols.get(key)
-      } else {
-        lazy val newSymbol = {
+  override def transform(tree: Tree): Tree = tree match {
+    //////////////////////////////////////////////////////////////////////////
+    // Rewrite references, allocating interconnect symbols
+    //////////////////////////////////////////////////////////////////////////
+
+    case select @ InstancePortSel(iSymbol, pSymbol) =>
+      val key = (iSymbol, pSymbol.name)
+      val cSymbol = newSymbols.getOrElseUpdate(
+        key, {
           // Allocate interconnect symbol
-          val name = iSymbol.name + cc.sep + sel
-          val pKind = iSymbol.kind.asEntity(sel).get.kind
+          val name = iSymbol.name + cc.sep + pSymbol.name
+          val pKind = pSymbol.kind
           val nKind = pKind.underlying
-          val symbol = Symbol(name, iSymbol.loc) tap { _.kind = nKind }
-          symbol.attr.interconnect.set(true)
+          val symbol = Symbol(name, iSymbol.loc)
+          symbol.kind = nKind
+          symbol.attr.interconnect.set((iSymbol, pSymbol))
 
           // If this is an interconnect symbol that is in the entity
           // interconnectClearOnStall attribute, then set clearOnStall on it
@@ -91,183 +86,114 @@ final class LowerInterconnect(implicit cc: CompilerContext)
           // The new symbol
           symbol
         }
-        Some(newSymbols.getOrElseUpdate(key, newSymbol))
-      }
-    case _ => unreachable
-  }
+      )
+      TypeAssigner(ExprSym(cSymbol) withLocOf tree)
 
-  override def enter(tree: Tree): Option[Tree] = {
-    tree match {
-      // Nested expression in a connect, do the same as before
-      case _: Expr if inAssign =>
-        enableStack push enableStack.top
+    //////////////////////////////////////////////////////////////////////////
+    // Add new symbols and connections
+    //////////////////////////////////////////////////////////////////////////
 
-      // a.b <- c.d, allocate on right hand side only
-      case EntAssign(InstancePortSel(_, _), InstancePortSel(_, _)) =>
-        assert(enableStack.isEmpty)
-        enableStack push true push false
-        inAssign = true
+    case defn: DefnEntity =>
+      // To reduce the number of interconnect symbols, eliminate all newly
+      // allocated symbols that are simple aliases of other symbols.
 
-      // SOMETHING <- a.b , allocate on left hand side only
-      case EntAssign(_, InstancePortSel(_, _)) =>
-        assert(enableStack.isEmpty)
-        enableStack push false push true
-        inAssign = true
+      val assigns = defn.assigns ++ newAssigns
+      newAssigns.clear()
 
-      // a.b <- SOMETHING, allocate on right hand side only
-      case EntAssign(InstancePortSel(_, _), _) =>
-        assert(enableStack.isEmpty)
-        enableStack push true push false
-        inAssign = true
+      val interconnectSymbols = newSymbols.valuesIterator.toSet
 
-      // SOMETHING <- SOMETHING, allocate on both sides
-      case _: EntAssign =>
-        assert(enableStack.isEmpty)
-        enableStack push true push true
-        inAssign = true
-
-      case _ =>
-    }
-    None
-  }
-
-  override def transform(tree: Tree): Tree = {
-    tree match {
-      //////////////////////////////////////////////////////////////////////////
-      // Rewrite references, allocating if enabled and necessary
-      //////////////////////////////////////////////////////////////////////////
-
-      case select @ InstancePortSel(_, _) =>
-        handlePortSelect(select, !inAssign || enableStack.top) map { nSymbol =>
-          ExprSym(nSymbol) regularize tree.loc
-        } getOrElse tree
-
-      //////////////////////////////////////////////////////////////////////////
-      // Add new symbols and connections, ensure single sink for 'instance.port'
-      //////////////////////////////////////////////////////////////////////////
-
-      case defn: DefnEntity =>
-        // Ensure that any 'instance.port' is only present on the left
-        // of a single Connect instance (i.e.: there is only 1 sink variable)
-
-        val assigns = defn.assigns ++ newAssigns.iterator
-
-        newAssigns.clear()
-
-        // Collect the sinks of all 'instance.port'
-        val sinks: Map[ExprSel, List[Expr]] = {
-          val pairs = assigns collect {
-            case EntAssign(sink, select @ InstancePortSel(_, _)) => select -> sink
-          }
-          pairs.groupMap(_._1)(_._2)
+      val aliases = {
+        @tailrec
+        def loop(curr: Map[Symbol, Symbol]): Map[Symbol, Symbol] = {
+          val next = curr.view.mapValues(symbol => curr.getOrElse(symbol, symbol)).toMap
+          if (next == curr) curr else loop(next)
         }
 
-        // For ports with multiple sinks, compute the map from
-        // 'instance.port' to the interconnect symbol, allocating
-        // it if necessary (have not been allocated already)
-
-        val nMap = withEnclosingSymbol(defn.symbol) {
+        loop {
           Map from {
-            for {
-              (select, exprs) <- sinks
-              if exprs.lengthIs > 1
-              symbol <- handlePortSelect(select, alloc = true)
-            } yield {
-              select -> symbol
+            assigns.flatMap {
+              case EntAssign(ExprSym(l), ExprSym(r)) =>
+                if (interconnectSymbols(l)) {
+                  Option.when(interconnectSymbols(r) || r.kind.isIn)(l -> r)
+                } else if (interconnectSymbols(r)) {
+                  Option.when(l.kind.isOut)(r -> l)
+                } else {
+                  None
+                }
+              case _ => None
             }
           }
         }
-
-        // Update all connect instances that reference on the left hand side
-        // a port with multiple sinks, and the right hand side is not the
-        // interconnect symbol
-        val modAssigns = assigns map {
-          case assign @ EntAssign(lhs, expr: ExprSel) =>
-            nMap get expr map { nSymbol =>
-              lhs match {
-                case ExprSym(`nSymbol`) => assign // Already the nSymbol, leave it alone
-                case _                  => EntAssign(lhs, ExprSym(nSymbol)) regularize lhs.loc
-              }
-            } getOrElse assign
-          case other => other
-        }
-
-        // Compute the new body: drop original connects, add definitions,
-        // add modified connects
-        val body = List from {
-          defn.body.iterator filter {
-            case _: EntAssign => false
-            case _            => true
-          } concat {
-            newSymbols.valuesIterator map { symbol =>
-              EntSplice(symbol.mkDefn) regularize symbol.loc
-            }
-          } concat {
-            modAssigns.iterator
-          }
-        }
-
-        // If we have lowered a signal with a dontCareUnless attribute, inside
-        // an entity with a state system, transfer the attribute. At the
-        // moment, we don't need this in entities without a state system, if we
-        // do, we can do it by building a complete map based on the connections
-        // we ended up with.
-        if (defn.combProcesses.nonEmpty) {
-          for {
-            ((iSymbol, sel), symbol) <- newSymbols
-            pSymbol = iSymbol.kind.asEntity(sel).get
-            gSymbol <- pSymbol.attr.dontCareUnless.get
-          } {
-            symbol.attr.dontCareUnless set newSymbols((iSymbol, gSymbol.name))
-          }
-        }
-
-        TypeAssigner(defn.copy(body = body) withLoc defn.loc)
-
-      case decl: DeclEntity =>
-        val decls = decl.decls ++ {
-          newSymbols.valuesIterator map { symbol =>
-            symbol.mkDecl regularize symbol.loc
-          }
-        }
-
-        TypeAssigner(decl.copy(decls = decls) withLoc decl.loc)
-
-      //
-      case _ => tree
-    }
-  } tap { _ =>
-    if (inAssign) {
-      tree match {
-        // If we just processed an expression in a connect, pop the enableStack.
-        // If we are now back to 2 elements, then this was the root expression
-        // on either side of the connect, so pop one extra element, and double
-        // up the bottom (in case this was the left expression in the connect,
-        // the right one still needs to be processed)
-        case _: Expr =>
-          enableStack.pop()
-          assert(enableStack.nonEmpty)
-          if (enableStack.size == 2) {
-            enableStack.pop()
-            enableStack push enableStack.top
-          }
-        // If we just processed a connect, mark we are
-        // out and empty the enableStack
-        case _: EntAssign =>
-          assert(enableStack.size == 2)
-          inAssign = false
-          enableStack.pop()
-          enableStack.pop()
-        //
-        case _ =>
       }
-    }
+
+      newSymbols.filterInPlace {
+        case (_, symbol) => !(aliases contains symbol)
+      }
+
+      object Transform extends StatelessTreeTransformer {
+        override protected def transform(tree: Tree): Tree = tree match {
+          case ExprSym(symbol) =>
+            aliases.get(symbol) map { symbol =>
+              TypeAssigner(ExprSym(symbol) withLocOf tree)
+            } getOrElse tree
+          case _ => tree
+        }
+      }
+
+      val modAssigns = assigns.flatMap(
+        _ rewrite Transform match {
+          case EntAssign(a, b) if a == b => None
+          case other                     => Some(other)
+        }
+      )
+
+      // Compute the new body: drop original connects, add definitions,
+      // add modified connects
+      val body = List from {
+        defn.body.iterator filter {
+          case _: EntAssign => false
+          case _            => true
+        } concat {
+          newSymbols.valuesIterator
+            .map(symbol => EntSplice(symbol.mkDefn) regularize symbol.loc)
+        } concat {
+          modAssigns
+        }
+      }
+
+      // If we have lowered a signal with a dontCareUnless attribute, inside
+      // an entity with a state system, transfer the attribute. At the
+      // moment, we don't need this in entities without a state system, if we
+      // do, we can do it by building a complete map based on the connections
+      // we ended up with.
+      if (defn.combProcesses.nonEmpty) {
+        for {
+          ((iSymbol, sel), symbol) <- newSymbols
+          pSymbol = iSymbol.kind.asEntity(sel).get
+          gSymbol <- pSymbol.attr.dontCareUnless.get
+          cSymbol <- newSymbols.get((iSymbol, gSymbol.name))
+        } {
+          symbol.attr.dontCareUnless set cSymbol
+        }
+      }
+
+      TypeAssigner(defn.copy(body = body) withLoc defn.loc)
+
+    case decl: DeclEntity =>
+      val decls = decl.decls ++ {
+        newSymbols.valuesIterator map { symbol =>
+          symbol.mkDecl regularize symbol.loc
+        }
+      }
+
+      TypeAssigner(decl.copy(decls = decls) withLoc decl.loc)
+
+    //
+    case _ => tree
   }
 
   override protected def finalCheck(tree: Tree): Unit = {
     assert(newAssigns.isEmpty)
-    assert(enableStack.isEmpty)
-    assert(!inAssign)
 
     def check(tree: Tree): Unit = tree visit {
       // $COVERAGE-OFF$ Debug code

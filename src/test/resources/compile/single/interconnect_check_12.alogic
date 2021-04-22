@@ -22,6 +22,6 @@ network interconnect_check_12 {
   i[0+:2] -> n.ii.y.z;
   n.oo -> o;
 }
-// :12: ERROR: Bits 1:0 of 'n.ii__y__z' have multiple drivers
+// :12: ERROR: Bits 1:0 of 'n__ii__y__z' have multiple drivers
 // :21: NOTE: The 1st driver is here
 // :22: NOTE: The 2nd driver is here
