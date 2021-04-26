@@ -115,6 +115,16 @@ final class ParOrSeqIterable[T] private (
     case Right(parIterable) => parIterable.foreach(f); this
   }
 
+  def fold[U >: T](z: U)(op: (U, U) => U): U = eitherIterable match {
+    case Left(iterable)     => iterable.fold(z)(op)
+    case Right(parIterable) => parIterable.fold(z)(op)
+  }
+
+  def aggregate[U](z: => U)(seqop: (U, T) => U, combop: (U, U) => U): U = eitherIterable match {
+    case Left(iterable)     => iterable.foldLeft(z)(seqop)
+    case Right(parIterable) => parIterable.aggregate(z)(seqop, combop)
+  }
+
   def ++(that: IterableOnce[T]): ParOrSeqIterable[T] = eitherIterable match {
     case Left(iterable)     => wrap(iterable ++ that)
     case Right(parIterable) => wrap(parIterable ++ that)
