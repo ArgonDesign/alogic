@@ -11,6 +11,11 @@ package com.argondesign.alogic.util
 
 object IteratorOps {
 
+  // Just for local convenience
+  implicit class IteratorOps[T](val self: Iterator[T]) extends AnyVal {
+    def ifEmpty(other: => Iterator[T]): Iterator[T] = if (self.nonEmpty) self else other
+  }
+
   // This just allows nicer syntax: Iterator.when(cond)._
   final class IteratorWhen(private val cond: Boolean) extends AnyVal {
     // If condition is true, return an iterator yielding the given single
@@ -25,6 +30,7 @@ object IteratorOps {
 
   implicit final class IteratorObjectOps(private val unused: Iterator.type) extends AnyVal {
     def when(cond: Boolean): IteratorWhen = new IteratorWhen(cond)
+    def unless(cond: Boolean): IteratorWhen = new IteratorWhen(!cond)
   }
 
 }

@@ -124,48 +124,6 @@ final class TypeCheckerConnectSpec extends AnyFreeSpec with AlogicTest {
       }
     }
 
-    "reject invalid port references on right hand side of ->" - {
-      for {
-        (conn, messages) <- List[(String, List[String])](
-          // format: off
-          ("pi2 -> -po2", "Right hand side of '->' is not a valid assignment target" :: Nil),
-          ("pi2 -> po2 + po2b", "Right hand side of '->' is not a valid assignment target" :: Nil),
-          ("pi2 -> (po2==0) ? po2 : po2b", "Right hand side of '->' is not a valid assignment target" :: Nil),
-          ("pi2 -> {2{po4[po2]}}", "Right hand side of '->' is not a valid assignment target" :: Nil),
-          ("pi2 -> @zx(2, po4[po2])", "Right hand side of '->' is not a valid assignment target" :: Nil),
-          ("pi2 -> $signed(2*po2)", "Right hand side of '->' is not a valid assignment target" :: Nil),
-          ("pi2 -> 1", "Right hand side of '->' is not a valid assignment target" :: Nil),
-          ("""pi2 -> "hello" """, "Right hand side of '->' is not a valid assignment target" :: Nil),
-//          ("pi1 -> po4[po2]", "Right hand side of '->' yields active logic" :: Nil),
-//          ("pi2 -> po4[po2+:2]", "Right hand side of '->' yields active logic" :: Nil),
-//          ("pi2 -> {po4[po2], po4[po2]}",
-//            "Right hand side of '->' yields active logic" ::
-//              "Right hand side of '->' yields active logic" ::
-//              Nil),
-          // format: on
-        )
-      } {
-        conn in {
-          typeCheck {
-            s"""
-               |network p {
-               |  in u1 pi1;
-               |  in u2 pi2;
-               |  out u2 po2;
-               |  out sync ready u2 po2sr;
-               |  out u2 po2b;
-               |  out u4 po4;
-               |  $conn;
-               |}""".stripMargin
-          }
-          cc.messages should have length messages.length
-          for ((message, expected) <- cc.messages zip messages) {
-            message should beThe[Error](expected)
-          }
-        }
-      }
-    }
-
     "accept valid port references on left hand side of ->" - {
       for {
         conn <- List(
@@ -712,49 +670,6 @@ final class TypeCheckerConnectSpec extends AnyFreeSpec with AlogicTest {
             cc.messages shouldBe empty
           } else {
             cc.messages.loneElement should beThe[Error](msg map Pattern.quote: _*)
-          }
-        }
-      }
-    }
-
-    "multiple right hand sides are valid" - {
-      for {
-        (conn, msg) <- List(
-          // format: off
-          ("a.fcn -> b.fcn, ofcn", ""),
-          ("a.fcn2 -> {b.fcn, b.fcnb}, ofcn2", ""),
-          ("a.fcn2 -> os.a, ofcn2", ""),
-          ("a.fcv -> b.fcv, ofcv", ""),
-          ("a.fcr -> b.fcr, ofcr", "Port with 'sync ready' flow control cannot have multiple sinks")
-          // format: on
-        )
-      } {
-        conn in {
-          typeCheck {
-            s"""
-               |$fsmA
-               |
-               |$fsmB
-               |
-               |struct bar {
-               |  u2 a;
-               |}
-               |
-               |network foo {
-               |  out             bool ofcn;
-               |  out             u2   ofcn2;
-               |  out             bar  os;
-               |  out sync        bool ofcv;
-               |  out sync ready  bool ofcr;
-               |  a = new a_entity;
-               |  b = new b_entity;
-               |  $conn;
-               |}""".stripMargin
-          }
-          if (msg.isEmpty) {
-            cc.messages shouldBe empty
-          } else {
-            cc.messages.loneElement should beThe[Error](msg)
           }
         }
       }

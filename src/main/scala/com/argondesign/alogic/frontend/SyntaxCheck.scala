@@ -171,7 +171,15 @@ final class SyntaxCheck extends StatelessTreeTransformer {
         case _                  => mb.error(a, "Only static assertions are allowed in file scope")
       }
 
-    case node: EntConnect if notVariant(EntityVariant.Net) => entErr(node, "connections")
+    case node: EntConnect =>
+      if (notVariant(EntityVariant.Net)) {
+        entErr(node, "connections")
+      }
+      node.rhs.foreach { rhs =>
+        if (!rhs.isLValueExpr) {
+          mb.error(rhs, "Right hand side of '->' is not a valid assignment target")
+        }
+      }
 
     case node: EntCombProcess if notVariant(EntityVariant.Fsm) => entErr(node, "fence blocks")
 
@@ -297,14 +305,14 @@ final class SyntaxCheck extends StatelessTreeTransformer {
 
     case StmtAssign(lhs, _) =>
       if (!lhs.isLValueExpr) {
-        mb.error(lhs, "Invalid expression on left hand side of '='")
+        mb.error(lhs, "Left hand side of '=' is not a valid assignment target")
       }
 
     case StmtUpdate(lhs, op, _) if !lhs.isLValueExpr =>
-      mb.error(lhs, s"Invalid expression on left hand side of '$op='")
+      mb.error(lhs, s"Left hand side of '$op=' is not a valid assignment target")
 
     case StmtPost(lhs, op) if !lhs.isLValueExpr =>
-      mb.error(lhs, s"Invalid expression on left hand side of '$op'")
+      mb.error(lhs, s"Operand of '$op' is not a valid assignment target")
 
     case StmtGoto(expr) =>
       expr match {

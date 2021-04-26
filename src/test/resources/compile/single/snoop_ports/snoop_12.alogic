@@ -1,0 +1,39 @@
+network snoop_12 {
+  snoop sync ready void s;
+
+  out wire bool o_a;
+  out wire bool o_b;
+
+  new fsm inner_a {
+    snoop sync ready void s;
+
+    void main() {
+      o_a = s.move;
+      fence;
+    }
+  }
+
+  s -> inner_a.s;
+
+  new fsm inner_b {
+    snoop sync ready void s;
+
+    void main() {
+      o_b = ~s.move;
+      fence;
+    }
+  }
+
+  inner_a.s -> inner_b.s;
+}
+// @fec/golden {{{
+//  module snoop_12(
+//    input  wire s__valid,
+//    input  wire s__ready,
+//    output wire o_a,
+//    output wire o_b
+//  );
+//    assign o_a = s__valid & s__ready;
+//    assign o_b = ~(s__valid & s__ready);
+//  endmodule
+// }}}

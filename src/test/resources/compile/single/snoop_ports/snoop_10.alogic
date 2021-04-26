@@ -1,0 +1,88 @@
+network snoop_10 {
+  in  sync ready        void i;
+  out sync ready bubble void o;
+
+  out wire              bool s;
+
+  new fsm a {
+    out sync ready bubble void oo;
+    void main() {
+      i.read();
+      oo.write();
+      fence;
+    }
+  }
+
+  a.oo -> b.ii;
+
+  new fsm b {
+    in sync ready void ii;
+    void main() {
+      ii.read();
+      o.write();
+      fence;
+    }
+  }
+
+  b.ii -> snooper.ss;
+
+  new fsm snooper {
+    snoop sync ready void ss;
+    void main() {
+      s = ss.move;
+      fence;
+    }
+  }
+}
+
+// @fec/smtc {{{
+//  always 1
+//  assert (= [golden.a__valid] [alogic.a.oo__valid])
+// }}}
+// @fec/golden {{{
+// module snoop_10(
+//    input   wire  clk,
+//    input   wire  rst,
+//    input   wire  i__valid,
+//    output  wire  i__ready,
+//    output  wire  o__valid,
+//    input   wire  o__ready,
+//    output  wire  s
+// );
+//
+//    reg a__valid;
+//    reg b__valid;
+//
+//    assign i__ready = i__valid & ~a__valid;
+//    assign o__valid = b__valid;
+//
+//    assign s = a__valid && ~b__valid;
+//
+//    always @(posedge clk) begin
+//      if (rst) begin
+//        a__valid <= 1'b0;
+//        b__valid <= 1'b0;
+//      end else begin
+//        if (a__valid) begin
+//          if (~b__valid) begin
+//            a__valid <= 1'd0;
+//          end
+//        end else begin
+//          if (i__valid) begin
+//            a__valid <= 1'd1;
+//          end
+//        end
+//        if (b__valid) begin
+//          if (o__ready) begin
+//            b__valid <= 1'd0;
+//          end
+//        end else begin
+//          if (a__valid) begin
+//            b__valid <= 1'd1;
+//          end
+//        end
+//      end
+//    end
+//
+// endmodule
+// }}}

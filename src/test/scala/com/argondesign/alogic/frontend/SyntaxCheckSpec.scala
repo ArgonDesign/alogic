@@ -18,6 +18,7 @@ import com.argondesign.alogic.core.Messages.Warning
 import com.argondesign.alogic.core.SourceContext
 import org.scalatest.freespec.AnyFreeSpec
 
+import java.util.regex.Pattern
 import scala.collection.immutable.ListMap
 
 final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
@@ -25,7 +26,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
   implicit private val cc: CompilerContext = new CompilerContext
 
   "SyntaxCheck should" - {
-    "SyntaxCheck usage of pipeline port definitions" - {
+    "check usage of pipeline port definitions" - {
       "accepting them in nested entities" - {
         for (desc <- List("in pipeline", "out pipeline")) {
           desc in {
@@ -466,7 +467,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       }
     }
 
-    "SyntaxCheck lvalue expressions and" - {
+    "check lvalue expressions and" - {
       "reject" - {
         val badLvals = ListMap(
           "call" -> "a()",
@@ -482,32 +483,33 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
         )
 
         for {
-          (name, assign, op) <- List(
-            ("assignment", "= 1", "="),
-            ("update", "+= 1", "\\+="),
-            ("postfix", "++", "\\+\\+")
+          (name, assign, msg) <- List(
+            ("assignment", "%s = 1;", "Left hand side of '=' is not a valid assignment target"),
+            ("update", "%s += 1;", "Left hand side of '+=' is not a valid assignment target"),
+            ("postfix", "%s++;", "Operand of '++' is not a valid assignment target"),
+            ("connect", "1 -> %s;", "Right hand side of '->' is not a valid assignment target")
           )
         } {
+          def parse(string: String): Tree =
+            if (string.contains("->")) string.asTree[Ent]() else string.asTree[Stmt]()
+
           name - {
             "simple invalid lvalues" - {
               for ((name, lval) <- badLvals) {
                 name in {
                   SyntaxCheck {
-                    s"$lval $assign;".asTree[Stmt]()
-                  }.loneElement should beThe[Error](
-                    s"Invalid expression on left hand side of '$op'"
-                  )
+                    parse(assign.format(lval))
+                  }.loneElement should beThe[Error](Pattern.quote(msg))
                 }
               }
             }
+
             "invalid lvalues inside concatenation lvalue" - {
               for ((name, lval) <- badLvals) {
                 name in {
                   SyntaxCheck {
-                    s"{x, $lval} $assign;".asTree[Stmt]()
-                  }.loneElement should beThe[Error](
-                    s"Invalid expression on left hand side of '$op'"
-                  )
+                    parse(assign.format(s"{x, $lval}"))
+                  }.loneElement should beThe[Error](Pattern.quote(msg))
                 }
               }
             }
@@ -623,7 +625,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       }
     }
 
-    "SyntaxCheck usage of break/continue statements" - {
+    "check usage of break/continue statements" - {
       "accepting them in looping statements" - {
         for (word <- List("break", "continue")) {
           word in {
@@ -691,7 +693,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
       }
     }
 
-    "SyntaxCheck goto is to a call expression" - {
+    "check goto is to a call expression" - {
       for {
         (tgt, ok) <- List(
           ("a()", true),

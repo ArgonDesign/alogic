@@ -32,6 +32,43 @@ final class PortCheck(implicit cc: CompilerContext) extends StatelessTreeTransfo
   // control, cardinal ports are explicitly selected, and there is only ever
   // one right hand side in a connection.
 
+//  // Given an expression, extract sub-expressions that require active logic
+//  // to implement. If the returned Iterator is empty, then the given
+//  // expression can be implemented purely as wiring.
+//  def activeLogic(expr: Expr): Iterator[Expr] = {
+//    return Iterator.empty
+//    // TODO: Move this whole thing out of the type checker into a later pass
+//    //       ... because uses _.isKnown which we cannothandle inthe frontend
+//    expr match {
+//      // TODO: indices must be known in connect expressions. Check and remove them
+//      case ExprCall(tgt, args) =>
+//        tgt match {
+//          case ExprSym(Symbol("$signed" | "$unsigned" | "@zx" | "@sx" | "@ex")) =>
+//            args.iterator flatMap { arg => activeLogic(arg.expr) }
+//          case _ => Iterator.single(expr)
+//        }
+//      case _: ExprBuiltin => ???
+//      case _: ExprUnary   => Iterator.single(expr)
+//      case ExprBinary(lhs, op, rhs) =>
+//        op match {
+//          case "<<" | "<<<" | ">>" | ">>>" =>
+//            if (rhs.isKnown) activeLogic(lhs) else Iterator.single(expr)
+//          case _ => Iterator.single(expr)
+//        }
+//      case _: ExprCond      => Iterator.single(expr)
+//      case ExprRep(_, expr) => activeLogic(expr)
+//      case ExprCat(parts)   => parts.iterator flatMap activeLogic
+//      case ExprIndex(tgt, idx) =>
+//        if (idx.isKnown) activeLogic(tgt) else Iterator.single(expr)
+//      case ExprSlice(tgt, lIdx, op, _) =>
+//        if (op == ":" || lIdx.isKnown) activeLogic(tgt) else Iterator.single(expr)
+//      case ExprDot(tgt, _, _)                                              => activeLogic(tgt)
+//      case _: ExprSym | _: ExprType | _: ExprInt | _: ExprNum | _: ExprStr => Iterator.empty
+//      case _: ExprSel | _: ExprSymSel | _: ExprIdent | _: ExprOld | _: ExprThis | _: ExprCast =>
+//        unreachable
+//    }
+//  }
+
   // Check ports that can only have a single sink indeed only have a single sink
   private def checkMultipleSinks(assigns: List[EntAssign]): Unit = {
     assigns.filterNot(_.lhs.tpe.isSnoop).groupBy(_.rhs).iterator filter {

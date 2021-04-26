@@ -22,49 +22,8 @@ import com.argondesign.alogic.util.IteratorOps._
 
 object ConnectChecks {
 
-  // Just for local convenience
-  implicit private class IteratorOps[T](val self: Iterator[T]) extends AnyVal {
-    def ifEmpty(other: => Iterator[T]): Iterator[T] = if (self.nonEmpty) self else other
-  }
-
   // Return true if this is a well formed and typed Connect instance
   def apply(conn: EntConnect): Iterator[Message] = {
-    // Given an expression, extract sub-expressions that require active logic
-    // to implement. If the returned Iterator is empty, then the given
-    // expression can be implemented purely as wiring.
-    def activeLogic(expr: Expr): Iterator[Expr] = {
-      return Iterator.empty
-      // TODO: Move this whole thing out of the type checker into a later pass
-      //       ... because uses _.isKnown which we cannothandle inthe frontend
-      expr match {
-        // TODO: indices must be known in connect expressions. Check and remove them
-        case ExprCall(tgt, args) =>
-          tgt match {
-            case ExprSym(Symbol("$signed" | "$unsigned" | "@zx" | "@sx" | "@ex")) =>
-              args.iterator flatMap { arg => activeLogic(arg.expr) }
-            case _ => Iterator.single(expr)
-          }
-        case _: ExprBuiltin => ???
-        case _: ExprUnary   => Iterator.single(expr)
-        case ExprBinary(lhs, op, rhs) =>
-          op match {
-            case "<<" | "<<<" | ">>" | ">>>" =>
-              if (rhs.isKnown) activeLogic(lhs) else Iterator.single(expr)
-            case _ => Iterator.single(expr)
-          }
-        case _: ExprCond      => Iterator.single(expr)
-        case ExprRep(_, expr) => activeLogic(expr)
-        case ExprCat(parts)   => parts.iterator flatMap activeLogic
-        case ExprIndex(tgt, idx) =>
-          if (idx.isKnown) activeLogic(tgt) else Iterator.single(expr)
-        case ExprSlice(tgt, lIdx, op, _) =>
-          if (op == ":" || lIdx.isKnown) activeLogic(tgt) else Iterator.single(expr)
-        case ExprDot(tgt, _, _)                                              => activeLogic(tgt)
-        case _: ExprSym | _: ExprType | _: ExprInt | _: ExprNum | _: ExprStr => Iterator.empty
-        case _: ExprSel | _: ExprSymSel | _: ExprIdent | _: ExprOld | _: ExprThis | _: ExprCast =>
-          unreachable
-      }
-    }
 
     // Given the type of a an expression in a connect, return the type of
     // flow control it has (if any), assuming it appears on the given side.
@@ -92,6 +51,7 @@ object ConnectChecks {
           case _: TypeIn | _: TypeOut | _: TypePipeIn | _: TypePipeOut => true
           case _                                                       => false
         }
+
         expr flatCollect {
           // Simply pick up any port types
           case expr: Expr if isIO(expr.tpe) => Iterator.single(expr)
@@ -115,7 +75,7 @@ object ConnectChecks {
       }
     }
 
-    def checkValidLhs(expr: Expr): Iterator[Message] = {
+    def checkValidConnection(src: Expr, dst: Expr): Iterator[Message] = {
       def checkValidSource(expr: Expr): Iterator[Message] = {
         def error(extra: String*): Iterator[Error] = Iterator.single(
           Error(expr.loc, "Expression on left hand side of '->' is not a valid source." +: extra)
@@ -123,21 +83,27 @@ object ConnectChecks {
 
         expr match {
           case ExprSym(symbol) =>
-            val n = symbol.name
             symbol.kind match {
               case _: TypeIn | _: TypePipeIn | _: TypeConst | _: TypeParam => Iterator.empty // OK
+              case _: TypeOut | _: TypePipeOut =>
+                Iterator.unless(dst.tpe.isSnoop) thenIterator {
+                  error(s"'${symbol.name}' is an output of an enclosing entity.")
+                }
+              case _: TypeSnoop =>
+                Iterator.unless(dst.tpe.isSnoop) thenIterator {
+                  error(s"'${symbol.name}' is a snoop port of an enclosing entity.")
+                }
               case kind: TypeEntity =>
+                // Check the cardinal
                 Iterator.when(kind("out").isEmpty) thenIterator {
-                  error(s"'$n' has no cardinal output port.") map {
+                  error(s"'${symbol.name}' has no cardinal output port.") map {
                     _ withNotes {
                       Iterator.when(!kind.symbol.desc.isInstanceOf[DescSingleton]) thenSingle {
-                        Note(kind.symbol, s"'$n' is an instance of:")
+                        Note(kind.symbol, s"'${symbol.name}' is an instance of:")
                       }
                     }
                   }
                 }
-              case _: TypeOut | _: TypePipeOut =>
-                error(s"'$n' is an output of an enclosing entity.")
               case _ => error()
             }
           case ExprDot(tgt, _, _) =>
@@ -145,9 +111,13 @@ object ConnectChecks {
               expr.tpe match {
                 case _: TypeOut | _: TypePipeOut => Iterator.empty // OK
                 case _: TypeIn | _: TypePipeIn =>
-                  error("It is an input of the referenced instance.")
+                  Iterator.unless(dst.tpe.isSnoop) thenIterator {
+                    error("It is an input of the referenced instance.")
+                  }
                 case _: TypeSnoop =>
-                  error("It is a snoop port of the referenced instance.")
+                  Iterator.unless(dst.tpe.isSnoop) thenIterator {
+                    error("It is a snoop port of the referenced instance.")
+                  }
                 case _ => unreachable
               }
             } else if (expr.tpe.isPacked) {
@@ -164,16 +134,6 @@ object ConnectChecks {
         }
       }
 
-      activeLogic(expr) map { active =>
-        Error(active, "Left hand side of '->' yields active logic")
-      } concat {
-        checkComplexExprWithFlowControl(expr, onLhs = true)
-      } concat {
-        checkValidSource(expr)
-      }
-    }
-
-    def checkValidRhs(expr: Expr): Iterator[Message] = {
       def checkValidSink(expr: Expr): Iterator[Message] = {
         def error(extra: String*): Iterator[Error] = Iterator single {
           Error(expr.loc, "Expression on right hand side of '->' is not a valid sink." +: extra)
@@ -217,18 +177,10 @@ object ConnectChecks {
         }
       }
 
-      if (!expr.isLValueExpr) {
-        // TODO: move this to Checker
-        Iterator.single(Error(expr, "Right hand side of '->' is not a valid assignment target"))
-      } else {
-        activeLogic(expr) map { active =>
-          Error(active, "Right hand side of '->' yields active logic")
-        } concat {
-          checkComplexExprWithFlowControl(expr, onLhs = false)
-        } concat {
-          checkValidSink(expr)
-        }
-      }
+      checkComplexExprWithFlowControl(src, onLhs = true) concat
+        checkComplexExprWithFlowControl(dst, onLhs = false) concat
+        checkValidSource(src) concat
+        checkValidSink(dst)
     }
 
     def checkTypesCompatible(lhs: Expr)(rhs: Expr): Iterator[Message] = {
@@ -296,29 +248,15 @@ object ConnectChecks {
       }
     }
 
-    def checkSinkCount(lhs: Expr, rhss: List[Expr]): Iterator[Message] =
-      flowControlType(lhs.tpe, onLhs = true) match {
-        case None                       => Iterator.empty
-        case Some(FlowControlTypeNone)  => unreachable
-        case Some(FlowControlTypeValid) => Iterator.empty
-        case Some(FlowControlTypeReady) =>
-          Iterator.when(rhss.filterNot(_.tpe.isSnoop).lengthIs > 1) thenSingle {
-            val loc = lhs.loc.copy(end = rhss.last.loc.end)
-            Error(loc, s"Port with 'sync ready' flow control cannot have multiple sinks")
-          }
-      }
-
     val EntConnect(lhs, rhss) = conn
 
     // Perform the checks in stages. Later stages assume earlier checks passed.
-    {
-      checkValidLhs(lhs) ++ (rhss.iterator flatMap checkValidRhs)
-    } ifEmpty {
+    rhss.iterator.flatMap(rhs => checkValidConnection(lhs, rhs)) ifEmpty {
       (rhss.iterator flatMap checkTypesCompatible(lhs)) ++
         (rhss.iterator flatMap checkValidStorage) ++
         (rhss.iterator flatMap checkNoInitializer)
     } ifEmpty {
-      (rhss.iterator flatMap checkFlowControlCompatible(lhs)) ++ checkSinkCount(lhs, rhss)
+      (rhss.iterator flatMap checkFlowControlCompatible(lhs))
     }
   }
 

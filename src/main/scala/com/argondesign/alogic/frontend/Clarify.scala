@@ -243,6 +243,8 @@ object Clarify {
         // Cast unsized integers to the context determined width
         ////////////////////////////////////////////////////////////////////////
 
+        // TODO: LHS of EntConnect
+
         case stmt @ StmtAssign(lhs, rhs) if lhs.tpe.isPacked && rhs.tpe.underlying.isNum =>
           stmt.copy(rhs = castToMatchWidth(rhs, lhs.tpe))
 

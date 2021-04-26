@@ -1,4 +1,3 @@
-// @ignore
 network snoop_06 {
   in  sync ready bool i;
   out sync ready bool o;

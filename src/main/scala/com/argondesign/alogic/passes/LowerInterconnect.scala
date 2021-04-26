@@ -114,9 +114,9 @@ final class LowerInterconnect(implicit cc: CompilerContext) extends StatelessTre
             assigns.flatMap {
               case EntAssign(ExprSym(l), ExprSym(r)) =>
                 if (interconnectSymbols(l)) {
-                  Option.when(interconnectSymbols(r) || r.kind.isIn)(l -> r)
+                  Option.when(interconnectSymbols(r) || r.kind.isIn || r.kind.isOut)(l -> r)
                 } else if (interconnectSymbols(r)) {
-                  Option.when(l.kind.isOut)(r -> l)
+                  Option.when(l.kind.isIn || l.kind.isOut)(r -> l)
                 } else {
                   None
                 }
