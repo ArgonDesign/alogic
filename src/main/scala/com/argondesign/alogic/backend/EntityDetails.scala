@@ -13,8 +13,7 @@ import com.argondesign.alogic.ast.Trees.Expr.InstancePortSel
 import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.enums.EntityVariant
-
-import scala.util.chaining.scalaUtilChainingOps
+import com.argondesign.alogic.core.FuncVariant
 
 final class EntityDetails(val decl: DeclEntity, val defn: DefnEntity) {
 
@@ -96,25 +95,18 @@ final class EntityDetails(val decl: DeclEntity, val defn: DefnEntity) {
     case _                                   => true
   }
 
-  // Constants referenced by this entity
-  lazy val constants: List[Symbol] = List from {
-    decl.decls collect {
-      case DeclConst(symbol, _) => symbol
-    } concat {
-      defn collect {
-        case ExprSym(symbol) if symbol.kind.isConst => symbol
-      }
-    }
-  } pipe { _.distinct.sortBy(_.loc) }
+  // Constants defined in this entity
+  lazy val constants: List[Symbol] =
+    List
+      .from(decl.decls.collect { case DeclConst(symbol, _) => symbol })
+      .distinct
+      .sortBy(_.loc)
 
-  // Foreign functions referenced by this entity
-  lazy val xenoFuncs: List[Symbol] = {
-    val list = List from {
-      defn collect {
-        case ExprSym(symbol) if symbol.kind.isXenoFunc => symbol
-      }
-    }
-    list.distinct
-  }
+  // Foreign functions defined in this entity
+  lazy val xenoFuncs: List[Symbol] =
+    List
+      .from(decl.decls.collect { case DeclFunc(symbol, FuncVariant.Xeno, _, _) => symbol })
+      .distinct
+      .sortBy(_.loc)
 
 }

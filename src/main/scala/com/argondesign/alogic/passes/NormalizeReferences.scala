@@ -26,11 +26,11 @@ import scala.collection.mutable
 private object Analyze {
 
   // Given a decl and defn for an entity, and the set of symbols defined in
-  // entities enclosing this entity, return a map from entity symbol to
-  // sets of symbols that need to be propagated to that entity. The returned
-  // map contains all entities defined nested inside the given decl/defn, as
-  // well as the entity defined by the given decl/defn.
-  private def analyze(
+  // global scope/entities enclosing this entity, return a map from entity
+  // symbol to sets of symbols that need to be propagated to that entity. The
+  // returned map contains all entities defined nested inside the given
+  // decl/defn, as well as the entity defined by the given decl/defn.
+  def apply(
       decl: DeclEntity,
       defn: DefnEntity,
       outerSymbols: Set[Symbol]
@@ -80,7 +80,7 @@ private object Analyze {
     val nestedResults = {
       val newOuterSymbols = outerSymbols union definedSymbols
       val maps = decl.entities map { decl =>
-        analyze(decl, decl.symbol.defn.asInstanceOf[DefnEntity], newOuterSymbols)
+        apply(decl, decl.symbol.defn.asInstanceOf[DefnEntity], newOuterSymbols)
       }
       maps.foldLeft(Map.empty[Symbol, Set[Symbol]])(_ ++ _)
     }
@@ -92,17 +92,11 @@ private object Analyze {
     nestedResults + (decl.symbol -> requiredSymbols)
   }
 
-  def apply(
-      decl: DeclEntity,
-      defn: DefnEntity
-    )(
-      implicit
-      cc: CompilerContext
-    ): Map[Symbol, Set[Symbol]] = analyze(decl, defn, Set.empty[Symbol])
-
 }
 
-final class NormalizeReferencesA(requiredSymbolsMap: Map[Symbol, Set[Symbol]])
+final class NormalizeReferencesA(
+    root: Symbol,
+    requiredSymbolsMap: Map[Symbol, Set[Symbol]])
     extends StatefulTreeTransformer {
 
   // Map of ('containing entity', 'referenced symbol') -> 'propagated symbol'
@@ -114,14 +108,16 @@ final class NormalizeReferencesA(requiredSymbolsMap: Map[Symbol, Set[Symbol]])
   }
 
   // Set of entity symbols to replace
-  private val entitiesToReplace = (requiredSymbolsMap filter { _._2.nonEmpty }).keySet
+  private val entitiesToReplace = requiredSymbolsMap.filter(_._2.nonEmpty).keySet
 
   // Replace all entity symbols which have propagated members
   // Also replace all instances of the same
-  override def replace(symbol: Symbol): Boolean = entitiesToReplace(symbol) || {
-    symbol.kind match {
-      case TypeEntity(eSymbol, _) => entitiesToReplace(eSymbol)
-      case _                      => false
+  override def replace(symbol: Symbol): Boolean = (symbol != root) && {
+    entitiesToReplace(symbol) || {
+      symbol.kind match {
+        case TypeEntity(eSymbol, _) => entitiesToReplace(eSymbol)
+        case _                      => false
+      }
     }
   }
 
@@ -135,34 +131,28 @@ final class NormalizeReferencesA(requiredSymbolsMap: Map[Symbol, Set[Symbol]])
     tree match {
       // Build declarations of additional symbols added to this entity up front
       case decl: DeclEntity =>
-        orig get decl.symbol match {
-          case None => newDeclsStack push Set.empty
-          case Some(oldSymbol) =>
-            newDeclsStack push {
-              requiredSymbolsMap(oldSymbol) map { symbol =>
-                withEnclosingSymbol(decl.symbol) {
-                  walk(TypeAssigner {
-                    symbol.decl.cpy(symbol = propMap((oldSymbol, symbol))) withLoc symbol.decl.loc
-                  }).asInstanceOf[Decl]
-                }
-              }
+        val oldSymbol = orig.getOrElse(decl.symbol, decl.symbol)
+        newDeclsStack push {
+          requiredSymbolsMap(oldSymbol) map { symbol =>
+            withEnclosingSymbol(decl.symbol) {
+              walk(TypeAssigner {
+                symbol.decl.cpy(symbol = propMap((oldSymbol, symbol))) withLoc symbol.decl.loc
+              }).asInstanceOf[Decl]
             }
+          }
         }
 
       // Build definitions of additional symbols added to this entity up front
       case defn: DefnEntity =>
-        orig get defn.symbol match {
-          case None => newDefnsStack push Set.empty
-          case Some(oldSymbol) =>
-            newDefnsStack push {
-              requiredSymbolsMap(oldSymbol) map { symbol =>
-                withEnclosingSymbol(defn.symbol) {
-                  walk(TypeAssigner {
-                    symbol.defn.cpy(symbol = propMap((oldSymbol, symbol))) withLoc symbol.decl.loc
-                  }).asInstanceOf[Defn]
-                }
-              }
+        val oldSymbol = orig.getOrElseUpdate(defn.symbol, defn.symbol)
+        newDefnsStack push {
+          requiredSymbolsMap(oldSymbol) map { symbol =>
+            withEnclosingSymbol(defn.symbol) {
+              walk(TypeAssigner {
+                symbol.defn.cpy(symbol = propMap((oldSymbol, symbol))) withLoc symbol.decl.loc
+              }).asInstanceOf[Defn]
             }
+          }
         }
 
       //
@@ -276,7 +266,7 @@ final class NormalizeReferencesB(
   // - All entity symbols which contain a symbol with storage stripped, but
   //   only if the entity is defined in the input tree. We will do global
   //   replacement later
-  // - All instance symbols of local entities replaces
+  // - All instance symbols of local entities replaced
 
   // Set of symbols to replace. Initialize to port symbols needing storage
   // stripped
@@ -319,8 +309,10 @@ final class NormalizeReferencesB(
         }
         // Memorize the entity symbol replacement for the global pass
         orig.get(decl.symbol) foreach { oldSymbol =>
-          assert(!(globalReplacements contains oldSymbol), globalReplacements foreach println)
-          globalReplacements(oldSymbol) = decl.symbol
+          globalReplacements.putIfAbsent(oldSymbol, decl.symbol) match {
+            case Some(_) => unreachable
+            case None    => // OK
+          }
         }
       case _ =>
     }
@@ -344,7 +336,7 @@ final class NormalizeReferencesB(
 final class NormalizeReferencesC(globalReplacements: collection.Map[Symbol, Symbol])
     extends StatefulTreeTransformer {
 
-  // Now replace instances with replaced entities
+  // Now replace instances replaced global entities
   override def replace(symbol: Symbol): Boolean = symbol.kind match {
     case TypeEntity(eSymbol, _) => globalReplacements contains eSymbol
     case _                      => false
@@ -376,15 +368,31 @@ object NormalizeReferences {
     new EntityTransformerPass(declFirst = true) {
       val name = "normalize-references-a"
 
+      var globalSymbols: Set[Symbol] = _
+
+      override def start(pairs: Pairs)(implicit cc: CompilerContext): Unit = {
+        // Gather all global symbols that should be localized within entities
+        globalSymbols = Set from {
+          pairs.asPar.iterator.collect {
+            case (decl, _) if decl.symbol.kind.isConst || decl.symbol.kind.isXenoFunc => decl.symbol
+          }
+        }
+      }
+
       def create(symbol: Symbol)(implicit cc: CompilerContext): TreeTransformer = {
         // Get decl/defn
         val decl = symbol.decl.asInstanceOf[DeclEntity]
         val defn = symbol.defn.asInstanceOf[DefnEntity]
         // Analyze and figure out what symbols need to be propagated
-        val requiredSymbols = Analyze(decl, defn) ensuring { _(symbol).isEmpty }
+        val requiredSymbols = Analyze(decl, defn, globalSymbols)
         requiredSymbolMaps(symbol) = requiredSymbols
         //
-        new NormalizeReferencesA(requiredSymbols)
+        new NormalizeReferencesA(symbol, requiredSymbols)
+      }
+
+      override def finish(pairs: Pairs)(implicit cc: CompilerContext): Pairs = {
+        // Drop all localized globals
+        pairs.asPar.filterNot(pair => globalSymbols.contains(pair._1.symbol))
       }
     } andThen new EntityTransformerPass(declFirst = true) {
       val name = "normalize-references-b"

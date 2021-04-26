@@ -83,6 +83,11 @@ final class ParOrSeqIterable[T] private (
     case Right(parIterable) => wrap(parIterable.filter(f))
   }
 
+  def filterNot[U](f: T => Boolean): ParOrSeqIterable[T] = eitherIterable match {
+    case Left(iterable)     => wrap(iterable.filterNot(f))
+    case Right(parIterable) => wrap(parIterable.filterNot(f))
+  }
+
   def foreach[U](f: T => U): Unit = eitherIterable match {
     case Left(iterable)     => iterable.foreach(f)
     case Right(parIterable) => parIterable.foreach(f)

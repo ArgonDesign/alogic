@@ -18,7 +18,6 @@ import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Math.clog2
-import com.argondesign.alogic.util.unreachable
 
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
@@ -188,18 +187,7 @@ final class LowerVectorsA(globalReplacements: TrieMap[Symbol, Symbol]) extends L
       decl.copy(spec = vecSpec(symbol)) regularize tree.loc
 
     case decl @ DeclConst(symbol, _) if symbol.kind.underlying.isVector =>
-      decl.copy(spec = vecSpec(symbol)) regularize tree.loc tap { _ =>
-        // TODO: There is an issue if a replaced const is declared in file
-        //       scope, in which case it's defn doesn't reach this transformer,
-        //       so to hack around this we walk the defn of consts here.
-        //       Need to be fixed properly in the long term
-        val oldSymbol = orig(symbol)
-        walk(TypeAssigner(oldSymbol.defn.cpy(symbol = symbol) withLoc oldSymbol.defn.loc)) match {
-          // Also need to simplify initializer as the Defn is not added back to the global list..
-          case d: DefnConst => TypeAssigner(d.copy(init = d.init.simplify) withLocOf d)
-          case _            => unreachable
-        }
-      }
+      decl.copy(spec = vecSpec(symbol)) regularize tree.loc
 
     //////////////////////////////////////////////////////////////////////////
     // Transform vector operations on plain vector variables

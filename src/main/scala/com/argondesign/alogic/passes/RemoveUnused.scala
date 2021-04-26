@@ -68,10 +68,11 @@ final private class RemoveSymbols(
     case StmtDelayed(lhs, _) if !(WrittenSymbols(lhs) exists retainedInternal) => Some(Stump)
 
     ////////////////////////////////////////////////////////////////////////////
-    // Skip foreign function Decl/Defn (which are the only functions left)
+    // Drop whole foreign function Decl/Defn if unused
     ////////////////////////////////////////////////////////////////////////////
 
-    case _: DeclFunc | _: DefnFunc => Some(tree)
+    case d: DeclFunc => Some(if (retainedInternal(d.symbol)) tree else Stump)
+    case d: DefnFunc => Some(if (retainedInternal(d.symbol)) tree else Stump)
 
     ////////////////////////////////////////////////////////////////////////////
     // Skip expressions

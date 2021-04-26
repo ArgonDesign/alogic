@@ -1,8 +1,8 @@
-// @ignore
 struct s {
   bool a;
   bool b;
 }
+
 const s C = {false, true};
 
 fsm external_const_01 {
