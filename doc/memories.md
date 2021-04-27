@@ -20,13 +20,13 @@ Distributed memories are declared using an array-style syntax:
 ```
 
 - _\<type>_ is the data type of each individual element, i.e. the memory width.
-It must be an integer type.
+  It must be an integer type.
 
--  _\<depth>_ is how many elements are stored, i.e. the memory depth. It must be
-a constant expression.
+- _\<depth>_ is how many elements are stored, i.e. the memory depth. It must be
+  a constant expression.
 
-- A 32-entry memory of 16-bit unsigned integers called `storage` could be declared
-as `u16 storage[32];`
+- A 32-entry memory of 16-bit unsigned integers called `storage` could be
+  declared as `u16 storage[32];`
 
 Note that a distributed memory (`u16 storage[32]`) is different from a of a
 vector (`u16[32] storage`). The distributed memory evaluates to an unpacked
@@ -77,8 +77,6 @@ Writes take effect only on the subsequent clock cycle:
   fence;
 ```
 
-<a href="http://afiddle.argondesign.com/?example=memories_working.alogic">Fiddle with a distributed memory here.</a>
-
 ### Implementation of distributed memories
 
 In the Verilog implementation emitted by the compiler, distributed memories are
@@ -106,9 +104,8 @@ as `u16 storage[32]`) would be implemented in the generated Verilog as:
 
 ### Example: FIFO with distributed memory
 
-As an example (<a href="http://afiddle.argondesign.com/?example=memories_example.alogic">fiddle here</a>),
-a fifo with a simple 32 entry deep, 8-bit wide distributed memory could be written
-in Alogic as:
+As an example , a fifo with a simple 32 entry deep, 8-bit wide distributed
+memory could be written in Alogic as:
 
 ```
 fsm dfifo {

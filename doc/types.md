@@ -6,13 +6,12 @@
 
 # Data types and simple variables
 
-Every identifier and expression (also called a value or term) in Alogic
-has a well defined type.
- 
-The type of a variable is determined by the declaration of that
-variable. Variables are declared in the usual style, using a type
-specifier denoting the type of the variable followed by the name of the
-variable:
+Every identifier and expression (also called a value or term) in Alogic has a
+well defined type.
+
+The type of a variable is determined by the declaration of that variable.
+Variables are declared in the usual style, using a type specifier denoting the
+type of the variable followed by the name of the variable:
 
 ```
   foo_t bar; // Declaration of a variable called 'bar' with type 'foo_t'
@@ -22,28 +21,27 @@ The result types of expressions are determined by a set of typing rules
 presented later (TODO).
 
 #### Packed types
- 
-Values which can exist in the generated design must be of a packed type.
-Packed types are simply those that are represented by a finite linear
-sequence of bits. For example, a 6-bit number would have a packed type,
-and so would a structure holding two 10-bit numbers, but a memory or a
-function identifier would have non-packed (or unpacked) types. The
-number of bits in the binary representation of a packed type is called
-the *width* of the type, and can be retrieved using the `@bits`
-[built-in function](builtins.md). Apart from width, packed types also
-have a *signedness* which can be either *signed* or *unsigned*.
 
-Similarly to Verilog, Alogic is a weakly typed language in that any
-variable of a packed type can be assigned a value of another packed
-type, so long as the width of the two types are the same.
+Values which can exist in the generated design must be of a packed type. Packed
+types are simply those that are represented by a finite linear sequence of bits.
+For example, a 6-bit number would have a packed type, and so would a structure
+holding two 10-bit numbers, but a memory or a function identifier would have
+non-packed (or unpacked) types. The number of bits in the binary representation
+of a packed type is called the *width* of the type, and can be retrieved using
+the `@bits`
+[built-in function](builtins.md). Apart from width, packed types also have a *
+signedness* which can be either *signed* or *unsigned*.
 
-#### Sized integer types - <a href="http://afiddle.argondesign.com/?example=types_sized_integers.alogic">fiddle here.</a>
+Similarly to Verilog, Alogic is a weakly typed language in that any variable of
+a packed type can be assigned a value of another packed type, so long as the
+width of the two types are the same.
 
-The fundamental packed types in Alogic are signed or unsigned sized
-integers, introduced with the `int(N)` or `uint(N)` type specifiers. The
-argument `N` of the type specifier must be a compile time constant but
-otherwise arbitrary expression, and determines the width of the sized
-integer:
+#### Sized integer types
+
+The fundamental packed types in Alogic are signed or unsigned sized integers,
+introduced with the `int(N)` or `uint(N)` type specifiers. The argument `N` of
+the type specifier must be a compile time constant but otherwise arbitrary
+expression, and determines the width of the sized integer:
 
 ```
   int(5)    a; // A 5 bit signed integer
@@ -51,33 +49,32 @@ integer:
   uint(A+2) c; // Unsigned integer, with width depending on parameter A.
 ```
 
-Since integer types of varying length are the norm in digital design,
-there is a shorthand for writing them when the width is known up front.
-A keyword starting with the letter `u` followed by the number of bits
-can be used to denote an unsigned sized integer with that width.
-Similarly, a keysord starting with the letter `i` can be used for signed
-sized integers.
+Since integer types of varying length are the norm in digital design, there is a
+shorthand for writing them when the width is known up front. A keyword starting
+with the letter `u` followed by the number of bits can be used to denote an
+unsigned sized integer with that width. Similarly, a keysord starting with the
+letter `i` can be used for signed sized integers.
 
 ```
   i5 a; // Same as 'int(5) a'
   u8 b; // Same as 'uint(8) b'
 ```
 
-The canonical parenthesized format is only advised if the width of the
-type is computed based on values of parameters or constants. Prefer the
-shorthand whenever possible.
+The canonical parenthesized format is only advised if the width of the type is
+computed based on values of parameters or constants. Prefer the shorthand
+whenever possible.
 
 #### Unsized integer types
 
-Two notable non-packed types in Alogic are those of unsized integers.
-Members of these types are infinite precision integers, and are
-differentiated as signed or unsigned. Signed and unsigned unsized
-integers are declared with the type specifiers `int` and `uint`
-respectively, with no width argument. All variables and expressions of
-an unsized integer type must have values that can be computed during
-compilation time. This means that for example
-[parameters and constants](params.md) can be declared with an unsized
-integer type, but arbitrary design variables may not:
+Two notable non-packed types in Alogic are those of unsized integers. Members of
+these types are infinite precision integers, and are differentiated as signed or
+unsigned. Signed and unsigned unsized integers are declared with the type
+specifiers `int` and `uint`
+respectively, with no width argument. All variables and expressions of an
+unsized integer type must have values that can be computed during compilation
+time. This means that for example
+[parameters and constants](params.md) can be declared with an unsized integer
+type, but arbitrary design variables may not:
 
 ```
   param uint A = 1; // OK: parameter values are known at compilation time
@@ -85,18 +82,16 @@ integer type, but arbitrary design variables may not:
   uint C = 3;       // Error: C can be re-assigned to values determined at run-time
 ```
 
-The Alogic compiler computes the values of all expressions of an unsized
-integer type at compilation time. In any context where a packed value is
-required, but a value of an unsized integer type is provided, the
-compiler will infer the width of the value and will either substitute a
-sized integer of the same signedness as the original unsized type, if
-the value can be represented by the inferred sized integer type, or
-issue an error otherwise.
+The Alogic compiler computes the values of all expressions of an unsized integer
+type at compilation time. In any context where a packed value is required, but a
+value of an unsized integer type is provided, the compiler will infer the width
+of the value and will either substitute a sized integer of the same signedness
+as the original unsized type, if the value can be represented by the inferred
+sized integer type, or issue an error otherwise.
 
-The contexts where width inference of unsized integer values is
-performed are listed below. The inferred widths of sub expressions are
-those that satisfy the [expression width constrains](widths.md) of the
-language:
+The contexts where width inference of unsized integer values is performed are
+listed below. The inferred widths of sub expressions are those that satisfy
+the [expression width constrains](widths.md) of the language:
 
 | Context | Example | Inferred width |
 |---------|---------|----------------|
@@ -117,14 +112,14 @@ language:
 
 #### Bool type
 
-The keyword `bool` can also be used to represent a boolean type, and is
-simply a synonym for `u1`.
+The keyword `bool` can also be used to represent a boolean type, and is simply a
+synonym for `u1`.
 
-#### Struct types - <a href="http://afiddle.argondesign.com/?example=types_struct.alogic">fiddle here.</a>
+#### Struct types
 
-Alogic supports grouping related values into structures. A structure
-type is defined with the `struct` keyword, followed by the name of the
-structure type, and the structure members in curly braces:
+Alogic supports grouping related values into structures. A structure type is
+defined with the `struct` keyword, followed by the name of the structure type,
+and the structure members in curly braces:
 
 ```
 struct point_t {
@@ -171,8 +166,8 @@ Fields of a structure type variable are accessed with the usual dot notation:
 ```
 
 All structures are packed, and the first field corresponds to the most
-significant bits, and the last field to the least significant bits, so the
-above example could have been written as follows using the bit concatenation
+significant bits, and the last field to the least significant bits, so the above
+example could have been written as follows using the bit concatenation
 expression and sized constants:
 
 ```
@@ -243,11 +238,9 @@ Structures can also be [parametrized](params.md).
 
 #### Vector types
 
-Alogic supports multi-dimensional packed vectors of integer types.
-Variables of a vector type can be declared by adding the vector sizes
-following the type specifier in a declaration (<a
-href="http://afiddle.argondesign.com/?example=types_vectors1.alogic">fiddle
-here</a>):
+Alogic supports multi-dimensional packed vectors of integer types. Variables of
+a vector type can be declared by adding the vector sizes following the type
+specifier in a declaration:
 
 ```
 // Vectors can be defined with one or more dimensions:
@@ -285,11 +278,11 @@ here</a>):
   u3[4]    vs3 = vb[5][9-:4]; // vb[5][9-:4] has type u3[4]
 ```
 
-Note that indices are 0 based. Multi-dimensional vectors can be used
-after partial indexing, which yield vectors of lower dimensions. The result of 
-slicing a vector is a vector of the same dimension - note that a vector slice
-of width one is still a vector and hence is not equivalent to vector indexing.
-This is demonstrated by the following indexing behaviour:
+Note that indices are 0 based. Multi-dimensional vectors can be used after
+partial indexing, which yield vectors of lower dimensions. The result of slicing
+a vector is a vector of the same dimension - note that a vector slice of width
+one is still a vector and hence is not equivalent to vector indexing. This is
+demonstrated by the following indexing behaviour:
 
 ```
   va[1]      // Type u4
@@ -298,20 +291,17 @@ This is demonstrated by the following indexing behaviour:
   va[1:1][0] // Type u4
 ```
 
-Vectors
-are linearized to a bit-string using row-major order, with lower order
-indices packed towards the LSBs. For example, if we defined x and y as
-(<a
-href="http://afiddle.argondesign.com/?example=types_vectors2.alogic">fiddle
-here</a>):
+Vectors are linearized to a bit-string using row-major order, with lower order
+indices packed towards the LSBs. For example, if we defined x and y as:
 
 ```
   u2[3][4] x = ...;
   u24 y = x;
 ```
+
 Then the vector x is unpacked as follows:
 
- ![Vectors](vectors.svg)
+![Vectors](vectors.svg)
 
 And the following equivalencies hold:
 
@@ -331,14 +321,14 @@ And the following equivalencies hold:
 
 #### Void type
 
-The `void` type can be used where no meaningful value is necessary. It
-is used as the return type of state functions in FSMs, and as the type
-of ports where the flow control signals carry all required information.
+The `void` type can be used where no meaningful value is necessary. It is used
+as the return type of state functions in FSMs, and as the type of ports where
+the flow control signals carry all required information.
 
-#### typedefs - <a href="http://afiddle.argondesign.com/?example=types_typedef.alogic">fiddle here.</a>
+#### typedefs
 
-Similarly to the C language, a `typedef` definition can be used to
-create an alias for a type, giving it a new name:
+Similarly to the C language, a `typedef` definition can be used to create an
+alias for a type, giving it a new name:
 
 ```
   typedef <existing type> <new type>;
@@ -349,17 +339,14 @@ create an alias for a type, giving it a new name:
 
 #### Mapping to Verilog types
 
-All packed Alogic types map to packed Verilog types with descending
-range specifiers. Alogic only ever emits `reg [9:0] foo` or similar, and
+All packed Alogic types map to packed Verilog types with descending range
+specifiers. Alogic only ever emits `reg [9:0] foo` or similar, and
 never `reg [0:9] bar`.
 
-Variables with a structure type are emitted as multiple Verilog
-variables with field names adjoined with an `_`.
+Variables with a structure type are emitted as multiple Verilog variables with
+field names adjoined with an `_`.
 
 An example of mappings using the definitions from above is as follows:
-
-<a href="http://afiddle.argondesign.com/?example=types_mapping.alogic">
-Fiddle with these mappings here.</a>
 
 <table>
   <tr>

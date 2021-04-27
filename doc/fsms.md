@@ -17,13 +17,11 @@ FSMs.
 
 FSMs are introduced with the `fsm` keyword, followed by the name of the FSM,
 followed by the description of the FSM in curly brackets. The behaviour of an
-FSM is described using code with sequential semantics, portions of which
-execute on every clock cycle.
+FSM is described using code with sequential semantics, portions of which execute
+on every clock cycle.
 
 This FSM reads a byte from an input port on every clock cycle, increments its
 value by 2 and writes the result to an output port:
-
-<a href="http://afiddle.argondesign.com/?example=fsms_syntax.alogic">Fiddle with this code here.</a>
 
 ```
 fsm add2 {
@@ -45,9 +43,9 @@ fsm add2 {
 }
 ```
 
-Note that variables declared in the FSM entity and variables declared in `void
-main()` are all static variables. Within `void main()` there would be no
-difference between using `a` and `b`, and using `x`. However, `x` is only
+Note that variables declared in the FSM entity and variables declared
+in `void main()` are all static variables. Within `void main()` there would be
+no difference between using `a` and `b`, and using `x`. However, `x` is only
 available inside `void main()` and would not be accessible by another function.
 
 ### Using functions for encapsulation
@@ -56,15 +54,13 @@ All FSMs must contain a `main` function. Execution starts at the beginning of
 `main` after reset. FSM code can also be partitioned into multiple control
 functions. If the execution reaches the end of the body of a control function,
 the function returns (control is transferred to the call site). When the `main`
-function returns, control is transferred to the beginning of `main` again,
-with the execution thus proceeding in an infinite loop. The body of the example
-FSM above takes 1 cycle to execute, then it reaches the end of `main`, and
-hence the body is effectively executed on every clock cycle.
+function returns, control is transferred to the beginning of `main` again, with
+the execution thus proceeding in an infinite loop. The body of the example FSM
+above takes 1 cycle to execute, then it reaches the end of `main`, and hence the
+body is effectively executed on every clock cycle.
 
 An FSM that, depending on the state of an input port, would apply one of 2
 different kinds of processing could be defined using the following pattern:
-
-<a href="http://afiddle.argondesign.com/?example=fsms_functions.alogic">Fiddle with this code here.</a>
 
 ```
 fsm one_or_the_other {
@@ -102,10 +98,10 @@ be the same as the current state. The control unit will consist of a list of
 imperative-style statements. Statements execute sequentially, according to their
 execution semantics, which are analogous to similar statements in common
 imperative programming languages. Statements can be classed either as
-combinational statements, or control statements. In a single control unit, there will be a
-series of combinational statements (such as `a += 3'b1;`) followed by a single
-control statement (such as `fence`). For a comprehensive list of statements, see
-the [statements](statements.md) section of the documentation.
+combinational statements, or control statements. In a single control unit, there
+will be a series of combinational statements (such as `a += 3'b1;`) followed by
+a single control statement (such as `fence`). For a comprehensive list of
+statements, see the [statements](statements.md) section of the documentation.
 
 ### Execution model
 
@@ -114,8 +110,8 @@ unit boundaries are, but we will mention the `fence` statement to aid with the
 examples. For now, let it suffice to say that the `fence` statement is used to
 delimit control unit boundaries in straight line code, so any combinational
 statement between two `fence` statements executes in one clock cycle. For the
-details of where control unit boundaries are, see the section on [control flow
-conversion](control.md).
+details of where control unit boundaries are, see the section
+on [control flow conversion](control.md).
 
 Under various circumstances, the FSM can stall. When a stall occurs, no internal
 state of the FSM is updated.
@@ -140,8 +136,6 @@ defines how many times that function can be entered on the worst case execution
 path, and must be provided by the user. The compiler will use this limit to
 compute the minimum size of the return stack:
 
-<a href="http://afiddle.argondesign.com/?example=fsms_recursive.alogic">Fiddle with this code here.</a>
-
 ```
 fsm rec {
   u8 i;
@@ -164,8 +158,8 @@ fsm rec {
 }
 ```
 
-It is the responsibility of the designer to ensure that the actual program
-logic of the FSM does not violate the specified recursion limit.
+It is the responsibility of the designer to ensure that the actual program logic
+of the FSM does not violate the specified recursion limit.
 
 The size of the return stack can be specified explicitly using the `stacklimit`
 annotation attached to the FSM itself. This can be used when the worst case
@@ -190,7 +184,7 @@ copy of local variables.
 FSMs definitions can contain a single `fence` block. The `fence` block may only
 contain combinational statements, and is executed at the beginning of every
 cycle, before any of the statements of the control unit corresponding to the
-current state are considered. For example (<a href="http://afiddle.argondesign.com/?example=fsms_fence.alogic">fiddle here</a>):
+current state are considered. For example:
 
 ```
 fsm fenceblock {
@@ -219,7 +213,7 @@ fsm fenceblock {
 }
 ```
 
-Is equivalent to (<a href="http://afiddle.argondesign.com/?example=fsms_nofence.alogic">fiddle here</a>):
+Is equivalent to:
 
 ```
 fsm nofencefunc {

@@ -9,8 +9,6 @@
 Alogic provides a set of built-in functions, this section is a comprehensive
 reference of their semantics.
 
-<a href="http://afiddle.argondesign.com/?example=builtins.alogic">Fiddle with all of these built-in functions here.</a>
-
 ### General semantics and concepts
 
 Names of Alogic built-in functions start with either the `$` or `@` characters.
@@ -77,9 +75,9 @@ uint @bits(type);
 uint @bits(expr);
 ```
 
-`@bits` can be invoked on any packed type, or an expression of packed type,
-and returns the width (in bits) of the argument. `@bits` is always
-evaluated at compile time.
+`@bits` can be invoked on any packed type, or an expression of packed type, and
+returns the width (in bits) of the argument. `@bits` is always evaluated at
+compile time.
 
 ##### Built-in `@msb`
 
@@ -106,7 +104,8 @@ inserting the bit value given as the first argument into the MSBs of the result.
 The second argument must be a constant expression. The third argument can be any
 packed type with a width no greater than N. The result is unsigned if the third
 argument is unsigned, and the result is signed if the third argument is signed.
-For example: 
+For example:
+
 ```
 u5 a = 5'b100;
 u10 b = @ex(1'b1,10,a); // b = 11111 00100

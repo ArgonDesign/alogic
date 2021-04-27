@@ -12,8 +12,9 @@ has native language support for working with SRAMs.
 ### Declaring SRAMs
 
 The language supports 2 different variants of SRAMs:
-  - SRAMs driven from registers
-  - SRAMs driven from combinational signals
+
+- SRAMs driven from registers
+- SRAMs driven from combinational signals
 
 SRAMs can be declared with the following syntax:
 
@@ -25,8 +26,8 @@ sram <type> <identifier>[<depth>];
 sram wire <type> <identifier>[<depth>];
 ```
 
-The `type` of an SRAM determines the element type, and therefore the width,
-of the SRAM. The `type` of an SRAM can be either a sized integer type, or a
+The `type` of an SRAM determines the element type, and therefore the width, of
+the SRAM. The `type` of an SRAM can be either a sized integer type, or a
 `struct` type. The `depth` of the SRAM is given by a constant expression.
 
 A combinationally driven 1024 entry deep SRAM of 16 bit unsigned integers
@@ -40,15 +41,16 @@ sram wire u16 storage[1024];
 
 All Alogic SRAM declarations refer to an instance of a single port SRAM with a
 registered read data bus. The resulting hardware interface includes 5 signals:
-  - `ce` clock enable signal (active high)
-  - `we` write enable signal (active high)
-  - `addr` address bus
-  - `wdata` write data bus
-  - `rdata` read data bus
+
+- `ce` clock enable signal (active high)
+- `we` write enable signal (active high)
+- `addr` address bus
+- `wdata` write data bus
+- `rdata` read data bus
 
 The width of the address bus is `$clog2(<depth>)`, and the width of the data
-buses is determined by the data type. Note in particular that there are no
-byte enable signals to use in write cycles.
+buses is determined by the data type. Note in particular that there are no byte
+enable signals to use in write cycles.
 
 SRAMs are expected to behave as described by the following Verilog model:
 
@@ -85,15 +87,15 @@ endmodule
 
 Using SRAMs is Alogic code is done through interface methods and properties.
 
-SRAMs provide the `.write` method with the following signature. This can be
-used to write to an SRAM:
+SRAMs provide the `.write` method with the following signature. This can be used
+to write to an SRAM:
 
 ```
   void write(uint($clog2(<depth>)) addr, <type> data);
 ```
 
-To write the value `16'h0123` to address `87` in  the `storage` SRAM
-declared earlier, one can use:
+To write the value `16'h0123` to address `87` in the `storage` SRAM declared
+earlier, one can use:
 
 ```
   storage.write(10'd87, 16'h0123);
@@ -125,8 +127,6 @@ A simple read from the `storage` SRAM could be performed like this:
   x += storage.rdata;
 ```
 
-<a href="http://afiddle.argondesign.com/?example=srams_basic.alogic">Fiddle with a basic sram here.</a>
-
 ### Combinatorially driven vs registered SRAMs
 
 The difference between combinationally driven SRAMs and registered SRAMs is
@@ -147,33 +147,35 @@ accesses take effect.
 ### Generated SRAM models and instances
 
 To implement combinationally driven SRAMs, the compiler does the following:
-  1. Construct an SRAM model similar to the one described previously, but with
-     specific width and depth values. If an SRAM of the same shape already
-     exists anywhere in the design, that model is reused.
-  1. Instantiate the SRAM model just constructed in the entity containing the
-     `sram` declaration.
-  1. Translate interface methods and properties to the appropriate signal values.
+
+1. Construct an SRAM model similar to the one described previously, but with
+   specific width and depth values. If an SRAM of the same shape already exists
+   anywhere in the design, that model is reused.
+1. Instantiate the SRAM model just constructed in the entity containing the
+   `sram` declaration.
+1. Translate interface methods and properties to the appropriate signal values.
 
 Generated SRAM models are emitted together with the compiled design. These can
 be used for simulation purposes.
 
 In addition to the above, the compiler does the following to implement SRAMs
 driven by registers:
-  1. Construct and instantiate a set of output registers, the same way as to
-     what  registered output port with flow control type `sync` would translate
-     into. These local registers holds the `we`, `addr`, and `wdata` values
-     driven to the SRAM. Note that by default this does not add an extra output
-     port to the enclosing entity.
-  1. Connect the `valid` signal of the created output register to the SRAM
-     instance `ce` signal, and connect the other signals from the output
-     register to the corresponding SRAM instance ports.
+
+1. Construct and instantiate a set of output registers, the same way as to what
+   registered output port with flow control type `sync` would translate into.
+   These local registers holds the `we`, `addr`, and `wdata` values driven to
+   the SRAM. Note that by default this does not add an extra output port to the
+   enclosing entity.
+1. Connect the `valid` signal of the created output register to the SRAM
+   instance `ce` signal, and connect the other signals from the output register
+   to the corresponding SRAM instance ports.
 
 ### Lifting SRAMs
 
 It is common practice that instead of instantiating SRAMs in the design
 hierarchy, they are wired out through the top level to be instantiated in the
-testbench. The Alogic compiler provides automation for this, through the use
-of the `liftsrams` attribute. An entity annotated with the `liftsrams` attribute
+testbench. The Alogic compiler provides automation for this, through the use of
+the `liftsrams` attribute. An entity annotated with the `liftsrams` attribute
 will cause the compiler to automatically extract all SRAM instances from all
 entities instantiated below such an annotated entity, and instead wire the SRAM
 signals through ports automatically inserted. This will result in SRAM instances
@@ -183,7 +185,7 @@ design hierarchy, which have the `liftsrams` attribute.
 ### A simple SRAM based FIFO example
 
 To demonstrate the use of SRAMs, an example implementation of a simple but
-generic FIFO, using a single SRAM as the backing store is provided (<a href="http://afiddle.argondesign.com/?example=srams_example.alogic">fiddle here</a>):
+generic FIFO, using a single SRAM as the backing store is provided:
 
 ```
 (* liftsrams *)
@@ -317,10 +319,10 @@ network sfifo_tb {
 Given that the FIFO entity has the `liftsrams` attribute, it will not actually
 contain an SRAM instance. If the Alogic compiler is invoked on the FIFO itself,
 the instances of the backing store SRAM will be dropped, as they will be lifted
-past the top level module. In this case, the integrator of the FIFO will have
-to instantiate and connect the appropriate SRAM model directly. If the Alogic
-compiler is invoked on the testbench, the SRAM instances will be lifted past
-the FIFO, and put down in the testbench itself, as the testbench is the lowest
+past the top level module. In this case, the integrator of the FIFO will have to
+instantiate and connect the appropriate SRAM model directly. If the Alogic
+compiler is invoked on the testbench, the SRAM instances will be lifted past the
+FIFO, and put down in the testbench itself, as the testbench is the lowest
 entity in the hierarchy that does not have the `liftsrams` attribute, nor is it
 instantiated by any entities with the `liftsrams` attribute.
 

@@ -37,8 +37,6 @@ The `#define` directive can be used to define a macro that will undergo text
 replacement by the preprocessor. Only simple macros are supported, not
 function-like macros:
 
-<a href="http://afiddle.argondesign.com/?example=preproc_macros.alogic">Fiddle with this macro here.</a>
-
 ```
 #define MAGIC 4'd4
 // at compile time, all instances of MAGIC will be replaced with the text "4'd4"
@@ -80,9 +78,9 @@ denoting the file name to use for subsequent source code:
 #line 10 "foo.alogic"
 ```
 
-The line following the above directive will be processed as if it was line
-10 of file `foo.alogic`. If the file name is omitted, the compiler continues
-to use the current file name.
+The line following the above directive will be processed as if it was line 10 of
+file `foo.alogic`. If the file name is omitted, the compiler continues to use
+the current file name.
 
 <p align="center">
 <a href="interop.md">Previous</a> |

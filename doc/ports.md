@@ -12,8 +12,6 @@ Alogic uses the concept of ports to communicate across entity boundaries. A port
 is declared in an entity body, introduced by the `in` or `out` keywords. The
 simplest ports are analogous to Verilog module ports:
 
-<a href="http://afiddle.argondesign.com/?example=ports_communication.alogic">Fiddle with this code here.</a>
-
 ```
 fsm foo {
   in u7 p_in_a;
@@ -41,6 +39,7 @@ Ports can have any type, including structure types. Ports that utilize flow
 control can also be declared type `void`.
 
 The generic syntax for an input port declaration is:
+
 - `in` keyword
 - optionally followed by a flow control specifier
 - followed by a data type
@@ -54,6 +53,7 @@ The generic syntax for an input port declaration is:
 Output ports are declared with the same syntax as input port, but using the
 `out` keyword, and can additionally provide a storage specifier. The generic
 syntax is:
+
 - `out` keyword
 - optionally followed by a flow control specifier
 - optionally followed by a storage specifier
@@ -83,6 +83,7 @@ which are either driven in the same direction as the payload if they are forward
 signals, or driven the opposite way if they are **backward** signals.
 
 The following flow control specifiers are supported:
+
 - `sync` results in an additional **valid** signal
 - `sync ready` results in additional **valid** and **ready** signals
 
@@ -147,7 +148,7 @@ is low.
 ]}
 -->
 
- ![sync ready signals](ports-sync-ready.svg)
+![sync ready signals](ports-sync-ready.svg)
 
 ### Flow control signal dependencies
 
@@ -177,8 +178,6 @@ the corresponding `valid` signal is low. i.e.: A combinational dependence from
 The simplest way of consuming the value of an input port is to use the `.read()`
 method:
 
-<a href="http://afiddle.argondesign.com/?example=ports_input.alogic">Fiddle with this code here.</a>
-
 ```
   in sync u4 p_in;
   ...
@@ -192,20 +191,18 @@ times and will keep returning the same value.
 For ports with flow control:
 
 - If the `valid` signal is low, the `.read()` method has the side effect of
-stalling the entity. This means that `.read()` methods on ports with flow
-control are blocking in the sense that they will stall the entity until a
-transaction is available.
+  stalling the entity. This means that `.read()` methods on ports with flow
+  control are blocking in the sense that they will stall the entity until a
+  transaction is available.
 
 - If the port is `sync ready`, the `.read()` method will raise the `ready`
-signal to high, thus allowing the data to be consumed.
+  signal to high, thus allowing the data to be consumed.
 
 ### Output port access
 
-<a href="http://afiddle.argondesign.com/?example=ports_output.alogic">Fiddle with these code samples here.</a>
-
 An output port can be updated using the `.write()` method, which takes as a
-single argument the value to output on the port (writes to `void` ports take
-no arguments):
+single argument the value to output on the port (writes to `void` ports take no
+arguments):
 
 ```
   out sync i4 p_out;
@@ -221,13 +218,13 @@ value. The value will not be committed until the end of the clock cycle.
 For ports with flow control:
 
 - The `.write()` method has the side effect of setting the `valid` signal high
-when appropriate.
+  when appropriate.
 
 - If the port is `sync ready`, if `ready` is low, the `.write()` transaction can
-still occur and the entity is not blocked. However, when the entity returns to
-this state and attempts a further `.write()` transaction, it will then stall
-until the previous transaction is no longer present in the output slice (see
-sections below about Output storage).
+  still occur and the entity is not blocked. However, when the entity returns to
+  this state and attempts a further `.write()` transaction, it will then stall
+  until the previous transaction is no longer present in the output slice (see
+  sections below about Output storage).
 
 Output ports without flow control can also be assigned directly, which is
 equivalent to the corresponding `.write()` call.
@@ -263,8 +260,6 @@ is simply a reference to the current value of the input port payload signals. It
 is usually reasonable to use direct port access only for ports without flow
 control.
 
-<a href="http://afiddle.argondesign.com/?example=ports_direct_in.alogic">Fiddle with this code here.</a>
-
 ```
   in bool p_flag;
   ...
@@ -283,8 +278,6 @@ Similarly to input ports, it is also possible to reference the payload signals
 of output ports directly, which evaluates to the current value of the output
 signals:
 
-<a href="http://afiddle.argondesign.com/?example=ports_direct_out.alogic">Fiddle with this code here.</a>
-
 ```
   out u4 number;
 
@@ -298,16 +291,14 @@ signals:
 
 ### Checking port state
 
-Ports with `sync` and `sync ready` flow control provide the `.valid` property
-to check the state of the `valid` signal of the port. This can be used both on
+Ports with `sync` and `sync ready` flow control provide the `.valid` property to
+check the state of the `valid` signal of the port. This can be used both on
 input ports, where it evaluates to the state of the `valid` signal coming into
 the entity, and on output ports, where it resolves to the `valid` signal being
 driven from the entity.
 
 One important use of testing port state is non-blocking read/write from ports
 with flow control:
-
-<a href="http://afiddle.argondesign.com/?example=ports_checking.alogic">Fiddle with this code here.</a>
 
 ```
 fsm nonblocking {
@@ -337,8 +328,8 @@ including `cycles`.
 To perform non-blocking writes on `sync ready` output port, test `space[0]`
 to see if the closest register slice has space. Note that due to the way
 `fslice` register slices are structured, and because the incoming ready signal
-on an output slice is not observable (to avoid combinational loops), this
-would only allow a write on every other cycle in the best case:
+on an output slice is not observable (to avoid combinational loops), this would
+only allow a write on every other cycle in the best case:
 
 ```
 out sync ready fslice bool p_o;
@@ -350,16 +341,14 @@ void main() {
 }
 ```
 
-To allow full throughput output ports with the above non-blocking write
-pattern, use a `bslice`, or `bslice fslice` if required.
+To allow full throughput output ports with the above non-blocking write pattern,
+use a `bslice`, or `bslice fslice` if required.
 
 ### Waiting for transactions without consuming them
 
-The `.valid` property, combined with the `wait` statement can be used on
-input ports to wait for an incoming transaction. This stalls state machines
-until the `valid` signal on the corresponding port becomes high.
-
-<a href="http://afiddle.argondesign.com/?example=ports_waiting.alogic">Fiddle with this code here.</a>
+The `.valid` property, combined with the `wait` statement can be used on input
+ports to wait for an incoming transaction. This stalls state machines until
+the `valid` signal on the corresponding port becomes high.
 
 ```
   in sync ready void start;
@@ -374,11 +363,9 @@ until the `valid` signal on the corresponding port becomes high.
 
 Using `a = p_in.read();` requires replicating the contents of `p_in` to create
 the local flops for `a`. If `a` is very wide and the data will be used over
-multiple cycles, it is more area efficient to use `wait p_in.valid`, followed
-by direct port access to `p_in`. When the entity has finished using the data in
+multiple cycles, it is more area efficient to use `wait p_in.valid`, followed by
+direct port access to `p_in`. When the entity has finished using the data in
 `p_in`, a `p_in.read();` statement can be used to consume the transaction.
-
-<a href="http://afiddle.argondesign.com/?example=ports_stepdown.alogic">Fiddle with this code here.</a>
 
 ```
 fsm stepdown {
@@ -415,9 +402,6 @@ Each of these options is now discussed in detail:
 Output ports without flow control are driven from a local flop by default, which
 is updated by the FSM:
 
-<a href="http://afiddle.argondesign.com/?example=ports_output_no_fc_flop.alogic">
-Fiddle with this code here.</a>
-
 ```
 fsm registered {
  out bool a;
@@ -448,9 +432,6 @@ of the FSM above would look like the following waveform:
 
 The `wire` storage specifier can be used to omit the output register and drive
 the output port combinationally:
-
-<a href="http://afiddle.argondesign.com/?example=ports_output_no_fc_comb.alogic">
-Fiddle with this code here.</a>
 
 ```
 fsm combinational {
@@ -484,9 +465,6 @@ This would result in the following behaviour:
 Similarly to ports without flow control, `sync` ports (and their `valid`
 signals) are also driven from registers (local flops in the FSM) by default.
 They can also be declared combinationally using the `wire` storage specifier:
-
-<a href="http://afiddle.argondesign.com/?example=ports_output_sync.alogic">
-Fiddle with this code here.</a>
 
 ```
 fsm syncports {
@@ -526,7 +504,7 @@ combinational logic connecting `valid` and `ready`. These are necessary to
 ensure there is no combinational dependency between the internal `valid` and
 `ready` signals generated by the FSM. Similarly to other registered output
 ports, each output slice has space to store one payload item. This means a write
-can occur even if the receiving module is not ready.  This means .write() can
+can occur even if the receiving module is not ready. This means .write() can
 sometimes be done without stalling the module.
 
 Consider the following illustration of the implementation of FSMs:
@@ -540,19 +518,17 @@ combinational loop between the `valid` and `ready` signals of an interface must
 be avoided. Output slices aid in this by ensuring that the `ready` signal going
 to the combinational cloud is itself not combinationally dependent on the
 corresponding `valid` signal emanating from the combinational cloud. This is
-achieved through the use of registers and combinational logic within the
-output slice.
+achieved through the use of registers and combinational logic within the output
+slice.
 
 Alogic supports 3 kinds of output slices:
+
 - A forward slice can be defined using the `fslice` storage specifier
 - A backward slice can be defined using the `bslice` storage specifier
 - A half throughput slice can be defined using the `bubble` storage specifier
 
 Without providing an explicit storage specifier, the default storage used for a
 `sync ready` output port is an `fslice`:
-
-<a href="http://afiddle.argondesign.com/?example=ports_output_sync_ready.alogic">
-Fiddle with this code here.</a>
 
 ```
 fsm slices {
@@ -583,8 +559,8 @@ following:
 ![backward slice](bslice.svg)
 
 This time, the `ready` signal driven to the FSM combinational logic is coming
-from a register, so there is no combinational path between the `ready` input
-and the `ready` output signals.
+from a register, so there is no combinational path between the `ready` input and
+the `ready` output signals.
 
 Similarly to the `fslice`, there is a storage register for the payload, but this
 can be bypassed if `ready` input is high. Hence the output `payload` can be
@@ -592,13 +568,13 @@ driven combinationally, similarly to how the `wire` storage type can be used for
 ports without flow control, or ports with `sync` flow control. If `ready` input
 is low, the payload is transferred to the storage register.
 
-If the local payload storage is occupied, the datum in the local
-storage takes precedence over the payload incoming from the FSM, and as such
-transaction ordering is maintained. The FSM cannot push a new item into the
-`bslice`, until the local storage is emptied by being accepted by the reader
-of the output port. This means that there can be a stall due to the local
-storage in a `bslice` being occupied, even if the reader of the output port is
-accepting the transaction on the same cycle.
+If the local payload storage is occupied, the datum in the local storage takes
+precedence over the payload incoming from the FSM, and as such transaction
+ordering is maintained. The FSM cannot push a new item into the
+`bslice`, until the local storage is emptied by being accepted by the reader of
+the output port. This means that there can be a stall due to the local storage
+in a `bslice` being occupied, even if the reader of the output port is accepting
+the transaction on the same cycle.
 
 Note that the full throughput `fslice` and `bslice` break the combinational
 dependency between the input and output interfaces in only the forward and
@@ -691,8 +667,8 @@ The same can be done for variables declared in entity scope - see
 A cardinal port can be declared by omitting the name from the port declaration.
 There can be at most one cardinal input port and one cardinal output port per
 entity. Cardinal ports behave as if they were declared with the names `in` or
-`out`, and as such they can be referred to with those keywords. The entity
-can declare additional ordinary ports:
+`out`, and as such they can be referred to with those keywords. The entity can
+declare additional ordinary ports:
 
 ```
 fsm cardinal_adder {
@@ -707,8 +683,8 @@ fsm cardinal_adder {
 }
 ```
 
-Cardinal ports behave exactly the same as ordinary ports, except in [port
-connections](networks.md#connecting-cardinal-ports) where they are used
+Cardinal ports behave exactly the same as ordinary ports, except
+in [port connections](networks.md#connecting-cardinal-ports) where they are used
 implicitly when referring to an instance of an entity, without naming a
 particular port.
 

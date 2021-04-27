@@ -22,8 +22,8 @@ pipeline u16 a;
 
 `pipeline` variables used in nested FSMs will be passed along the referencing
 FSMs through pipeline ports. Pipeline ports can be declared by using the
-`pipeline` keyword instead of a type specifier in the port declaration. It
-is conventional to declare pipeline ports as the cardinal ports of a pipeline
+`pipeline` keyword instead of a type specifier in the port declaration. It is
+conventional to declare pipeline ports as the cardinal ports of a pipeline
 stage:
 
 ```
@@ -39,25 +39,23 @@ The following points explain how to create a pipeline in Alogic. The example
 afterwards will also help to clarify.
 
 - To create a pipeline entity, the designer will need to create a `network`
-entity with nested FSMs which will act as the pipeline stages. The nested FSMs
-must be singletons (have only a single instance), and must be defined in
-pipeline order in the enclosing network.
+  entity with nested FSMs which will act as the pipeline stages. The nested FSMs
+  must be singletons (have only a single instance), and must be defined in
+  pipeline order in the enclosing network.
 
 - In the enclosing network, any variables that need to be passed between stages
-should be declared as `pipeline` variables. These can then be used inside the
-nested FSMs.
+  should be declared as `pipeline` variables. These can then be used inside the
+  nested FSMs.
 
-- The pipeline ports of the stages must be connected in the desired order.
-Using cardinal pipeline ports makes this convenient:
-`<stage-n> -> <stage-n+1>`.
+- The pipeline ports of the stages must be connected in the desired order. Using
+  cardinal pipeline ports makes this convenient:
+  `<stage-n> -> <stage-n+1>`.
 
 - The `.read()` method of an input pipeline port can be used to consume the
-incoming pipeline variables from the previous stage.
+  incoming pipeline variables from the previous stage.
 
 - The `.write()` method of an output pipeline port can be used to emit the
-outgoing pipeline variables to the next stage.
-
-<a href="http://afiddle.argondesign.com/?example=pipelines_commands.alogic">Fiddle with these commands here.</a>
+  outgoing pipeline variables to the next stage.
 
 Here is an example of a 3 stage pipeline that computes the dot product of two
 4-element vectors, and has a 1-dot-product per cycle throughput. The example
@@ -66,8 +64,6 @@ demonstrate how pipeline variables are handled. The pipeline uses 4 multipliers
 in parallel in the 1st stage, and performs a radix-2 sum of the element-wise
 products over the subsequent 2 stages, using pipeline variables to pass
 intermediate results:
-
-<a href="http://afiddle.argondesign.com/?example=pipelines_example1.alogic">Fiddle with this example here.</a>
 
 ```
 network dotprod {
@@ -157,8 +153,6 @@ pipeline variable needs to flow from stage to stage, and will replace the
 pipeline ports with regular ports holding a packed structure with all the
 transiting variables. The definition of the `dotprod` pipeline above is
 equivalent to:
-
-<a href="http://afiddle.argondesign.com/?example=pipelines_example2.alogic">Fiddle with this example here.</a>
 
 ```
 network dotprod {
@@ -297,8 +291,8 @@ network dotprod {
 While it is common to build pipelines that sustain a single operation every
 cycle, note that the pipeline port `.read();` and `.write();` statements simply
 turn into common `.read()` and `.write()` calls on the converted input and
-output ports, and as such can be used at any place in the pipeline stage where
-a combinational statement is permitted.
+output ports, and as such can be used at any place in the pipeline stage where a
+combinational statement is permitted.
 
 Note further that the pipeline stages really are fully capable FSMs and can have
 multiple states, perform function calls, or declare local storage and further

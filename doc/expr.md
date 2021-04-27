@@ -24,8 +24,8 @@ their Verilog equivalent:
 
 ### Binary operators
 
-Alogic supports the following binary operators, with the same meaning as
-their Verilog equivalent:
+Alogic supports the following binary operators, with the same meaning as their
+Verilog equivalent:
 
 - `*` Binary multiplication
 - `/` Binary division
@@ -57,8 +57,6 @@ Alogic supports the usual ternary conditional `?:` operator:
 ```
 
 ### Indexing and slicing
-
-<a href="http://afiddle.argondesign.com/?example=expr_indexing.alogic">Fiddle with indexing and slicing here.</a>
 
 Values with appropriate type can be indexes with the usual `[_]` syntax,
 possibly multiple times.

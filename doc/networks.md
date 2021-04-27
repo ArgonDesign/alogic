@@ -16,8 +16,6 @@ Networks can be declared similar to other entities, using the `network` keyword,
 followed by the name of the network, followed by the description of the network
 in curly braces.
 
-<a href="http://afiddle.argondesign.com/?example=entities_network.alogic">Fiddle with this code here</a>:
-
 ```
 network a {
   <description>
@@ -29,9 +27,9 @@ network a {
 As the purpose of networks is to define hierarchies of instances and their
 interconnections, they can only contain:
 
- - Network variable declarations
- - Instantiations of other entities
- - Port connections
+- Network variable declarations
+- Instantiations of other entities
+- Port connections
 
 These are now discussed in more detail.
 
@@ -72,22 +70,22 @@ Instantiation of parametrized entities also require a parameter list:
 ```
 
 The parameter list must be present (but may be empty) if the entity is
-parametrized, and must be absent if the entity is not parametrized.
-Parameter values are usually provided by-name (i.e.: as a comma separated
-list of '<parameter-name>=<value>' assignments). If the entity declares only
-a single parameter, it can be provided as a single positional argument. See
-the documentation on [parameters](params.md) for more details.
+parametrized, and must be absent if the entity is not parametrized. Parameter
+values are usually provided by-name (i.e.: as a comma separated list of '<
+parameter-name>=<value>' assignments). If the entity declares only a single
+parameter, it can be provided as a single positional argument. See the
+documentation on [parameters](params.md) for more details.
 
 - An example instantiation that creates an instance named `bar` of an entity
-named `foo` would be simply:
+  named `foo` would be simply:
 
     ```
     bar = new foo;
     ```
 
 - Similarly, one could instantiate a parametrized entity called `fifo` with a
-particular width and depth. WIDTH and DEPTH must match the names of the
-parameters defined in `fifo`.
+  particular width and depth. WIDTH and DEPTH must match the names of the
+  parameters defined in `fifo`.
 
     ```
     fifo_i = new fifo(WIDTH=32, DEPTH=512);
@@ -102,10 +100,10 @@ be connected using the `->` operator:
 a.p_out -> b.p_in;
 ```
 
-This creates a combinational connection between the left and right hand sides
-of the `->`, with the left hand side port being the driver of the right hand
-side port. Alogic takes care of connecting flow control signals in the
-appropriate direction.
+This creates a combinational connection between the left and right hand sides of
+the `->`, with the left hand side port being the driver of the right hand side
+port. Alogic takes care of connecting flow control signals in the appropriate
+direction.
 
 Ports on entity instances can also be connected to ports on the network using
 the same syntax:
@@ -116,11 +114,12 @@ b.p_out -> bar;
 ```
 
 In the above:
- - `a_i` and `b_i` are instances of `a` and `b` respectively
- - `p_in` is an input port declared inside `a`
- - `p_out` is an output port declared inside `b`
- - `foo` is an input port declared in the current network
- - `bar` is an output port declared in the current network
+
+- `a_i` and `b_i` are instances of `a` and `b` respectively
+- `p_in` is an input port declared inside `a`
+- `p_out` is an output port declared inside `b`
+- `foo` is an input port declared in the current network
+- `bar` is an output port declared in the current network
 
 Ports connected using `->` must use matching flow control. This means that ports
 without flow control can only be connected to ports also not using flow control,
@@ -139,10 +138,10 @@ settings.width -> b.width, c.width, d.width;
 Connections of `sync ready` ports must be one to one, otherwise the compiler
 will issue an error.
 
-Ports without flow control can be connected using arbitrary expressions, provided
-that the resulting connection is pure wiring and will not induce any logic gates.
-Connections can also be used to tie off ports. For example, the following
-connections are valid:
+Ports without flow control can be connected using arbitrary expressions,
+provided that the resulting connection is pure wiring and will not induce any
+logic gates. Connections can also be used to tie off ports. For example, the
+following connections are valid:
 
 ```
 {pin_0, pin_1} -> a.pin_0[0+:8];
@@ -153,23 +152,25 @@ pin_3.x.y      -> a.pin_2.z;
 ```
 
 In the above:
-  - `pin_0` through `pin_3` and `pout_0` through `pout_2` are input and output ports
-  declared in the current network,
-  - `pin_3` is a struct type with a member named `x`, itself a struct type with a
+
+- `pin_0` through `pin_3` and `pout_0` through `pout_2` are input and output
+  ports declared in the current network,
+- `pin_3` is a struct type with a member named `x`, itself a struct type with a
   member named `y`,
-  - `a` is an entity with input ports `pin_0` through `pin_2` and output port `pout`,
-  - `A` is a const or param value,
-  - the port `pin_1` on the entity `a` is a vector type and hence `a.pin_1[A]` has
+- `a` is an entity with input ports `pin_0` through `pin_2` and output
+  port `pout`,
+- `A` is a const or param value,
+- the port `pin_1` on the entity `a` is a vector type and hence `a.pin_1[A]` has
   width greater than 1, and
-  - the port `pin_2` on the entity `a` is a struct type with a member named `z`.
+- the port `pin_2` on the entity `a` is a struct type with a member named `z`.
 
 ### Connecting cardinal ports
 
 Cardinal ports simplify port connection expressions. If the left hand side of a
 connection refers to an instance (as opposed to a port of the instance), it is
-considered a reference to the cardinal output port of the instance. Similarly
-on the right hand side of a connection, the cardinal input port is used.
-Cardinal ports can also be referenced explicitly if necessary:
+considered a reference to the cardinal output port of the instance. Similarly on
+the right hand side of a connection, the cardinal input port is used. Cardinal
+ports can also be referenced explicitly if necessary:
 
 ```
 fsm add_3 {
@@ -197,7 +198,7 @@ network cardinal_connect {
 ### Nested FSMs
 
 Networks can also contain nested `fsm` definitions, which can be instantiated in
-the enclosing network (<a href="http://afiddle.argondesign.com/?example=networks_nested.alogic">fiddle here</a>):
+the enclosing network:
 
 ```
 network foo {
@@ -219,7 +220,7 @@ tightly interconnected FSMs, and is also used as the abstraction for
 It is a common pattern to define a nested FSM in a network and then create a
 single instance of it. Alogic provides syntactic sugar for defining just such a
 singleton nested entity, by using the `new` keyword before the nested
-definition (<a href="http://afiddle.argondesign.com/?example=networks_singletons.alogic">fiddle here</a>):
+definition:
 
 ```
 network foo {
@@ -247,8 +248,6 @@ entity, as well the `param` and `const` values declared in the enclosing entity.
 The compiler will emit nested entities as separate modules, and if there are
 outer ports referenced by the nested entity, these will be automatically wired
 through to the nested entity:
-
-<a href="http://afiddle.argondesign.com/?example=networks_access.alogic">Fiddle with this code here.</a>
 
 ```
 network foo {

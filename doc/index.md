@@ -1,8 +1,13 @@
 # Alogic Reference
 
-This documentation intends to describe both the Alogic language and the Alogic
+This documentation intends to describe both the Alogic language, and the Alogic
 compiler which translates the Alogic language to Verilog. The sections can be
 read in linear order to provide an introduction to Alogic.
+
+A zero configuration
+online [compiler playground](https://alogic-playground.argondesign.com) is
+available for experimentation. The reader is encouraged to try the examples in
+the documentation and inspect the resulting Verilog output.
 
 ## Sections
 

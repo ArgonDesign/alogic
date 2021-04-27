@@ -11,8 +11,8 @@ allow for almost unlimited flexibility in what digital circuits can be
 expressed, and are used throughout the implementation flow as representations of
 these digital circuits at various levels of abstraction (e.g.: behavioural
 description, gate level netlist, etc.). While this flexibility is necessary for
-a language that is used to represent circuits at multiple abstraction levels,
-it also forces the designer to be explicit about every detail of their design.
+a language that is used to represent circuits at multiple abstraction levels, it
+also forces the designer to be explicit about every detail of their design.
 Various implementations of the standard HDL languages also suffer from feature
 set mismatches, where one implementation might support certain language features
 only with restrictions and these restrictions vary between different
@@ -58,29 +58,33 @@ have been able to given the design and verification schedules. This in turn
 resulted in a significant Silicon area reduction compared to similar solutions
 designed using direct Verilog description.
 
-At the start of the Alogic project, the level of abstraction and overall structure
-were inspired by Cx. Both languages are based around entities which communicate
-with each other through ports, and compile into standalone Verilog modules. Code
-that is written sequentially is compiled into discrete control blocks. All of
-these structural decisions, as well as a significant amount of syntax, were
-motivated by Cx and form the foundations of the Alogic language.
+At the start of the Alogic project, the level of abstraction and overall
+structure were inspired by Cx. Both languages are based around entities which
+communicate with each other through ports, and compile into standalone Verilog
+modules. Code that is written sequentially is compiled into discrete control
+blocks. All of these structural decisions, as well as a significant amount of
+syntax, were motivated by Cx and form the foundations of the Alogic language.
 
-There are some features of Cx which are not currently supported by Alogic – namely,
-a development environment, the ability to compile into VHDL, clock and reset
-properties, and in-lined functions.
+There are some features of Cx which are not currently supported by Alogic –
+namely, a development environment, the ability to compile into VHDL, clock and
+reset properties, and in-lined functions.
 
-As the Alogic project has developed, the following features have been introduced.
+As the Alogic project has developed, the following features have been
+introduced.
+
 * Support for structures
 * More explicit control statements to give the user full control over clock
-cycles and states
+  cycles and states
 * Output storage slices on ports to allow more complex designs
 * Simplified network syntax for connecting ports together
 * Automated connection of pipeline modules
 
-This is an ongoing project and we expect to introduce further features over time.
+This is an ongoing project and we expect to introduce further features over
+time.
 
 ## Further information
 
 * [Documentation](doc/index.md)
 * [License](LICENSE)
 * [Installation](doc/install.md)
+* [Online compiler playground](https://alogic-playground.argondesign.com)

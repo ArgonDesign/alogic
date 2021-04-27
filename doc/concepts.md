@@ -4,14 +4,14 @@ Previous |
 <a href="compilation.md">Next</a>
 </p>
 
-# Basic concepts and examples 
+# Basic concepts and examples
 
 ### Introduction
 
 The Alogic language is used for the description of digital circuits. In its
-simplest form, an Alogic design could be a network of FSMs, connected
-together (and/or connected to external sources) using input and output ports. In
-this way, systems such as pipelines or other complex modules can be built.
+simplest form, an Alogic design could be a network of FSMs, connected together (
+and/or connected to external sources) using input and output ports. In this way,
+systems such as pipelines or other complex modules can be built.
 
 ![intro](intro.svg)
 
@@ -36,6 +36,7 @@ linear way and appear similar to common software programming languages.
 ### Alogic Prerequisites
 
 The designer will need knowledge of:
+
 - Flow control
 - The difference between combinational and registered logic
 - Software languages such as C
@@ -43,16 +44,14 @@ The designer will need knowledge of:
 ### Alogic Documentation
 
 The Alogic documentation is a comprehensive guide to understanding and designing
-Alogic code. Amongst other details, it explains how to use different [types of
-entities](entities.md), how to connect them with [ports](ports.md), and the
-range of [statements](statements.md) and [data types](types.md) that can be
-used.
+Alogic code. Amongst other details, it explains how to use
+different [types of entities](entities.md), how to connect them
+with [ports](ports.md), and the range of [statements](statements.md)
+and [data types](types.md) that can be used.
 
 ### Example FSM
 
 The following code demonstrates an FSM with 4 states:
-
-<a href="http://afiddle.argondesign.com/?example=concepts_example_fsm.alogic">Fiddle with this code here.</a>
 
 ```
 fsm foo {
@@ -94,14 +93,12 @@ fsm foo {
 ### Ports
 
 Communication between entities happens through well defined interfaces called
-[ports](ports.md). A port carries some (usually registered) payload signals,
-and optionally some flow control signals with well-defined semantics.
+[ports](ports.md). A port carries some (usually registered) payload signals, and
+optionally some flow control signals with well-defined semantics.
 
 A simple example of a module that, on every clock cycle, reads an 8 bit value
 from an input port using a valid-ready handshake and adds a quasi-static value
 to it is as follows:
-
-<a href="http://afiddle.argondesign.com/?example=concepts_ports.alogic">Fiddle with this code here.</a>
 
 ```
 fsm add {

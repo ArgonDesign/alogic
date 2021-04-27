@@ -54,8 +54,6 @@ control statement. Any other expression when used in a statement position is a
 combinational statement, including calls to built-in functions, port methods and
 similar accessors:
 
-<a href="http://afiddle.argondesign.com/?example=control_summary.alogic">Fiddle with this code here.</a>
-
 ```
 fsm a {
   in sync bool b;
@@ -97,8 +95,6 @@ starting at the statement following this control statement, respecting the
 control transfer performed by control function calls, `goto` and `return`
 statements:
 
-<a href="http://afiddle.argondesign.com/?example=control_simple.alogic">Fiddle with this code here.</a>
-
 ```
 void main() {
   a++;          // | Cycle 1
@@ -118,8 +114,6 @@ void main() {
 If you followed the basic procedure above, and you encountered a naked `{}`
 block, simply keep going inside the block. If the block is a combinational
 block, you will arrive at the bottom within the same cycle:
-
-<a href="http://afiddle.argondesign.com/?example=control_comb_blocks.alogic">Fiddle with this code here.</a>
 
 ```
 void main() {
@@ -141,8 +135,6 @@ void main() {
 
 If the block is a control block, the current cycle ends and a new cycle begins
 within the block:
-
-<a href="http://afiddle.argondesign.com/?example=control_ctrl_blocks.alogic">Fiddle with this code here.</a>
 
 ```
 void main() {
@@ -168,8 +160,6 @@ If the basic procedure takes you to a branching `if` or `case` statement,
 continue down across all branches in parallel. If the branching statement is a
 combinational statement, you will arrive at the statement following this
 branching statement within the same cycle:
-
-<a href="http://afiddle.argondesign.com/?example=control_comb_branch.alogic">Fiddle with this code here.</a>
 
 ```
 void main() {
@@ -199,8 +189,6 @@ branch direction will be executed.
 If the branching statement is a control statement, the current cycle ends and a
 new cycle begins within the taken branch:
 
-<a href="http://afiddle.argondesign.com/?example=control_ctrl_branch.alogic">Fiddle with this code here.</a>
-
 ```
 void main() {
   a++;          //  | Cycle 1
@@ -226,16 +214,16 @@ void main() {
 }
 ```
 
-Remember that for control branches, an implicit `fence` statement is [inserted
-by the compiler](statements.md#branching-statements) for an omitted `else`, or
+Remember that for control branches, an implicit `fence` statement
+is [inserted by the compiler](statements.md#branching-statements) for an
+omitted `else`, or
 `default` clause.
 
 #### Looping statements
 
 If the basic procedure took you to a looping statement, then the decision
 whether or not to enter the loop is performed together with the preceding
-combinational statements, but the current cycle always ends at the loop
-header (<a href="http://afiddle.argondesign.com/?example=control_loop.alogic">fiddle here</a>):
+combinational statements, but the current cycle always ends at the loop header:
 
 ```
 void main() {
@@ -258,7 +246,7 @@ void main() {
 A `break` statement ends the current cycle and transfers execution to the
 statement following the loop.
 
-Similarly, here is an example with a front-testing loop (<a href="http://afiddle.argondesign.com/?example=control_front_testing.alogic">fiddle here</a>):
+Similarly, here is an example with a front-testing loop:
 
 ```
 void main() {
@@ -292,7 +280,7 @@ rewritings.
 The reason the current cycle always ends upon loop entry is because a new FSM
 state must be introduced in order to be used as the target of the loopback at
 the end of the loop body. Consider the following `do` loop, which is designed to
-executes twice (<a href="http://afiddle.argondesign.com/?example=control_opt_do.alogic">fiddle here</a>):
+execute twice:
 
 ```
   u2 i = 2'd0;          // | Cycle 1
@@ -311,7 +299,7 @@ is possible if the statement immediately preceding the loop is a control
 statement. In this case, the loopback can target the state beginning after the
 preceding control statement, as there are no combinational statements in that
 sate at that point. The Alogic compiler performs this optimization, meaning that
-the following executes in 3 cycles, rather than 4 (<a href="http://afiddle.argondesign.com/?example=control_opt_for.alogic">fiddle here</a>):
+the following executes in 3 cycles, rather than 4:
 
 ```
 void main() {
@@ -331,7 +319,7 @@ void other() {
 ```
 
 Also note that due to this optimization, the `fence` statement in the following
-is redundant, and the state machine executes the same with or without it (<a href="http://afiddle.argondesign.com/?example=control_opt_fence.alogic">fiddle here</a>):
+is redundant, and the state machine executes the same with or without it:
 
 ```
 void main() {
@@ -348,7 +336,7 @@ void main() {
 
 This optimization is not possible if there is any combinational statement
 between the loop statement and the preceding control statement, so the `fence`
-in this is executed, and the new cycle then ends on loop entry (<a href="http://afiddle.argondesign.com/?example=control_no_opt.alogic">fiddle here</a>).
+in this is executed, and the new cycle then ends on loop entry.
 
 ```
 void main() {

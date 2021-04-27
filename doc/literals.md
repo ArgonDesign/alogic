@@ -8,62 +8,58 @@
 
 #### Unsized integer literals
 
-A simple decimal number (e.g.: `1`) is interpreted as an unsigned
-unsized integer. It can optionally be preceded by a `+` sign and
-optionally followed by a suffix `u`. Both the `+` prefix and the `u`
-suffix have no effect, but are allowed to enhance clarity where
-appropriate. A decimal signed integer can be written the same way but
-with a suffix `s` (e.g.: `1s`), and with an optional prefix `+` or `-`
+A simple decimal number (e.g.: `1`) is interpreted as an unsigned unsized
+integer. It can optionally be preceded by a `+` sign and optionally followed by
+a suffix `u`. Both the `+` prefix and the `u`
+suffix have no effect, but are allowed to enhance clarity where appropriate. A
+decimal signed integer can be written the same way but with a suffix `s` (
+e.g.: `1s`), and with an optional prefix `+` or `-`
 sign. Again, the `+` prefix is allowed but has not effect.
 
 Alternatively, the number can be preceded by one of the `0b`, `0o`, `0d`
 or `0x` base specifiers for binary, octal, decimal or hexadecimal bases
-respectively. 
+respectively.
 
-A simple decimal literal with a leading zero but without a base
-specifier is illegal. Use `0o` for octal or `0d` for decimal with
-leading zeros.
+A simple decimal literal with a leading zero but without a base specifier is
+illegal. Use `0o` for octal or `0d` for decimal with leading zeros.
 
 #### Sized integer literals
 
-Sized integer literals follow the Verilog syntax. 
+Sized integer literals follow the Verilog syntax.
 
-An unsigned sized integer literal begins with an optional `+` sign,
-which has no effect, followed by the `'` tick character, followed by a
-base specifier character which must be one of `b`, `d` or `h` for
-binary, decimal and hexadecimal base, followed by a list of digits in
-the specified base to denote the value.
+An unsigned sized integer literal begins with an optional `+` sign, which has no
+effect, followed by the `'` tick character, followed by a base specifier
+character which must be one of `b`, `d` or `h` for binary, decimal and
+hexadecimal base, followed by a list of digits in the specified base to denote
+the value.
 
 Signed sized literals are written similarly, but with an `s` between the
-`'` tick and the base specifier to mark a signed literal, and may have
-an optional `+` or `-` sign. Signed sized numbers are represented with
-the 2's complement binary format. The value of a signed sized literal
-with a `-` sign is the 2's complement of the value of the literal
-without the `-` sign. 
+`'` tick and the base specifier to mark a signed literal, and may have an
+optional `+` or `-` sign. Signed sized numbers are represented with the 2's
+complement binary format. The value of a signed sized literal with a `-` sign is
+the 2's complement of the value of the literal without the `-` sign.
 
-To get the fixed width bit pattern representing the literal, take the
-list of digits denoting the value, interpret it as an unsigned unsized
-literal, and take the trailing LSBs of the binary representation
-according to the width. This means that for sized literals, the digits
-specify the bit pattern of the value as opposed to the numerical value,
-which can sometimes give unexpected results with signed sized literals.
-In particular, observe that for signed literals, the syntax can yield a
-negative value for a seemingly positive literal: `4'sd15` would use the
-4-wide bit pattern 1111, which in the 4-bit 2's complement
+To get the fixed width bit pattern representing the literal, take the list of
+digits denoting the value, interpret it as an unsigned unsized literal, and take
+the trailing LSBs of the binary representation according to the width. This
+means that for sized literals, the digits specify the bit pattern of the value
+as opposed to the numerical value, which can sometimes give unexpected results
+with signed sized literals. In particular, observe that for signed literals, the
+syntax can yield a negative value for a seemingly positive literal: `4'sd15`
+would use the 4-wide bit pattern 1111, which in the 4-bit 2's complement
 representation stands for the value `-1`. Similarly the numerical value
-of `-4'sd8` is `8`. The compiler will issue a warning for such signed
-sized literals. It is illegal for the digits standing for the value to
-specify a bit pattern whose set than does not fit in the specified width
-as an unsigned number.
+of `-4'sd8` is `8`. The compiler will issue a warning for such signed sized
+literals. It is illegal for the digits standing for the value to specify a bit
+pattern whose set than does not fit in the specified width as an unsigned
+number.
 
 #### General rules about sized and unsized integer literals
 
-An unsigned literal written with a `-` sign is illegal, unless the value
-is 0. The literal value (but not the size specifier) may contain
-non-consecutive `_` characters to be used as digit separators, but not
-as the first or last character. No whitespace is allowed inside an
-integer literal, except between a leading `+` or `-` sign and the rest
-of the literal.
+An unsigned literal written with a `-` sign is illegal, unless the value is 0.
+The literal value (but not the size specifier) may contain non-consecutive `_`
+characters to be used as digit separators, but not as the first or last
+character. No whitespace is allowed inside an integer literal, except between a
+leading `+` or `-` sign and the rest of the literal.
 
 #### Example unsized integer literals
 
@@ -138,12 +134,10 @@ The literal `true` can be used as a synonym for `1'b1`, and the literal
 
 #### String literals
 
-The language accepts string literals enclosed in double quotes `"`.
-Alogic does not support interpreting strings as a bit vector. String
-literals should only be used as arguments to builtin functions that
-require a string argument, e.g. `$display`:
-
-<a href="http://afiddle.argondesign.com/?example=literals_string.alogic">Fiddle with "display" here.</a>
+The language accepts string literals enclosed in double quotes `"`. Alogic does
+not support interpreting strings as a bit vector. String literals should only be
+used as arguments to builtin functions that require a string argument,
+e.g. `$display`:
 
 ```
 $display("Help!");

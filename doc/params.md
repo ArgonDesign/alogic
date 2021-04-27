@@ -9,11 +9,9 @@
 #### Constants
 
 Constants are local aliases for values introduced with the `const`
-keyword. Constants can be declared with any packed type, or with any of
-the 2 unsized integer types. As `const` values are immutable, their
-declarations must have an initializer:
-
-<a href="http://afiddle.argondesign.com/?example=params_constants.alogic">Fiddle with this code here.</a>
+keyword. Constants can be declared with any packed type, or with any of the 2
+unsized integer types. As `const` values are immutable, their declarations must
+have an initializer:
 
 ```
 fsm baz {
@@ -37,19 +35,19 @@ module baz (
 endmodule
 ```
 
-Note however, that even though `const` declarations may be emitted in
-the target language, the compiler will inline the value of `const`
+Note however, that even though `const` declarations may be emitted in the target
+language, the compiler will inline the value of `const`
 declarations wherever possible.
 
 #### Parameterized definitions
 
 Entities and structures can declare typed parameters, introduced with the
-`param` keyword. Parameters are similar to constants, but can be provided
-with an alternative value at instantiation time. Parameter declarations can
-have a default value if appropriate, or can be left without an
-initializer. Actual parameter values can be specified at instantiation
-time, which override any default parameter values. Parameters without a
-default value must be provided at instantiation time:
+`param` keyword. Parameters are similar to constants, but can be provided with
+an alternative value at instantiation time. Parameter declarations can have a
+default value if appropriate, or can be left without an initializer. Actual
+parameter values can be specified at instantiation time, which override any
+default parameter values. Parameters without a default value must be provided at
+instantiation time:
 
 ```
 fsm foo {
@@ -99,13 +97,12 @@ fsm fifo {
 #### Parameter specialization
 
 Alogic performs parameter specialization, meaning the compiler will emit
-specific implementations of a parametrized entity, based on the
-particular parameter values it is instantiated with. This means that
-Verilog modules output by the Alogic compiler will never contain
-_parameter_ declarations. Specialized parameters with a packed type are
-emitted as _localparam_ declarations in the output Verilog if required.
-For the above example, the compiler would emit the following specialization
-of entity `foo`:
+specific implementations of a parametrized entity, based on the particular
+parameter values it is instantiated with. This means that Verilog modules output
+by the Alogic compiler will never contain
+_parameter_ declarations. Specialized parameters with a packed type are emitted
+as _localparam_ declarations in the output Verilog if required. For the above
+example, the compiler would emit the following specialization of entity `foo`:
 
 ```verilog
 module foo__MARKER_107__B_11__C_255 (
@@ -120,10 +117,8 @@ module foo__MARKER_107__B_11__C_255 (
 endmodule
 ```
 
-One benefit of parameter specialization is that as opposed to Verilog,
-port declarations in Alogic can depend on `const` values:
-
-<a href="http://afiddle.argondesign.com/?example=params_port_declarations.alogic">Fiddle with this code here.</a>
+One benefit of parameter specialization is that as opposed to Verilog, port
+declarations in Alogic can depend on `const` values:
 
 ```
 fsm bar {
@@ -135,19 +130,18 @@ fsm bar {
 }
 ```
 
-Further benefits of parameter specialization include the possibility of
-further compile time optimization of the specialized entities and
-elimination of Verilog instance based code coverage holes arising from
-use of constant parameter values in expressions.
+Further benefits of parameter specialization include the possibility of further
+compile time optimization of the specialized entities and elimination of Verilog
+instance based code coverage holes arising from use of constant parameter values
+in expressions.
 
 #### Actual parameter assignment
 
-Wherever a parametrized type (e.g.: a parametrized entity or struct) is
-used, it must be provided with an actual parameter list, even if use of
-the default parameter values is desired. Parameter values usually need to
-be given by name. The one exception to this requirement is if a type has
-only a single declared parameter, then it can be provided as a single
-positional value:
+Wherever a parametrized type (e.g.: a parametrized entity or struct) is used, it
+must be provided with an actual parameter list, even if use of the default
+parameter values is desired. Parameter values usually need to be given by name.
+The one exception to this requirement is if a type has only a single declared
+parameter, then it can be provided as a single positional value:
 
 ```
 struct a_t {
@@ -197,8 +191,8 @@ struct t {
 const c = @bits(t(10)); // 'c' has the value 30
 ```
 
-This also means that a specific parametrization of a type can be given
-a name itself with typedef:
+This also means that a specific parametrization of a type can be given a name
+itself with typedef:
 
 ```
 typedef t(10) t_10;
@@ -210,9 +204,9 @@ t_10 a_t_10; // Declares 'a_t_10' with type t(W=10)
 
 #### Parameterized top level entities
 
-Top level entities can have parameters. Actual parameter values for top
-level entities can be specified on the compiler command line with the
-same call-style syntax as in the Alogic language:
+Top level entities can have parameters. Actual parameter values for top level
+entities can be specified on the compiler command line with the same call-style
+syntax as in the Alogic language:
 
 ```
 fsm top {
@@ -227,18 +221,17 @@ alogic -o out 'top(P=1, Q=2)' 'top(P=3)'
 ```
 
 The above compiler invocation will generate two specializations of entity
-'top', both of which will be emitted in the output directory 'out'. Note
-that the quiting is required by the shell to pass the expression as a
-single argument to the alogic compiler. The top-level specifier expressions
-are fully fledged Alogic expression as they would appear in an instance
-definition in the Alogic language.
+'top', both of which will be emitted in the output directory 'out'. Note that
+the quiting is required by the shell to pass the expression as a single argument
+to the alogic compiler. The top-level specifier expressions are fully fledged
+Alogic expression as they would appear in an instance definition in the Alogic
+language.
 
 #### Parameter and constant dependencies
 
-Parameter and constant declarations can depend on each other in an
-arbitrary way. Parameters and constants however cannot depend on any other
-name declared inside the same entity, in particular this is
-valid:
+Parameter and constant declarations can depend on each other in an arbitrary
+way. Parameters and constants however cannot depend on any other name declared
+inside the same entity, in particular this is valid:
 
 ```
 fsm dependent_param {
