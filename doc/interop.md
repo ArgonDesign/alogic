@@ -1,7 +1,6 @@
 <p align="center">
 <a href="ffi.md">Previous</a> |
-<a href="index.md">Index</a> |
-<a href="preproc.md">Next</a>
+<a href="index.md">Index</a>
 </p>
 
 # Interoperability with low level HDLs
@@ -472,6 +471,5 @@ designer.
 
 <p align="center">
 <a href="ffi.md">Previous</a> |
-<a href="index.md">Index</a> |
-<a href="preproc.md">Next</a>
+<a href="index.md">Index</a>
 </p>

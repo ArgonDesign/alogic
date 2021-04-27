@@ -34,7 +34,6 @@ the documentation and inspect the resulting Verilog output.
 - [Compile time code generation](gen.md)
 - [Foreign function interface](ffi.md)
 - [Verilog interoperability](interop.md)
-- [Preprocessor](preproc.md)
 - [List of keywords](../src/main/antlr4/AlogicLexer.g4#L133)
 - [Formal grammar](../src/main/antlr4/AlogicParser.g4#L27)
 
