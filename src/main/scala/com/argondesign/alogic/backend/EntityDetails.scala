@@ -48,8 +48,6 @@ final class EntityDetails(val decl: DeclEntity, val defn: DefnEntity) {
 
   lazy val hasXenoFuncs: Boolean = xenoFuncs.nonEmpty
 
-  lazy val hasInstances: Boolean = decl.instances.nonEmpty
-
   // Any symbol that is driven by a connect must be a net
   lazy val netSymbols: List[Symbol] = defn.assigns flatMap {
     case EntAssign(lhs, _) => lhs collect { case ExprSym(symbol) => symbol }

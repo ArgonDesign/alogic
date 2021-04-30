@@ -58,7 +58,7 @@ final class LiftSramsFrom(
     // Replace lifted instances with wired-through ports
     ////////////////////////////////////////////////////////////////////////////
 
-    case DeclInstance(iSymbol, _) if liftFromMap(orig(entitySymbol)) contains iSymbol =>
+    case DeclInstance(iSymbol, _, _) if liftFromMap(orig(entitySymbol)) contains iSymbol =>
       // For each port of the instances being lifted, create a new port
       val newSymbols = for {
         pSymbol <- iSymbol.kind.asEntity.publicSymbols
@@ -126,7 +126,7 @@ final class LiftSramsTo(
 
   override protected def transform(tree: Tree): Tree = tree match {
     // Update instances
-    case decl @ DeclInstance(_, ExprSym(eSymbol)) =>
+    case decl @ DeclInstance(_, ExprSym(eSymbol), _) =>
       replacements.get(eSymbol) map { nSymbol =>
         decl.copy(spec = ExprSym(nSymbol)) regularize tree.loc
       } getOrElse tree
@@ -135,7 +135,7 @@ final class LiftSramsTo(
       // For each instance that we lifted something out from,
       // create the lifted instances and connect them up
       newInstances = for {
-        DeclInstance(iSymbol, _) <- decl.instances
+        DeclInstance(iSymbol, _, _) <- decl.instances
         oSymbol <- orig.get(iSymbol).iterator
         eSymbol = oSymbol.kind.asEntity.symbol
         lSymbols <- liftFromMap.get(eSymbol).iterator

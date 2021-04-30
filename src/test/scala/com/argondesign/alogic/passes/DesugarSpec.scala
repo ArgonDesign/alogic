@@ -161,7 +161,7 @@ final class DesugarSpec extends AnyFreeSpec with AlogicTest {
                 inside(decl_b_e) {
                   case DeclEntity(b_e, _) =>
                     decl_b_i should matchPattern {
-                      case DeclInstance(_, ExprSym(`b_e`)) =>
+                      case DeclInstance(_, ExprSym(`b_e`), _) =>
                     }
                 }
             }

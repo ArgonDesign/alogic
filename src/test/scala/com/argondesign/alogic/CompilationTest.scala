@@ -328,8 +328,10 @@ abstract class CompilationTest(val parallel: Boolean)
     val verilatorCmd = {
       val traceOpts = if (trace) "--trace" else ""
       val cflags = "-DVL_USER_STOP"
-      val files = s"$tbFile $mainFile ${dpiFileOpt.fold("")(_.toString)}"
-      s"""$verilator --cc --exe -Wall $traceOpts -CFLAGS "$cflags" -O3 --assert --trace-underscore -y $oPath --Mdir $objPath $files"""
+      val bindingsFileOpt = topLevelManifest.get[String]("bindings-file").toOption
+      val files =
+        s"$tbFile ${bindingsFileOpt.getOrElse("")} $mainFile ${dpiFileOpt.fold("")(_.toString)}"
+      s"""$verilator --cc --exe -Wall $traceOpts -CFLAGS "$cflags" -O3 --assert --trace-underscore -y $oPath --Mdir $objPath --top-module testbench $files"""
     }
     system(verilatorCmd, oPath, "verilator-compile.log")
 

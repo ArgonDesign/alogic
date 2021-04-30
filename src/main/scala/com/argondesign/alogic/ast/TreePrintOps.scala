@@ -158,7 +158,8 @@ trait TreePrintOps {
     case DescType(_, _, spec) => s"desc typedef ${v(spec)} $name"
     case DescEntity(_, _, variant, body) => block(s"desc ${v(variant)} $name", body)
     case DescRecord(_, _, body) => block(s"desc record $name", body)
-    case DescInstance(_, _, spec) => s"desc $name = new ${v(spec)};"
+    case DescInstance(_, _, spec, false) => s"desc $name = new ${v(spec)};"
+    case DescInstance(_, _, spec, true) => s"desc $name = bind ${v(spec)};"
     case DescSingleton(_, _, variant, body) => block(s"desc new ${v(variant)} $name", body)
     case DescFunc(_, _, _, ret, args, body) => block(s"desc ${v(ret)} $name(${vs(args)})", body)
     case DescPackage(_, _, body) => block(s"desc package $name", body)
@@ -210,7 +211,8 @@ trait TreePrintOps {
     case DeclType(_, spec) => s"decl typedef ${v(spec)} $name;"
     case DeclEntity(_, decls) => block(s"decl entity $name", decls)
     case DeclRecord(_, decls) => block(s"decl record $name", decls)
-    case DeclInstance(_, spec) => s"decl $name = new ${v(spec)};"
+    case DeclInstance(_, spec, false) => s"decl $name = new ${v(spec)};"
+    case DeclInstance(_, spec, true) => s"decl $name = bind ${v(spec)};"
     case DeclSingleton(_, decls) => block(s"decl new entity $name", decls)
     case DeclFunc(_, FuncVariant.Xeno, ret, args) => s"import ${v(ret)} $name(${vs(args)});"
     case DeclFunc(_, _, ret, args) => s"decl ${v(ret)} $name(${vs(args)});"
@@ -302,6 +304,7 @@ trait TreePrintOps {
   final private def v(tree: Ent)(implicit indent: Int): String = tree match {
     case EntSplice(tree) => v(tree)
     case EntConnect(lhs, rhs) => s"${v(lhs)} -> ${vs(rhs)};"
+    case EntConnectInputs(expr) => s"* -> ${v(expr)}.*;"
     case EntAssign(lhs, rhs) => s"${v(lhs)} <- ${v(rhs)};"
     case EntCombProcess(stmts) => block("comb-process", stmts)
     case EntClockedProcess(clk, None, stmts) => block(s"clocked-process clk=${v(clk)}", stmts)

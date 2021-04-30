@@ -1,0 +1,19 @@
+fsm bound {
+  out wire bool o;
+
+  void main () {
+    o = 0;
+    fence;
+  }
+}
+
+network bound_entity_with_outputs {
+  out wire bool o;
+
+  inst = bind bound;
+}
+
+compile bound_entity_with_outputs;
+
+// :13: ERROR: Entity instantiated with 'bind' cannot have any outputs
+// :2: NOTE: Output is defined here

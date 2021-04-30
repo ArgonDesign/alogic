@@ -330,10 +330,10 @@ object TreeCopier {
       tree
     } else {
       assert(attr.forall(_.isInstanceOf[Attr]))
-      DescInstance(
-        ref.asInstanceOf[Ref],
-        attr.asInstanceOf[List[Attr]],
-        spec.asInstanceOf[Expr]
+      tree.copy(
+        ref = ref.asInstanceOf[Ref],
+        attr = attr.asInstanceOf[List[Attr]],
+        spec = spec.asInstanceOf[Expr]
       ) withLocOf tree
     }
 
@@ -966,6 +966,13 @@ object TreeCopier {
     } else {
       assert(rhs.forall(_.isInstanceOf[Expr]))
       EntConnect(lhs.asInstanceOf[Expr], rhs.asInstanceOf[List[Expr]]) withLocOf tree
+    }
+
+  def apply(tree: EntConnectInputs)(expr: Tree): EntConnectInputs =
+    if (expr eq tree.expr) {
+      tree
+    } else {
+      EntConnectInputs(expr.asInstanceOf[Expr]) withLocOf tree
     }
 
   def apply(tree: EntAssign)(lhs: Tree, rhs: Tree): EntAssign =

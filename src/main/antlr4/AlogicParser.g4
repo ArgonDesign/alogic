@@ -53,7 +53,7 @@ descbase
   | 'typedef' expr ident ';'                                                    # DescType
   | entity_keyword ident '{' ent* '}'                                           # DescEntity
   | 'struct' ident '{' rec* '}'                                                 # DescRecord
-  | ident '=' 'new' expr ';'                                                    # DescInstance
+  | ident '=' keyword=('new' | 'bind') expr ';'                                 # DescInstance
   | 'new' entity_keyword ident '{' ent* '}'                                     # DescSingleton
   | (stat='static')? expr ident '(' formal_arguments? cpar=')' '{' stmt* '}'    # DescFuncAlogic
   | 'import' expr IDENTIFIER '('formal_arguments? ')' ';'                       # DescFuncImport
@@ -165,6 +165,7 @@ ent
   | from                                                # EntFrom
   | assertion                                           # EntAssertion
   | lhs=expr point='->' rhs+=expr (',' rhs+=expr)* ';'  # EntConnect
+  | '*' point='->' expr '.' '*' ';'                     # EntConnectInputs
   | 'fence' '{' stmt* '}'                               # EntFenceBlock
   | 'verbatim' IDENTIFIER VERBATIM_BODY                 # EntVerbatimBlock
   ;

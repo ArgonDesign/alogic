@@ -1,0 +1,39 @@
+fsm bound {
+  in  bool i;
+
+  void main () {
+    assert !i;
+    fence;
+  }
+}
+
+network bind_00 {
+  in bool i;
+
+  inst = bind bound;
+  * -> inst.*;
+}
+
+compile bind_00;
+
+// :11: WARNING: Input port 'i' is unused
+
+// @expect-file: bind_00__bindings.sv
+
+// @sim/test {{{
+//  reg [3:0] tick;
+//
+//  always @(posedge clk) begin
+//    if (rst) begin
+//      tick <= 4'd0;
+//    end else begin
+//      tick <= tick + 4'd1;
+//    end
+//  end
+//
+//  wire i = &tick;
+// }}}
+
+// @sim/expect {{{
+//  \[17000\] %Error: bound\.v:29: Assertion failed in TOP\.testbench\.dut\.inst: 'assert' statement failed at .*bind/bind_00\.alogic:5
+// }}}

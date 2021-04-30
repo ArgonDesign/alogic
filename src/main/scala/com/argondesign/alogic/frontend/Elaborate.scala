@@ -1351,7 +1351,9 @@ object Elaborate {
                         unreachable
                     }
                   }
-                  EntSplice(DescInstance(Ident(instName, Nil), Nil, p.expr)) :: portsAndConnects
+                  EntSplice(
+                    DescInstance(Ident(instName, Nil), Nil, p.expr, bind = false)
+                  ) :: portsAndConnects
                 }
                 val wrapper = DescEntity(ident, Nil, EntityVariant.Net, body)
                 wrapper.preOrderIterator foreach { tree => if (!tree.hasLoc) tree withLocOf p }
@@ -1379,6 +1381,10 @@ object Elaborate {
         list[Expr](e.lhs :: e.rhs, None, symtab) map {
           case l :: r => e.copy(lhs = l, rhs = r) withLocOf e
           case Nil    => unreachable
+        }
+      case e: EntConnectInputs =>
+        elaborate(e.expr, symtab) map { expr =>
+          EntConnectInputs(expr) withLocOf e
         }
       case _: EntAssign => unreachable
       case e: EntCombProcess =>

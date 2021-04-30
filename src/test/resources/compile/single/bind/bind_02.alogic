@@ -1,0 +1,41 @@
+fsm bound {
+  in  bool i;
+  in  bool j;
+
+  void main () {
+    assert !(i & j);
+    fence;
+  }
+}
+
+network bind_02 {
+  in bool i;
+  in bool j;
+
+  inst = bind bound;
+  j -> inst.j;
+  * -> inst.*;
+}
+
+compile bind_02;
+
+// :12: WARNING: Input port 'i' is unused
+
+// @expect-file: bind_02__bindings.sv
+
+// @sim/test {{{
+//  reg [3:0] tick;
+//
+//  always @(posedge clk) begin
+//    if (rst) begin
+//      tick <= 4'd0;
+//    end else begin
+//      tick <= tick + 4'd1;
+//    end
+//  end
+//
+//  wire i = &tick;
+//  wire j = ~tick[0];
+// }}}
+
+// @sim/expect: TIMEOUT at 100ns

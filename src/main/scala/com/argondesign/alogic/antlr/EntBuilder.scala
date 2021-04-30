@@ -39,6 +39,11 @@ object EntBuilder extends BaseBuilder[EntContext, Ent] {
         EntConnect(ExprBuilder(ctx.lhs), ExprBuilder(ctx.rhs)) withLoc loc
       }
 
+      override def visitEntConnectInputs(ctx: EntConnectInputsContext): Ent = {
+        val loc = ctx.loc.copy(point = ctx.point.getStartIndex)
+        EntConnectInputs(ExprBuilder(ctx.expr)) withLoc loc
+      }
+
       override def visitEntFenceBlock(ctx: EntFenceBlockContext): Ent =
         EntCombProcess(StmtBuilder(ctx.stmt)) withLoc ctx.loc
 

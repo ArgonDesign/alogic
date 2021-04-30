@@ -104,8 +104,8 @@ object DescToDeclDefnTransform extends StatelessTreeTransformer {
         case DescRecord(Sym(symbol), _, body) =>
           val (decls, rest) = partitionDeclsFromRest(body)
           (DeclRecord(symbol, decls), DefnRecord(symbol, rest))
-        case DescInstance(Sym(symbol), _, spec) =>
-          (DeclInstance(symbol, spec), DefnInstance(symbol))
+        case DescInstance(Sym(symbol), _, spec, bind) =>
+          (DeclInstance(symbol, spec, bind), DefnInstance(symbol))
         case DescSingleton(Sym(symbol), _, variant, body) =>
           val (decls, rest) = partitionDeclsFromRest(body)
           (DeclSingleton(symbol, decls), DefnSingleton(symbol, variant, rest))

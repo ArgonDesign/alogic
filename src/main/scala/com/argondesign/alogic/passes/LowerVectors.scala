@@ -253,7 +253,7 @@ final class LowerVectorsB(globalReplacements: scala.collection.Map[Symbol, Symbo
     // Update instance types
     //////////////////////////////////////////////////////////////////////////
 
-    case decl @ DeclInstance(_, ExprSym(eSymbol)) =>
+    case decl @ DeclInstance(_, ExprSym(eSymbol), _) =>
       globalReplacements.get(eSymbol) map { nSymbol =>
         decl.copy(spec = ExprSym(nSymbol)) regularize tree.loc
       } getOrElse tree

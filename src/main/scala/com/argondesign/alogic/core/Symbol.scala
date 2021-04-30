@@ -110,7 +110,7 @@ final class Symbol(initialName: String, val loc: Loc = Loc.synthetic) {
         case DeclType(_, spec)                => TypeType(spec.tpe.asType.kind)
         case decl: DeclEntity                 => TypeType(TypeEntity(this, decl.ports))
         case decl: DeclRecord                 => TypeType(TypeRecord(this, decl.decls.map(_.symbol)))
-        case DeclInstance(_, spec)            => spec.tpe.asType.kind
+        case DeclInstance(_, spec, _)         => spec.tpe.asType.kind
         case decl: DeclSingleton              => TypeEntity(this, decl.ports)
         case DeclFunc(_, variant, ret, args) =>
           val retType = ret.tpe.asType.kind
@@ -143,7 +143,7 @@ final class Symbol(initialName: String, val loc: Loc = Loc.synthetic) {
       case k: TypeFund      => ExprType(k)
     }
     _kind match {
-      case k: TypeEntity                    => DeclInstance(this, spec(k))
+      case k: TypeEntity                    => DeclInstance(this, spec(k), bind = false)
       case k: TypeFund                      => DeclVar(this, spec(k))
       case TypeIn(k, fc)                    => DeclIn(this, spec(k), fc)
       case TypeOut(k, fc, st)               => DeclOut(this, spec(k), fc, st)

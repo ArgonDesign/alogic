@@ -20,16 +20,10 @@ import scala.annotation.nowarn
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
 
-final class MakeVerilog(
-    presentDetails: EntityDetails
-  )(
-    implicit
-    cc: CompilerContext) {
-
-  import presentDetails._
+object MakeVerilog {
 
   // Render Verilog declaration List(signed, packed, id) strings for symbol
-  private def vdecl(symbol: Symbol, indent: Int = 0): String = {
+  def vdecl(symbol: Symbol, indent: Int = 0): String = {
     def decl(id: String, kind: Type): String = kind match {
       case k: TypeInt =>
         val signedStr = if (kind.isSigned) "signed " else ""
@@ -66,7 +60,7 @@ final class MakeVerilog(
 
   // Render expression to Verilog
   @nowarn("msg=Recursive call used default arguments")
-  private def vexpr(expr: Expr, indent: Int = 0): String = expr match {
+  def vexpr(expr: Expr, indent: Int = 0): String = expr match {
     case ExprCall(e, as)    => s"${vexpr(e)}(${as map { a => vexpr(a.expr) } mkString ", "})"
     case ExprBuiltin(b, as) => s"${b.name}(${as map { a => vexpr(a.expr) } mkString ", "})"
     case ExprUnary(op, e) =>
@@ -121,6 +115,68 @@ final class MakeVerilog(
     case _ =>
       throw Ice(expr, "Don't know how to emit Verilog for expression", expr.toString)
   }
+
+  private def emitInstances(
+      body: CodeWriter,
+      instances: List[DeclInstance],
+      details: EntityDetails,
+      bindTarget: Option[Symbol]
+    ): Unit = if (instances.nonEmpty) {
+    for (DeclInstance(iSymbol, ExprSym(eSymbol), _) <- instances) {
+      body.ensureBlankLine()
+      val bind = bindTarget match {
+        case Some(symbol) => s"bind ${symbol.name} "
+        case None         => ""
+      }
+      body.emit(1)(s"$bind${eSymbol.name} ${iSymbol.name} (")
+
+      body.emitTable(2, " ") {
+        val items = new ListBuffer[List[String]]
+
+        val TypeEntity(_, pSymbols) = iSymbol.kind.asEntity
+
+        val lastIndex = pSymbols.length - 1
+
+        for ((pSymbol, i) <- pSymbols.zipWithIndex) {
+          val dir = pSymbol.kind match {
+            case _: TypeIn => "<- "
+            case _         => " ->"
+          }
+
+          val pStr = details.instancePortExpr.get(iSymbol) flatMap {
+            _.get(pSymbol.name)
+          } map { expr =>
+            vexpr(expr, indent = 2)
+          } getOrElse {
+            "/* not connected */"
+          }
+
+          val comma = if (i == lastIndex) "" else ","
+
+          items append { List(s".${pSymbol.name}", s"/* $dir */ ($pStr)$comma") }
+        }
+
+        items.toList
+      }
+
+      body.emit(1)(");")
+    }
+  }
+
+}
+
+final class MakeVerilog(
+    presentDetails: EntityDetails,
+    otherDetails: Map[Symbol, EntityDetails]
+  )(
+    implicit
+    cc: CompilerContext) {
+
+  import presentDetails._
+
+  import MakeVerilog.vdecl
+  import MakeVerilog.vexpr
+  import MakeVerilog.emitInstances
 
   //////////////////////////////////////////////////////////////////////////////
   // Emit code
@@ -332,48 +388,6 @@ final class MakeVerilog(
       }
     }
 
-  private def emitInstances(body: CodeWriter): Unit = {
-    if (decl.instances.nonEmpty) {
-      body.emitSection(1, "Instances") {
-        for (DeclInstance(iSymbol, ExprSym(eSymbol)) <- decl.instances) {
-          body.ensureBlankLine()
-          body.emit(1)(s"${eSymbol.name} ${iSymbol.name} (")
-
-          body.emitTable(2, " ") {
-            val items = new ListBuffer[List[String]]
-
-            val TypeEntity(_, pSymbols) = iSymbol.kind.asEntity
-
-            val lastIndex = pSymbols.length - 1
-
-            for ((pSymbol, i) <- pSymbols.zipWithIndex) {
-              val dir = pSymbol.kind match {
-                case _: TypeIn => "<- "
-                case _         => " ->"
-              }
-
-              val pStr = instancePortExpr.get(iSymbol) flatMap {
-                _.get(pSymbol.name)
-              } map { expr =>
-                vexpr(expr, indent = 2)
-              } getOrElse {
-                "/* not connected */"
-              }
-
-              val comma = if (i == lastIndex) "" else ","
-
-              items append { List(s".${pSymbol.name}", s"/* $dir */ ($pStr)$comma") }
-            }
-
-            items.toList
-          }
-
-          body.emit(1)(");")
-        }
-      }
-    }
-  }
-
   private def emitConnects(body: CodeWriter): Unit = {
     if (nonPortAssigns.nonEmpty) {
       body.emitSection(1, "Connections") {
@@ -409,7 +423,12 @@ final class MakeVerilog(
       emitCombProcesses(body, defn.combProcesses)
     }
 
-    emitInstances(body)
+    val instances = decl.instances.collect { case d if !d.bind => d }
+    if (instances.nonEmpty) {
+      body.emitSection(1, "Instances") {
+        emitInstances(body, instances, presentDetails, None)
+      }
+    }
 
     emitConnects(body)
 
@@ -467,5 +486,26 @@ final class MakeVerilog(
 
     body.text
   }
+
+  def bindings: Option[String] =
+    Option.when(decl.entityDependencies.exists(_.instances.exists(_.bind))) {
+      val body = new CodeWriter
+
+      body.emit(0)(s"module ${decl.symbol.name}${cc.sep}bindings;")
+
+      decl.entityDependencies.toSeq.sortBy(_.loc) foreach { decl =>
+        body.ensureBlankLine()
+        val instances = decl.instances.collect { case d if d.bind => d }
+        if (instances.nonEmpty) {
+          body.emitSection(1, s"Bindings for ${decl.symbol.name}") {
+            emitInstances(body, instances, otherDetails(decl.symbol), Some(decl.symbol))
+          }
+        }
+      }
+
+      body.emit(0)("endmodule")
+
+      body.text
+    }
 
 }

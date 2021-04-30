@@ -491,7 +491,7 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
       "instance" - {
         "plain" in {
           "i = new j;".asTree[Desc]() shouldBe {
-            DescInstance(Ident("i", Nil), Nil, ExprIdent("j", Nil))
+            DescInstance(Ident("i", Nil), Nil, ExprIdent("j", Nil), bind = false)
           }
         }
 
@@ -500,14 +500,40 @@ final class ParserParseDescSpec extends AnyFreeSpec with AlogicTest {
             DescInstance(
               Ident("i", Nil),
               Nil,
-              ExprCall(ExprIdent("j", Nil), List(ArgN("A", Expr(2)), ArgN("B", Expr(3))))
+              ExprCall(ExprIdent("j", Nil), List(ArgN("A", Expr(2)), ArgN("B", Expr(3)))),
+              bind = false
             )
           }
         }
 
         "with attribute" in {
           "(* foo *) i = new j;".asTree[Desc]() shouldBe {
-            DescInstance(Ident("i", Nil), List(AttrBool("foo")), ExprIdent("j", Nil))
+            DescInstance(Ident("i", Nil), List(AttrBool("foo")), ExprIdent("j", Nil), bind = false)
+          }
+        }
+      }
+
+      "bound instance" - {
+        "plain" in {
+          "i = bind j;".asTree[Desc]() shouldBe {
+            DescInstance(Ident("i", Nil), Nil, ExprIdent("j", Nil), bind = true)
+          }
+        }
+
+        "with parameters" in {
+          "i = bind j(A=2, B=3);".stripMargin.asTree[Desc]() shouldBe {
+            DescInstance(
+              Ident("i", Nil),
+              Nil,
+              ExprCall(ExprIdent("j", Nil), List(ArgN("A", Expr(2)), ArgN("B", Expr(3)))),
+              bind = true
+            )
+          }
+        }
+
+        "with attribute" in {
+          "(* foo *) i = bind j;".asTree[Desc]() shouldBe {
+            DescInstance(Ident("i", Nil), List(AttrBool("foo")), ExprIdent("j", Nil), bind = true)
           }
         }
       }

@@ -515,6 +515,9 @@ abstract class TreeTransformer extends (Tree => Tree) with ChainingSyntax {
       val lhs = walk(node.lhs)
       val rhs = walk(node.rhs)
       TreeCopier(node)(lhs, rhs)
+    case node: EntConnectInputs =>
+      val expr = walk(node.expr)
+      TreeCopier(node)(expr)
     case node: EntAssign =>
       val lhs = walk(node.lhs)
       val rhs = walk(node.rhs)

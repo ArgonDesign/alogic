@@ -19,6 +19,17 @@ trait DeclEntityOps { this: DeclEntity =>
     case decl: DeclInstance => decl
   }
 
+  final lazy val entityDependencies: Set[DeclEntity] = Set from {
+    def enumerate(decl: DeclEntity): Iterator[DeclEntity] = {
+      Iterator.single(decl) concat decl.instances.iterator
+        .map(_.symbol)
+        .flatMap { symbol =>
+          enumerate(symbol.kind.asEntity.symbol.decl.asInstanceOf[DeclEntity])
+        }
+    }
+    enumerate(this)
+  }
+
   final lazy val functions: List[DeclFunc] = decls collect {
     case decl: DeclFunc => decl
   }

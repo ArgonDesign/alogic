@@ -130,6 +130,7 @@ final class RemoveStructuralSharing extends StatelessTreeTransformer {
 
         case node: EntSplice         => node.copy()
         case node: EntConnect        => node.copy()
+        case node: EntConnectInputs  => node.copy()
         case node: EntAssign         => node.copy()
         case node: EntCombProcess    => node.copy()
         case node: EntClockedProcess => node.copy()

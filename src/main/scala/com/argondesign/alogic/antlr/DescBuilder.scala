@@ -243,7 +243,7 @@ object DescBuilder extends BaseBuilder[DescContext, Desc] with ChainingSyntax {
         val ident = IdentBuilder(ctx.ident)
         val spec = ExprBuilder(ctx.expr)
         val loc = ctx.loc.copy(point = ident.loc.start)
-        DescInstance(ident, Nil, spec) withLoc loc
+        DescInstance(ident, Nil, spec, ctx.keyword.getText == "bind") withLoc loc
       }
 
       override def visitDescSingleton(ctx: DescSingletonContext): Desc = {

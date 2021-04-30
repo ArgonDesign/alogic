@@ -262,7 +262,7 @@ private[frontend] object TypeOf {
           portSymbols(body) map { symbols => TypeType(TypeEntity(symbol, symbols)) }
         case DescRecord(_, _, body) =>
           definedSymbols(body) map { symbols => TypeType(TypeRecord(symbol, symbols)) }
-        case DescInstance(_, _, spec) => entityTypeFrom(spec)
+        case DescInstance(_, _, spec, _) => entityTypeFrom(spec)
         case DescSingleton(_, _, _, body) =>
           portSymbols(body) map { symbols => TypeEntity(symbol, symbols) }
         case DescFunc(_, _, variant, ret, args, _) =>

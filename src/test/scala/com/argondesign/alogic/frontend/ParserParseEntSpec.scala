@@ -90,6 +90,12 @@ final class ParserParseEntSpec extends AnyFreeSpec with AlogicTest {
           )
         }
       }
+
+      "wildcard inputs" in {
+        "* -> i.*;".asTree[Ent]() shouldBe {
+          EntConnectInputs(ExprIdent("i", Nil))
+        }
+      }
     }
 
     "fence block" in {

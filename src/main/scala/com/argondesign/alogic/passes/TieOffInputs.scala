@@ -30,7 +30,7 @@ object TieOffInputs extends PairTransformerPass {
     // Gather all instance input ports
     val instanceInputPorts = Set from {
       entityDecl.instances.iterator.flatMap {
-        case DeclInstance(iSymbol, _) =>
+        case DeclInstance(iSymbol, _, _) =>
           iSymbol.kind.asEntity.publicSymbols.iterator.collect {
             case pSymbol if pSymbol.kind.isIn => (iSymbol, pSymbol)
           }

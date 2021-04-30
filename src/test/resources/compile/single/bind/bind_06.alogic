@@ -1,0 +1,45 @@
+fsm bound {
+  snoop sync ready void i;
+  snoop sync ready void o;
+
+  void main () {
+    assert i.move == o.move;
+    fence;
+  }
+}
+
+network bind_06 {
+  in  sync ready void i;
+  out sync ready void o;
+
+  i -> o;
+
+  inst = bind bound;
+  * -> inst.*;
+}
+
+compile bind_06;
+
+// @expect-file: bind_06__bindings.sv
+
+// @sim/test {{{
+//  reg [1:0] tick;
+//
+//  always @(posedge clk) begin
+//    if (rst) begin
+//      tick <= 2'd0;
+//    end else begin
+//      tick <= tick + 2'd1;
+//    end
+//  end
+//
+//  wire i__valid = tick[1];
+//  wire o__ready = tick[0];
+//
+//  /* verilator lint_off UNUSED */
+//  wire i__ready;
+//  wire o__valid;
+//  /* verilator lint_on UNUSED */
+// }}}
+
+// @sim/expect: TIMEOUT at 100ns

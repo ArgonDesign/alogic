@@ -143,8 +143,9 @@ final class UnusedCheck extends StatelessTreeTransformer {
         markUsed(desc.symbol)
       }
     case desc: DescInstance =>
-      // Similarly, mark used if the instantiated entity has external refs
-      if (hasExtRefs(desc.symbol.kind.asEntity.symbol)) {
+      // Similarly, mark used if the instantiated entity has external refs,
+      // of if it's bound
+      if (hasExtRefs(desc.symbol.kind.asEntity.symbol) || desc.bind) {
         markUsed(desc.symbol)
       }
     case _ =>

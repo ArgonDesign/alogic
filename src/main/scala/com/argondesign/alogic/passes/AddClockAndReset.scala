@@ -83,7 +83,7 @@ final class AddClockAndResetB(
     // Update instance types
     ////////////////////////////////////////////////////////////////////////////
 
-    case decl @ DeclInstance(_, ExprSym(eSymbol)) =>
+    case decl @ DeclInstance(_, ExprSym(eSymbol), _) =>
       globalReplacements.get(eSymbol) map { nSymbol =>
         decl.copy(spec = ExprSym(nSymbol)) regularize tree.loc
       } getOrElse tree

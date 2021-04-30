@@ -144,6 +144,7 @@ RETURN      : 'return' ;
 CASE        : 'case' ;
 DEFAULT     : 'default' ;
 NEW         : 'new' ;
+BIND        : 'bind' ;
 LET         : 'let' ;
 ENTITY      : 'entity' ;
 STATIC      : 'static' ;

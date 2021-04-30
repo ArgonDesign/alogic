@@ -193,11 +193,11 @@ final class SyntaxCheck extends StatelessTreeTransformer {
       variantStack.top match {
         case EntityVariant.Fsm =>
           desc match {
-            case _: DescPipeVar   => entErr(desc, "pipeline variable definitions")
-            case _: DescEntity    => entErr(desc, "nested entities")
-            case _: DescInstance  => entErr(desc, "instantiations")
-            case _: DescSingleton => entErr(desc, "singleton entities")
-            case _                =>
+            case _: DescPipeVar             => entErr(desc, "pipeline variable definitions")
+            case _: DescEntity              => entErr(desc, "nested entities")
+            case d: DescInstance if !d.bind => entErr(desc, "instantiations")
+            case _: DescSingleton           => entErr(desc, "singleton entities")
+            case _                          =>
           }
         case EntityVariant.Net =>
           desc match {

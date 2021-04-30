@@ -865,6 +865,21 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
             addNote(Note.definedHere(desc))
           }
 
+        case desc: DescInstance =>
+          if (desc.bind) {
+            desc.symbol.kind.asEntity.members.foreach { s =>
+              s.kind match {
+                case _: TypeOut | _: TypePipeOut =>
+                  error(desc, "Entity instantiated with 'bind' cannot have any outputs")
+                  addNote(Note(s.desc, "Output is defined here"))
+                case TypeIn(_, FlowControlTypeReady) | TypePipeIn(_, FlowControlTypeReady) =>
+                  error(desc, "Entity instantiated with 'bind' cannot have a 'sync ready' input")
+                  addNote(Note(s.desc, "'sync ready' input is defined here"))
+                case _ => // OK
+              }
+            }
+          }
+
         case desc: Desc =>
           desc.initializer foreach { init =>
             val symbol = desc.symbol
@@ -908,6 +923,11 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
       if (it.hasNext) {
         mAcc.addAll(it)
         error
+      }
+
+    case EntConnectInputs(expr) =>
+      if (!expr.tpe.isEntity) {
+        error(expr, "Expression does not name an instance")
       }
 
     //////////////////////////////////////////////////////////////////////////

@@ -14,6 +14,7 @@ trait DeclSingletonOps { this: DeclSingleton =>
   final lazy val ports: List[Symbol] = decls collect {
     case decl: DeclIn      => decl.symbol
     case decl: DeclOut     => decl.symbol
+    case decl: DeclSnoop   => decl.symbol
     case decl: DeclPipeIn  => decl.symbol
     case decl: DeclPipeOut => decl.symbol
   }

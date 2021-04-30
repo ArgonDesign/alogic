@@ -2782,9 +2782,9 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
                |  $decl
                |}""".stripMargin
           } getFirst {
-            case DeclIn(_, spec, _)    => spec
-            case DeclConst(_, spec)    => spec
-            case DeclInstance(_, spec) => spec
+            case DeclIn(_, spec, _)       => spec
+            case DeclConst(_, spec)       => spec
+            case DeclInstance(_, spec, _) => spec
           } tap {
             _ should matchPattern(pattern)
           }

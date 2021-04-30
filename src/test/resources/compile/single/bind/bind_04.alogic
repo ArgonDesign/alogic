@@ -1,0 +1,32 @@
+fsm bound {
+  in  bool i;
+
+  void main () {
+    assert i;
+    fence;
+  }
+}
+
+network bind_04 {
+  in bool i;
+  in bool j;
+
+  new network inner {
+    inst = bind bound;
+    * -> inst.*;
+  }
+}
+
+compile bind_04;
+
+// :11: WARNING: Input port 'i' is unused
+// :12: WARNING: Input port 'j' is unused
+
+// @expect-file: bind_04__bindings.sv
+
+// @sim/test {{{
+//  wire i = 1'b1;
+//  wire j = 1'b0;
+// }}}
+
+// @sim/expect: TIMEOUT at 100ns

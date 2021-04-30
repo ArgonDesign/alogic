@@ -30,7 +30,7 @@ object WriteAux extends PairsTransformerPass {
     ////////////////////////////////////////////////////////////////////////////
 
     val dict = for {
-      (decl @ Decl(eSymbol), defn: DefnEntity) <- pairs.asPar.iterator
+      (decl @ DeclEntity(eSymbol, _), defn: DefnEntity) <- pairs.asPar.iterator
       if eSymbol.attr.topLevel.isSet
     } yield {
       // High level port symbols
@@ -148,25 +148,42 @@ object WriteAux extends PairsTransformerPass {
       // The entry for this entity
       //////////////////////////////////////////////////////////////////////////
 
-      eSymbol.name -> ListMap(
-        "output-file" ->
-          cc.getOutputFileName(decl, ".v"), // TODO: This duplicates the call in CodeGeneration
-        "source-file" -> eSymbol.loc.file,
-        "source-name" -> eSymbol.hierName,
-        "ports" -> ports,
-        "signals" -> signals,
-        "clock" -> (defn.clk map { _.name }).orNull,
-        "reset" -> (defn.rst map { _.name }).orNull,
-        "reset-style" -> {
-          cc.settings.resetStyle match {
-            case ResetStyle.AsyncLow  => "async-low"
-            case ResetStyle.AsyncHigh => "async-high"
-            case ResetStyle.SyncLow   => "sync-low"
-            case ResetStyle.SyncHigh  => "sync-high"
-            case _                    => unreachable
+      eSymbol.name -> {
+        ListMap(
+          "output-file" -> // TODO: This duplicates the call in CodeGeneration
+            cc.getOutputFileName(decl, ".v")
+        ) concat {
+          if (decl.entityDependencies.exists(_.instances.exists(_.bind))) {
+            ListMap(
+              "bindings-file" -> // TODO: This duplicates the call in CodeGeneration
+                cc.getOutputFileName(decl, cc.sep + "bindings.sv")
+            )
+          } else {
+            ListMap.empty
           }
-        }
-      )
+        } concat
+          ListMap(
+            "source-file" -> eSymbol.loc.file,
+            "source-name" -> eSymbol.hierName,
+            "ports" -> ports,
+            "signals" -> signals,
+            "clock" -> (defn.clk map {
+              _.name
+            }).orNull,
+            "reset" -> (defn.rst map {
+              _.name
+            }).orNull,
+            "reset-style" -> {
+              cc.settings.resetStyle match {
+                case ResetStyle.AsyncLow  => "async-low"
+                case ResetStyle.AsyncHigh => "async-high"
+                case ResetStyle.SyncLow   => "sync-low"
+                case ResetStyle.SyncHigh  => "sync-high"
+                case _                    => unreachable
+              }
+            }
+          )
+      }
     }
 
     ListMap.from(dict.toSeq.sortBy(_._1))

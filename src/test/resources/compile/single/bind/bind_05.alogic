@@ -1,0 +1,38 @@
+fsm bound {
+  in  bool i;
+
+  void main () {
+    assert i;
+    fence;
+  }
+}
+
+network bind_05 {
+  in bool i;
+  in bool j;
+
+  new network inner {
+    in bool i;
+    in bool j;
+    inst = bind bound;
+    * -> inst.*;
+  }
+  i -> inner.j;
+  j -> inner.i;
+}
+
+compile bind_05;
+
+// :15: WARNING: Input port 'i' is unused
+// :16: WARNING: Input port 'j' is unused
+
+// @expect-file: bind_05__bindings.sv
+
+// @sim/test {{{
+//  wire i = 1'b1;
+//  wire j = 1'b0;
+// }}}
+
+// @sim/expect {{{
+// \[2000\] %Error: bound\.v:29: Assertion failed in TOP\.testbench\.dut\.inner\.inst: 'assert' statement failed at .*bind/bind_05\.alogic:5
+// }}}

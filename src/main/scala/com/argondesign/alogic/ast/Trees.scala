@@ -91,7 +91,7 @@ object Trees {
   case class DescType(ref: Ref, attr: List[Attr], spec: Expr) extends Desc
   case class DescEntity(ref: Ref, attr: List[Attr], variant: EntityVariant.Type, body: List[Ent]) extends Desc
   case class DescRecord(ref: Ref, attr: List[Attr], body: List[Rec]) extends Desc 
-  case class DescInstance(ref: Ref, attr: List[Attr], spec: Expr) extends Desc
+  case class DescInstance(ref: Ref, attr: List[Attr], spec: Expr, bind: Boolean) extends Desc
   case class DescSingleton(ref: Ref, attr: List[Attr], variant: EntityVariant.Type, body: List[Ent]) extends Desc
   case class DescFunc(ref: Ref, attr: List[Attr], variant: FuncVariant, ret: Expr, args: List[Desc], body: List[Stmt]) extends Desc
   case class DescPackage(ref: Ref, attr: List[Attr], body: List[Pkg]) extends Desc 
@@ -146,7 +146,7 @@ object Trees {
   case class DeclType(symbol: Symbol, spec: Expr) extends Decl
   case class DeclEntity(symbol: Symbol, decls: List[Decl]) extends Decl with DeclEntityOps
   case class DeclRecord(symbol: Symbol,  decls: List[Decl]) extends Decl 
-  case class DeclInstance(symbol: Symbol, spec: Expr) extends Decl
+  case class DeclInstance(symbol: Symbol, spec: Expr, bind: Boolean) extends Decl
   case class DeclSingleton(symbol: Symbol, decls: List[Decl]) extends Decl with DeclSingletonOps
   case class DeclFunc(symbol: Symbol, variant: FuncVariant, ret: Expr, args: List[Decl]) extends Decl
   case class DeclState(symbol: Symbol) extends Decl
@@ -241,6 +241,7 @@ object Trees {
 
   case class EntSplice(tree: Spliceable) extends Ent with Splice
   case class EntConnect(lhs: Expr, rhs: List[Expr]) extends Ent
+  case class EntConnectInputs(expr: Expr) extends Ent
   case class EntAssign(lhs: Expr, rhs: Expr) extends Ent
   case class EntCombProcess(stmts: List[Stmt]) extends Ent
   case class EntClockedProcess(clk: Expr, rstOpt: Option[Expr], stmts: List[Stmt]) extends Ent

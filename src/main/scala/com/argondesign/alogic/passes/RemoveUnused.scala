@@ -237,7 +237,7 @@ object RemoveUnused extends PairsTransformerPass {
         }
         stmts.foreach(walkStmt(dependencies))
       case _: EntVerbatim | _: EntComment | _: EntSplice => Iterator.empty
-      case _: EntConnect                                 => unreachable
+      case _: EntConnect | _: EntConnectInputs           => unreachable
     }
 
     // In verbatim entities, assume everything depends on everything
@@ -287,15 +287,38 @@ object RemoveUnused extends PairsTransformerPass {
     // hierarchy.
 
     // Graph nodes to visit next. We start from outputs of top level entities.
-    // Note we also need to include symbols used by impure statement in the
-    // top level entities.
+    // Note we also need to include symbols used by impure statements in the
+    // top levels, and all symbols used by impure statements in any instance.
     val pending = mutable.Stack.from {
+      def enumerateInstances(decl: DeclEntity, hier: List[Symbol]): Iterator[List[Symbol]] = {
+        decl.instances.iterator
+          .map(_.symbol)
+          .flatMap { symbol =>
+            val sub = symbol :: hier
+            Iterator.single(sub) concat
+              enumerateInstances(symbol.kind.asEntity.symbol.decl.asInstanceOf[DeclEntity], sub)
+          }
+      }
+
       parPairs.iterator.collect {
-        case (DeclEntity(symbol, decls), _) if symbol.attr.topLevel.isSet =>
+        case (decl @ DeclEntity(symbol, decls), _) if symbol.attr.topLevel.isSet =>
           decls.iterator
-            .collect { case DeclOut(symbol, _, _, _) => symbol }
-            .concat(impureDeps.get(symbol).iterator.flatten)
+            .collect { // Outputs of top-levels
+              case DeclOut(symbol, _, _, _) => symbol
+            }
+            .concat( // Symbols used by impure statements in top-levels
+              impureDeps.get(symbol).iterator.flatten
+            )
             .map(_ :: Nil)
+            .concat( // Symbols used by impure statements in any instance under top-levels
+              enumerateInstances(decl, Nil).flatMap { instance =>
+                impureDeps
+                  .get(instance.head.kind.asEntity.symbol)
+                  .iterator
+                  .flatten
+                  .map(_ :: instance)
+              }
+            )
       }.flatten
     }
 

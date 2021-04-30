@@ -1,0 +1,19 @@
+fsm bound {
+  in sync ready bool i;
+
+  void main () {
+    i.read();
+    fence;
+  }
+}
+
+network bound_entity_with_sync_ready_inputs {
+  out wire bool o;
+
+  inst = bind bound;
+}
+
+compile bound_entity_with_sync_ready_inputs;
+
+// :13: ERROR: Entity instantiated with 'bind' cannot have a 'sync ready' input
+// :2: NOTE: 'sync ready' input is defined here

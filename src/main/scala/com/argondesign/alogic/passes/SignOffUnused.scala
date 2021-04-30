@@ -12,6 +12,7 @@ package com.argondesign.alogic.passes
 import com.argondesign.alogic.analysis.ReadSymbolBits
 import com.argondesign.alogic.analysis.SymbolBitSet
 import com.argondesign.alogic.ast.Trees._
+import com.argondesign.alogic.ast.Trees.Expr.InstancePortSel
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.core.enums.EntityVariant
@@ -94,8 +95,7 @@ object SignOffUnused extends PairsTransformerPass {
     // We can do a lot in parallel
     val parPairs = pairs.asPar
 
-    // Gather all used symbol bits. This is similar to the gathering in
-    // RemoveUnused, but with bitwise precision and slight differences.
+    // Gather all used symbol bits.
     val usedLocalSymbolBits: Map[Symbol, SymbolBitSet] = Map from {
       parPairs.iterator
         .map {
@@ -119,6 +119,10 @@ object SignOffUnused extends PairsTransformerPass {
                 }
                 .concat {
                   defn collect {
+                    case EntAssign(InstancePortSel(iSymbol, _), _)
+                        if iSymbol.decl.asInstanceOf[DeclInstance].bind =>
+                      // Ignore signals driving bound instance ports
+                      SymbolBitSet.empty
                     case EntAssign(lhs, _: ExprSel) =>
                       ReadSymbolBits.possiblyLVal(lhs)
                     case EntAssign(_: ExprSel, rhs) =>

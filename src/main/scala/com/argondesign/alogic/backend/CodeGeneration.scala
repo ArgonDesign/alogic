@@ -33,12 +33,23 @@ object CodeGeneration extends SimplePass[Pairs, Unit] {
 
     // Generate code in parallel
     entityDetails.asPar foreach {
-      case (_, details) =>
-        val verilog = new MakeVerilog(details).moduleSource
+      case (symbol, details) =>
+        val mv = new MakeVerilog(details, entityDetails)
+        val verilog = mv.moduleSource
         val writer = cc.getOutputWriter(details.decl, ".v")
         writer.write(cc.settings.header)
         writer.write(verilog)
         writer.close()
+
+        // For top-levels, also generate bindings files
+        if (symbol.attr.topLevel.isSet) {
+          mv.bindings foreach { verilog =>
+            val writer = cc.getOutputWriter(details.decl, cc.sep + "bindings.sv")
+            writer.write(cc.settings.header)
+            writer.write(verilog)
+            writer.close()
+          }
+        }
     }
   }
 
