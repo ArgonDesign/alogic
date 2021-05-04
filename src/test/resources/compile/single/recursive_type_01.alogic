@@ -1,0 +1,29 @@
+struct p_t {
+  param bool B;
+
+  bool a;
+
+  static p_t(~B) f(p_t(~B) x) {
+    return x;
+  }
+}
+
+typedef p_t(true) s_t;
+
+fsm recursive_type_01 {
+  in       s_t i;
+  out wire s_t o;
+
+  void main() {
+    o = i;
+    fence;
+  }
+}
+
+// :11: ERROR: Circular definition: specialization of symbol 'p_t' with parameters: 1'd1
+// :6: NOTE: Depends on type of symbol 'f'
+// :6: NOTE: Depends on type of symbol 'x'
+// :6: NOTE: Depends on specialization of symbol 'p_t' with parameters: 1'd0
+// :6: NOTE: Depends on type of symbol 'f'
+// :6: NOTE: Depends on type of symbol 'x'
+// :6: NOTE: Depends on specialization of symbol 'p_t' with parameters: 1'd1

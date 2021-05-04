@@ -135,105 +135,111 @@ private[frontend] object Specialize {
         case (desc, symtab, params) =>
           // Consult the specialization cache
           val specializations = symbol.attr.specializations.getOrElse(Map.empty)
-          specializations.get(params) match {
-            case Some(sSymbol) =>
-              // Already seen these parameters, use cached value
-              Complete(sSymbol)
-            case None =>
-              // Haven't tried these parameters yet, so go ahead and specialize
+          fe.guardCircular(PendingSpecialzie(symbol, params), loc) {
+            specializations.get(params) match {
+              case Some(sSymbol) =>
+                // Already seen these parameters, use cached value
+                Complete(sSymbol)
+              case None =>
+                // Haven't tried these parameters yet, so go ahead and specialize
 
-              // This is how to do it
-              def specialize[T <: Tree: ListElaborable](
-                  body: List[T],
-                  mkDesc: (Sym, List[T]) => Desc
-                ): FinalResult[Symbol] = {
-                // Construct new symbol representing the specialized
-                // definition. We use a temporary name to start with, as
-                // the proper name can only be determined after type
-                // checking the result
-                val newSymbol = Symbol("`specialization-temp", symbol.loc)
-                // Make an initial definition so we can examine enclosing symbols
-                mkDesc(Sym(newSymbol), body)
-                @tailrec
-                def loop(body: List[T]): FinalResult[Symbol] =
-                  fe.elaborate(body, Some(newSymbol), symtab, Some((loc, params))) match {
-                    case Success(body) =>
-                      // Construct the specialized definition. This will attach
-                      // it to the symbol.
-                      val newDesc = mkDesc(Sym(newSymbol) withLocOf desc.ref, body) withLocOf desc
-                      // As the elaboration of the body is complete, the
-                      // specialized definition must also type check at this point.
-                      fe.typeCheck(newDesc) tapEach { _ =>
-                        // Assign the name of the result symbol, now that type
-                        // checking has passed and we know actual parameter values
-                        val newName = symbol.name + paramsSuffix(body)
-                        newSymbol.name = newName
-                        newSymbol.origName = newName
-                      } flatMap { _ =>
-                        // Check that all named params have been used up
-                        def gatherParamNames(tree: Tree): Iterator[String] = tree.flatCollect {
-                          case d: DescParam         => Iterator.single(d.symbol.name)
-                          case d: DescParamType     => Iterator.single(d.symbol.name)
-                          case d: DescGenScope      => d.body flatMap gatherParamNames
-                          case d: Desc if d ne tree => Iterator.empty // Otherwise stop recursion
+                // This is how to do it
+                def specialize[T <: Tree: ListElaborable](
+                    body: List[T],
+                    mkDesc: (Sym, List[T]) => Desc
+                  ): FinalResult[Symbol] = {
+                  // Construct new symbol representing the specialized
+                  // definition. We use a temporary name to start with, as
+                  // the proper name can only be determined after type
+                  // checking the result
+                  val newSymbol = Symbol("specialization-temp", symbol.loc)
+                  // Make an initial definition so we can examine enclosing symbols
+                  mkDesc(Sym(newSymbol), body)
+                  @tailrec
+                  def loop(body: List[T]): FinalResult[Symbol] =
+                    fe.elaborate(body, Some(newSymbol), symtab, Some((loc, params))) match {
+                      case Success(body) =>
+                        // Construct the specialized definition. This will attach
+                        // it to the symbol.
+                        val newDesc = mkDesc(Sym(newSymbol) withLocOf desc.ref, body) withLocOf desc
+                        // As the elaboration of the body is complete, the
+                        // specialized definition must also type check at this point.
+                        // We check the body first to get nicer circular specialization
+                        // errors
+                        body.map(fe.typeCheck).distil flatMap { _ =>
+                          fe.typeCheck(newDesc)
+                        } tapEach { _ =>
+                          // Assign the name of the result symbol, now that type
+                          // checking has passed and we know actual parameter values
+                          val newName = symbol.name + paramsSuffix(body)
+                          newSymbol.name = newName
+                          newSymbol.origName = newName
+                        } flatMap { _ =>
+                          // Check that all named params have been used up
+                          def gatherParamNames(tree: Tree): Iterator[String] = tree.flatCollect {
+                            case d: DescParam         => Iterator.single(d.symbol.name)
+                            case d: DescParamType     => Iterator.single(d.symbol.name)
+                            case d: DescGenScope      => d.body flatMap gatherParamNames
+                            case d: Desc if d ne tree => Iterator.empty // Otherwise stop recursion
+                          }
+                          val paramNames = Set.from(gatherParamNames(newDesc))
+                          params.collect {
+                            case a: ArgN =>
+                              if (!(paramNames contains a.name)) {
+                                Failure(a, s"'${symbol.name}' has no parameter '${a.name}'")
+                              } else {
+                                Complete(())
+                              }
+                          }.distil
+                        } map { _ =>
+                          // We are returning the new symbol
+                          newSymbol
                         }
-                        val paramNames = Set.from(gatherParamNames(newDesc))
-                        params.collect {
-                          case a: ArgN =>
-                            if (!(paramNames contains a.name)) {
-                              Failure(a, s"'${symbol.name}' has no parameter '${a.name}'")
-                            } else {
-                              Complete(())
-                            }
-                        }.distil
-                      } map { _ =>
-                        // We are returning the new symbol
-                        newSymbol
-                      }
-                    case Partial(body, _) =>
-                      // Update initial definition so we can examine enclosing symbols
-                      mkDesc(Sym(newSymbol), body)
-                      loop(body)
-                    case unknown: Unknown => unknown
-                    case failure: Failure => failure
-                    case _                => unreachable // Success covers the rest
-                  }
-                loop(body)
-              }
-
-              // Now actually do it
-              desc pipe {
-                case DescPackage(_, _, body) =>
-                  specialize[Pkg](body, DescPackage(_, Nil, _))
-                case DescEntity(_, _, variant, body) =>
-                  specialize[Ent](body, DescEntity(_, Nil, variant, _))
-                case DescRecord(_, _, body) =>
-                  specialize[Rec](body, DescRecord(_, Nil, _))
-                case _ => unreachable
-              } tapEach { newSymbol =>
-                // Attach attributes to the specialization
-                newSymbol.attr.update(desc.attr)
-              } map { newSymbol =>
-                // Check we actually ended up with a new parametrization. Note
-                // we cannot reliably determine this earlier because we cannot
-                // evaluate unary ticks in the actual parameters without actually
-                // seeing the elaborated (specialized) parameter definitions.
-                val resultSymbol = specializations
-                  .collectFirst {
-                    // Find a specialization with the same name. Due to the name
-                    // suffixes we add, specialized symbols with the same name must
-                    // have been created from the same actual parameter values.
-                    case (_, cachedSymbol) if cachedSymbol.name == newSymbol.name => cachedSymbol
-                  }
-                  .getOrElse(newSymbol)
-                // update cache
-                symbol.attr.specializations updateWith {
-                  case None    => Some(Map(params -> resultSymbol))
-                  case Some(m) => Some(m + (params -> resultSymbol))
+                      case Partial(body, _) =>
+                        // Update initial definition so we can examine enclosing symbols
+                        mkDesc(Sym(newSymbol), body)
+                        loop(body)
+                      case unknown: Unknown => unknown
+                      case failure: Failure => failure
+                      case _                => unreachable // Success covers the rest
+                    }
+                  loop(body)
                 }
-                // Yield the specialized symbol
-                resultSymbol
-              }
+
+                // Now actually do it
+                desc pipe {
+                  case DescPackage(_, _, body) =>
+                    specialize[Pkg](body, DescPackage(_, Nil, _))
+                  case DescEntity(_, _, variant, body) =>
+                    specialize[Ent](body, DescEntity(_, Nil, variant, _))
+                  case DescRecord(_, _, body) =>
+                    specialize[Rec](body, DescRecord(_, Nil, _))
+                  case _ => unreachable
+                } tapEach { newSymbol =>
+                  // Attach attributes to the specialization
+                  newSymbol.attr.update(desc.attr)
+                } map { newSymbol =>
+                  // Check we actually ended up with a new parametrization. Note
+                  // we cannot reliably determine this earlier because we cannot
+                  // evaluate unary ticks in the actual parameters without actually
+                  // seeing the elaborated (specialized) parameter definitions.
+                  val resultSymbol = specializations
+                    .collectFirst {
+                      // Find a specialization with the same name. Due to the name
+                      // suffixes we add, specialized symbols with the same name must
+                      // have been created from the same actual parameter values.
+                      case (_, cachedSymbol) if cachedSymbol.name == newSymbol.name => cachedSymbol
+                    }
+                    .getOrElse(newSymbol)
+                  // update cache
+                  symbol.attr.specializations updateWith {
+                    case None    => Some(Map(params -> resultSymbol))
+                    case Some(m) => Some(m + (params -> resultSymbol))
+                  }
+                  // Yield the specialized symbol
+                  resultSymbol
+                }
+            }
           }
       }
   }

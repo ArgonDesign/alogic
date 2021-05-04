@@ -449,14 +449,12 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
                   // without knowing the definitions (which are only known
                   // during specialization) due to possible unary ticks.
                   Some {
-                    fe.specialize(symbol, args, tree.loc) match {
-                      case Complete(specialized) =>
-                        tree withTpe {
-                          fe.typeOf(specialized, tree.loc) match {
-                            case Success(value) => value
-                            case _              => unreachable
-                          }
-                        }
+                    fe.specialize(symbol, args, tree.loc).flatMap { specialized =>
+                      assert(specialized.descOption.isDefined)
+                      fe.typeOf(specialized, tree.loc)
+                    } match {
+                      case Complete(kind) =>
+                        tree withTpe kind
                       case Unknown(rs) =>
                         rAcc addAll rs
                         tree

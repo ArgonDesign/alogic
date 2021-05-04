@@ -117,7 +117,7 @@ final class Frontend private (
     }
   }
 
-  private def guardCircular[T](
+  def guardCircular[T](
       op: PendingFrontendOp,
       loc: Loc
     )(
@@ -270,9 +270,7 @@ final class Frontend private (
     }
 
   def specialize(symbol: Symbol, params: List[Arg], loc: Loc): FinalResult[Symbol] =
-    guardCircular(PendingSpecialzie(symbol, params), loc) {
-      Specialize(symbol, params, loc)
-    }
+    Specialize(symbol, params, loc)
 
   def elaborate[T <: Tree: ListElaborable](
       trees: List[T],

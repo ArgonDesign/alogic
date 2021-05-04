@@ -1,0 +1,35 @@
+struct p_t {
+  param uint W;
+
+  uint(W) a;
+
+  static p_t(W) f(p_t(W) x) {
+    return x;
+  }
+}
+
+typedef p_t(1) s_t;
+
+fsm recursive_type_00 {
+  in       s_t i;
+  out wire s_t o;
+
+  void main() {
+    o = i;
+    fence;
+  }
+}
+
+// :11: ERROR: Circular definition: specialization of symbol 'p_t' with parameters: 1
+// :6: NOTE: Depends on type of symbol 'f'
+// :6: NOTE: Depends on type of symbol 'x'
+// :6: NOTE: Depends on specialization of symbol 'p_t' with parameters: 1
+
+// @fec/golden {{{
+//  module recursive_type_00(
+//    input  wire i__a,
+//    output wire o__a
+//  );
+//    assign o__a = i__a;
+//  endmodule
+// }}}
