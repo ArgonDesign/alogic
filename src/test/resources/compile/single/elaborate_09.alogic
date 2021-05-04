@@ -18,7 +18,9 @@ fsm elaborate_09 {
     fence;
   }
 }
-// :14: ERROR: Cannot evaluate function call at elaboration time
+
+// :14: ERROR: Initializer of 'const' definition must be a compile time constant
+// :14: NOTE: Cannot evaluate function call at elaboration time
 
 // @fec/golden {{{
 //  module elaborate_09(

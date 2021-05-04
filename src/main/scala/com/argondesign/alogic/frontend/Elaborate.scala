@@ -939,7 +939,7 @@ object Elaborate {
           } proceed { d =>
             fe.evaluate(
               d.symbol,
-              d.symbol.loc,
+              d.initOpt.get.loc,
               "actual parameter value",
               markUsed = false,
               paramCheck = true

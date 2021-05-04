@@ -226,8 +226,25 @@ final class Frontend private (
       TypeOf(symbol, refresh)
     }
 
+  def tryEvaluate(expr: Expr): FinalResult[Either[Seq[Note], BigInt]] =
+    Evaluate(expr)
+
+  def tryEvaluate(
+      symbol: Symbol,
+      loc: Loc,
+      markUsed: Boolean = true,
+      paramCheck: Boolean = false
+    ): FinalResult[Either[Seq[Note], Expr]] =
+    guardCircular(PendingEvaluate(symbol), loc) {
+      Evaluate(symbol, markUsed, paramCheck)
+    }
+
   def evaluate(expr: Expr, hint: => String): FinalResult[BigInt] =
-    Evaluate(expr, hint)
+    tryEvaluate(expr).flatMap {
+      case Left(notes) =>
+        Failure(Error(expr, s"${hint.capitalize} must be a compile time constant") withNotes notes)
+      case Right(value) => Complete(value)
+    }
 
   def evaluate(
       symbol: Symbol,
@@ -236,8 +253,10 @@ final class Frontend private (
       markUsed: Boolean = true,
       paramCheck: Boolean = false
     ): FinalResult[Expr] =
-    guardCircular(PendingEvaluate(symbol), loc) {
-      Evaluate(symbol, loc, hint, markUsed, paramCheck)
+    tryEvaluate(symbol, loc, markUsed, paramCheck).flatMap {
+      case Left(notes) =>
+        Failure(Error(loc, s"${hint.capitalize} must be a compile time constant") withNotes notes)
+      case Right(value) => Complete(value)
     }
 
   def nameFor(base: String, idxs: List[Expr]): FinalResult[String] =
