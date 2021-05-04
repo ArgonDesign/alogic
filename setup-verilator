@@ -21,7 +21,7 @@ PREFIX=$(readlink -f install)
 # Build verilator
 git clone http://github.com/verilator/verilator src
 pushd src
-git checkout v4.034
+git checkout v4.202
 unset VERILATOR_ROOT
 autoconf
 ./configure --prefix=$PREFIX CXX=clang++

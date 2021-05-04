@@ -651,7 +651,7 @@ abstract class CompilationTest(val parallel: Boolean)
     ): Unit = {
     // Write the golden model
     val goldenFile = oDir.resolve("__golden.v").toFile
-    writeFile(goldenFile)(fec("golden"))
+    writeFile(goldenFile)(fec("golden") + "\n")
 
     // Lint the golden model, just to be sure, as yosys "helpfully" provides
     // implicit declarations of undeclared names.
