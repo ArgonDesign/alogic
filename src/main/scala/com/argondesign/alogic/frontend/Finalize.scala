@@ -62,7 +62,7 @@ private[frontend] object Finalize {
                 Iterator.single(symbol)
               case DescParametrized(_, _, _: DescPackage, _) =>
                 // Pick up all specializations of the referenced package
-                symbol.attr.specializations.getOrElse(Map.empty).valuesIterator
+                symbol.attr.specializations.getOrElse(Map.empty).valuesIterator.distinct
               case _ =>
                 // Not a package
                 Iterator.empty
@@ -122,6 +122,7 @@ private[frontend] object Finalize {
                 symbol.attr.specializations
                   .getOrElse(Map.empty)
                   .valuesIterator
+                  .distinct
                   .map(symbol => walk(Clarify(symbol.desc)))
                   .concat(Iterator.single(tree))
               }
