@@ -2020,7 +2020,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
                |  in u8 a;
                |  in i8 b;
                |  void main() {
-               |    $$display("", $text);
+               |    @display("", $text);
                |    fence;
                |  }
                |}""".stripMargin
@@ -2049,7 +2049,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
                |  in i8 b;
                |  out u8 c;
                |  void main() {
-               |    $$display("", $text);
+               |    @display("", $text);
                |    fence;
                |  }
                |}""".stripMargin
@@ -2405,7 +2405,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
                  |fsm x {
                  |  a_t a;
                  |  void main() {
-                 |    $$display("", $text);
+                 |    @display("", $text);
                  |    fence;
                  |  }
                  |}""".stripMargin
@@ -2481,7 +2481,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
              |  const i5  F = 5s;
              |
              |  void main() {
-             |    $$display("", $expr);
+             |    @display("", $expr);
              |    fence;
              |  }
              |}""".stripMargin
@@ -2519,7 +2519,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
              |    const i6  E = 4;
              |    const i5  F = 5s;
              |    const u1  G = @unknownu(1);
-             |    $$display("", $expr);
+             |    @display("", $expr);
              |    fence;
              |  }
              |}""".stripMargin
@@ -2695,7 +2695,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
                |  const u8 c =  7;
                |  const i8 d = -3s;
                |  void main() {
-               |    $$display("", $exprSrc);
+               |    @display("", $exprSrc);
                |    fence;
                |  }
                |}""".stripMargin
@@ -2747,7 +2747,7 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
                |  const u8 c =  7;
                |  const i8 d = -3s;
                |  void main() {
-               |    $$display("", $expr);
+               |    @display("", $expr);
                |    fence;
                |  }
                |}""".stripMargin

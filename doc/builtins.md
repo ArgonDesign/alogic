@@ -161,6 +161,37 @@ returns the minimum of the arguments. The return type is `uint` if all arguments
 are of type `uint`, otherwise if any argument is of type `int`, the return type
 is `int`.
 
+##### Built-in `@display`
+
+The `@display` function accepts the same kind or arguments as the Verilog
+`$display` function, and the arguments are printed to the simulator console in
+the same format. In fact, the `@display` built-in is compiled into a
+Verilog `$display` invocation, but similar to assertion statements, the
+invocation is synchronously deferred. I.e.: The display statement will execute
+at most once per cycle, and will not execute if the containing `fst`
+is stalled. For example, the following will only print input values divisible by
+13:
+
+```
+fsm print_values_congruent_0_mod_13 {
+  in u32 i;
+  
+  void main() {
+    wait i % 13 == 0;
+    @display("%d is divisible by 13");
+    fence;
+  }
+}
+```
+
+The return type of `@display` is always `void`.
+
+##### Built-in `@finish`
+
+Like `@display`, `@finish` is a synchronously deferred version of Verilog
+`$finish`, which terminates the simulation when executed. The valid arguments
+are the same as for Verilog `$finish`. The return type is always `void`.
+
 <p align="center">
 <a href="assert.md">Previous</a> |
 <a href="index.md">Index</a> |

@@ -14,7 +14,7 @@ network foreign_func_09 {
       fence;
       fence;
       f();
-      $finish();
+      @finish();
       fence;
     }
   }

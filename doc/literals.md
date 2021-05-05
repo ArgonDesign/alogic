@@ -137,10 +137,10 @@ The literal `true` can be used as a synonym for `1'b1`, and the literal
 The language accepts string literals enclosed in double quotes `"`. Alogic does
 not support interpreting strings as a bit vector. String literals should only be
 used as arguments to builtin functions that require a string argument,
-e.g. `$display`:
+e.g. `@display`:
 
 ```
-$display("Help!");
+@display("Help!");
 ```
 
 <p align="center">

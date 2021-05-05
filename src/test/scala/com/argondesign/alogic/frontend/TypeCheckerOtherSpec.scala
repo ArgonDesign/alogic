@@ -51,8 +51,8 @@ final class TypeCheckerOtherSpec extends AnyFreeSpec with AlogicTest {
           ("void f() {}", "Body of control function must end in a control statement" :: Nil),
           ("void f() { fence; }", Nil),
           ("void f() { return; }", Nil),
-          ("void f() { $display(); }", "Body of control function must end in a control statement" :: Nil),
-          ("void f() { fence; $display(); }", "Body of control function must end in a control statement" :: Nil)
+          ("void f() { @display(); }", "Body of control function must end in a control statement" :: Nil),
+          ("void f() { fence; @display(); }", "Body of control function must end in a control statement" :: Nil)
           // format: on
         )
       } {
@@ -76,8 +76,8 @@ final class TypeCheckerOtherSpec extends AnyFreeSpec with AlogicTest {
           ("void f() {}", Nil),
           ("void f() { fence; }", "Body of combinational function must contain only combinational statements" :: Nil),
           ("void f() { return; }", Nil),
-          ("void f() { $display(); }", Nil),
-          ("void f() { fence; $display(); }", "Body of combinational function must contain only combinational statements" :: Nil)
+          ("void f() { @display(); }", Nil),
+          ("void f() { fence; @display(); }", "Body of combinational function must contain only combinational statements" :: Nil)
           // format: on
         )
       } {
@@ -97,9 +97,9 @@ final class TypeCheckerOtherSpec extends AnyFreeSpec with AlogicTest {
     "fence blocks bodies" - {
       for {
         (fenceBlock, err) <- List(
-          ("fence { $display(); }", Nil),
+          ("fence { @display(); }", Nil),
           (
-            "fence { $display(); fence; }",
+            "fence { @display(); fence; }",
             "'fence' block must contain only combinational statements" :: Nil
           )
         )

@@ -42,7 +42,9 @@ final class ClarifySpec extends AnyFreeSpec with AlogicTest {
     elaborate(text) tap { _ =>
       cc.messages foreach println
       cc.messages shouldBe empty
-    } pipe { _.value } tap { tree =>
+    } pipe {
+      _.value
+    } tap { tree =>
       typeCheck(tree)
     }
 
@@ -73,7 +75,7 @@ final class ClarifySpec extends AnyFreeSpec with AlogicTest {
                   s"""
                      |struct s {
                      |  void function() {
-                     |    $$display("", $text);
+                     |    @display("", $text);
                      |  }
                      |}""".stripMargin
                 } getFirst {
@@ -112,7 +114,7 @@ final class ClarifySpec extends AnyFreeSpec with AlogicTest {
                 s"""
                    |struct s {
                    |  void function() {
-                   |    $$display("", $text);
+                   |    @display("", $text);
                    |  }
                    |}""".stripMargin
               } getFirst {

@@ -47,12 +47,12 @@ final class TypeCheckerStmtSpec extends AnyFreeSpec with AlogicTest {
     "blocks" - {
       for {
         (stmt, err) <- List(
-          ("{ $display(); }", Nil),
+          ("{ @display(); }", Nil),
           ("{ fence; }", Nil),
-          ("{ $display(); fence; }", Nil),
-          ("{ $display(); fence; $display(); fence; }", Nil),
+          ("{ @display(); fence; }", Nil),
+          ("{ @display(); fence; @display(); fence; }", Nil),
           (
-            "{ fence; $display();}",
+            "{ fence; @display(); }",
             "Block must contain only combinational statements, or end with a control statement" :: Nil
           )
         )
@@ -76,16 +76,16 @@ final class TypeCheckerStmtSpec extends AnyFreeSpec with AlogicTest {
     "fundamental flow control statements" - {
       for {
         (stmt, err) <- List(
-          ("if (true) $display();", Nil),
-          ("if (true) $display(); else $display();", Nil),
+          ("if (true) @display();", Nil),
+          ("if (true) @display(); else @display();", Nil),
           ("if (true) fence;", Nil),
           ("if (true) fence; else fence;", Nil),
           (
-            "if (true) fence; else $display();",
+            "if (true) fence; else @display();",
             "Either both or neither branches of 'if' statement must be control statements" :: Nil
           ),
           (
-            "if (true) $display(); else fence;",
+            "if (true) @display(); else fence;",
             "Either both or neither branches of 'if' statement must be control statements" :: Nil
           ),
           (
@@ -97,41 +97,41 @@ final class TypeCheckerStmtSpec extends AnyFreeSpec with AlogicTest {
             "Either both or neither branches of 'if' statement must be control statements" :: Nil
           ),
           (
-            "if (void) $display();",
+            "if (void) @display();",
             "Condition of 'if' statement is of non-packed type, a 1 bit value is expected" :: Nil
           ),
-          ("case(1) { 1: $display(); }", Nil),
+          ("case(1) { 1: @display(); }", Nil),
           ("case(1) { 1: fence; }", Nil),
-          ("case(1) { default: $display(); }", Nil),
+          ("case(1) { default: @display(); }", Nil),
           ("case(1) { default: fence; }", Nil),
-          ("case(1) { 1: $display(); 2: $display(); }", Nil),
+          ("case(1) { 1: @display(); 2: @display(); }", Nil),
           ("case(1) { 1: fence; 2: fence; }", Nil),
-          ("case(1) { 1: $display(); default: $display(); }", Nil),
+          ("case(1) { 1: @display(); default: @display(); }", Nil),
           ("case(1) { 1: fence; default: fence; }", Nil),
           (
-            "case(1) { 1: $display(); 2: fence; }",
+            "case(1) { 1: @display(); 2: fence; }",
             "Either all or no cases of a 'case' statement must be control statements" :: Nil
           ),
           (
-            "case(1) { 1: fence; 2: $display(); }",
+            "case(1) { 1: fence; 2: @display(); }",
             "Either all or no cases of a 'case' statement must be control statements" :: Nil
           ),
           (
-            "case(1) { 1: $display(); default: fence; }",
+            "case(1) { 1: @display(); default: fence; }",
             "Either all or no cases of a 'case' statement must be control statements" :: Nil
           ),
           (
-            "case(1) { 1: fence; default: $display(); }",
+            "case(1) { 1: fence; default: @display(); }",
             "Either all or no cases of a 'case' statement must be control statements" :: Nil
           ),
           (
-            "case(void) { 1: $display(); }",
+            "case(void) { 1: @display(); }",
             "'case' scrutinee expression is of neither numeric nor packed type" :: Nil
           ),
           ("loop { fence; }", Nil),
           ("loop { }", "Body of 'loop' must be a control statement" :: Nil),
-          ("loop { $display(); }", "Body of 'loop' must end in a control statement" :: Nil),
-          ("loop { fence; $display(); }", "Body of 'loop' must end in a control statement" :: Nil)
+          ("loop { @display(); }", "Body of 'loop' must end in a control statement" :: Nil),
+          ("loop { fence; @display(); }", "Body of 'loop' must end in a control statement" :: Nil)
         )
       } {
         stmt in {
@@ -366,7 +366,7 @@ final class TypeCheckerStmtSpec extends AnyFreeSpec with AlogicTest {
           ("@unknownu(1)", error),
           ("1 + @unknownu(1)", error),
           ("1 + $clog2(2)", error),
-          ("$display(\"\")", Nil)
+          ("@display(\"\")", Nil)
         )
       } {
         text in {

@@ -300,13 +300,13 @@ network sfifo_tb {
       for (uint i = 0 ; i < 10000 ; i++) {
         item.read();
         if (item.valid && item != i[0 +: WIDTH]) {
-          $display("@@@FAIL");
-          $finish();
+          @display("@@@FAIL");
+          @finish();
         }
       }
 
-      $display("@@@PASS");
-      $finish();
+      @display("@@@PASS");
+      @finish();
       fence;
     }
   }

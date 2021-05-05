@@ -1,0 +1,28 @@
+fsm display_01 {
+  in bool i;
+
+  void main() {
+    wait i;
+    @display("Print this once");
+    fence;
+  }
+}
+
+// @sim/test {{{
+//  reg [31:0] tick;
+//
+//  always @(posedge clk) begin
+//    if (rst) begin
+//      tick <= 32'd0;
+//    end else begin
+//      tick <= tick + 32'd1;
+//    end
+//  end
+//
+//  wire i = tick == 32'd40;
+// }}}
+//
+// @sim/expect {{{
+//  Print this once
+//  TIMEOUT at 100ns
+// }}}

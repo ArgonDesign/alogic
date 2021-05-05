@@ -40,7 +40,7 @@ final class UnusedCheckSpec extends AnyFlatSpec with AlogicTest {
   }
 
   it should "not issue warning for variable used in nested scope" in {
-    check("void foo() { i8 b; { $display(\"\", b); } }")
+    check("void foo() { i8 b; { @display(\"\", b); } }")
     cc.messages shouldBe empty
   }
 

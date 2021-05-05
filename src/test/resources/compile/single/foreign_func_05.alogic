@@ -12,7 +12,7 @@ fsm foreign_func_05 {
     fence;
     f(0xffffffff_ffffffff_ffffffff_33333333);
     fence;
-    $finish();
+    @finish();
     fence;
   }
 }

@@ -8,7 +8,7 @@ fsm foreign_func_07 {
     fence;
     o = {f(0x55), f(0xcc)};
     fence;
-    $finish();
+    @finish();
     fence;
   }
 }

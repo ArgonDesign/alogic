@@ -4,7 +4,7 @@
 // See the LICENSE file for the precise wording of the license.
 //
 // DESCRIPTION:
-// Builtin '$finish'
+// Builtin '@finish'
 ////////////////////////////////////////////////////////////////////////////////
 
 package com.argondesign.alogic.builtins
@@ -16,7 +16,7 @@ import com.argondesign.alogic.frontend.Failure
 import com.argondesign.alogic.frontend.FinalResult
 import com.argondesign.alogic.frontend.Frontend
 
-object DollarFinish extends Builtin("$finish", isPure = false) {
+object AtFinish extends Builtin("@finish", isPure = false) {
 
   def typeCheck(expr: ExprBuiltin, args: List[Expr])(implicit fe: Frontend): FinalResult[TypeFund] =
     args match {

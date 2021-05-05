@@ -69,7 +69,7 @@ object Passes extends ChainingSyntax {
         LowerRegPorts andThen
         LiftSrams andThen
         AddClockAndReset() andThen
-        LowerAssertions andThen
+        LowerDeferredStatements andThen
         LowerForeignFunctions() andThen
         LowerArrays andThen
         SplitStructs() andThen

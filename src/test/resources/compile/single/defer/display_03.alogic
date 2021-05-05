@@ -1,0 +1,35 @@
+fsm display_03 {
+  in u32 i;
+
+  void main() {
+    wait i % 13 == 0;
+    @display("The number %2d when divided by 13 yields a remainder of 1", i+1);
+    fence;
+  }
+}
+
+// @sim/test {{{
+//  reg [31:0] tick;
+//
+//  always @(posedge clk) begin
+//    if (rst) begin
+//      tick <= 32'd0;
+//    end else begin
+//      tick <= tick + 32'd1;
+//    end
+//  end
+//
+//  wire [31:0] i = tick;
+// }}}
+//
+// @sim/expect {{{
+//  The number  1 when divided by 13 yields a remainder of 1
+//  The number 14 when divided by 13 yields a remainder of 1
+//  The number 27 when divided by 13 yields a remainder of 1
+//  The number 40 when divided by 13 yields a remainder of 1
+//  The number 53 when divided by 13 yields a remainder of 1
+//  The number 66 when divided by 13 yields a remainder of 1
+//  The number 79 when divided by 13 yields a remainder of 1
+//  The number 92 when divided by 13 yields a remainder of 1
+//  TIMEOUT at 100ns
+// }}}

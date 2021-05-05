@@ -1,0 +1,16 @@
+fsm display_00 {
+  in bool i;
+
+  void main() {
+    wait i;
+    @display("Will not print this");
+    fence;
+  }
+}
+
+// @sim/test {{{
+//  wire i = 1'b0;
+//  wire _unused = &{1'd0, clk, rst};
+// }}}
+//
+// @sim/expect: TIMEOUT at 100ns

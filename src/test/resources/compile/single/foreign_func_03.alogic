@@ -6,7 +6,7 @@ fsm foreign_func_03 {
     f(10);
     f(20);
     f(0xffffffff);
-    $finish();
+    @finish();
     fence;
   }
 }

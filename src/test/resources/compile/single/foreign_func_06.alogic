@@ -11,7 +11,7 @@ fsm foreign_func_06 {
     o = f();
     fence;
     fence;
-    $finish();
+    @finish();
     fence;
   }
 }

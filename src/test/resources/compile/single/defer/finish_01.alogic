@@ -1,0 +1,25 @@
+fsm finish_01 {
+  in bool i;
+
+  void main() {
+    wait i;
+    @finish();
+    fence;
+  }
+}
+
+// @sim/test {{{
+//  reg [2:0] tick;
+//
+//  always @(posedge clk) begin
+//    if (rst) begin
+//      tick <= 3'd0;
+//    end else begin
+//      tick <= tick + 3'd1;
+//    end
+//  end
+//
+//  wire i = &tick;
+// }}}
+//
+// @sim/expect: .*finish_01.v:\d+: Verilog \$finish

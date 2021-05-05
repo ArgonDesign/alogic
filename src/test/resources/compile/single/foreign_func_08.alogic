@@ -4,7 +4,7 @@ fsm foreign_func_08 {
   void main() {
     fence;
     f();
-    $finish();
+    @finish();
     fence;
   }
 }

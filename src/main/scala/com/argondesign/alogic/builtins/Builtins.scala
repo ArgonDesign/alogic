@@ -16,7 +16,9 @@ object Builtins {
 
   private val builtins: Map[Symbol, Builtin] = Iterator(
     AtBits,
+    AtDisplay,
     AtEx,
+    AtFinish,
     AtMax,
     AtMin,
     AtMsb,
@@ -25,8 +27,6 @@ object Builtins {
     AtSx,
     AtZx,
     DollarClog2,
-    DollarDisplay,
-    DollarFinish,
     DollarSigned,
     DollarUnsigned
   ).map(b => new Symbol(b.name) -> b).toMap

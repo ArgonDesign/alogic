@@ -41,7 +41,9 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
     elaborate(text) tap { _ =>
       cc.messages foreach println
       cc.messages shouldBe empty
-    } pipe { _.value } tap { tree =>
+    } pipe {
+      _.value
+    } tap { tree =>
       typeCheck(tree)
     }
 
@@ -93,7 +95,7 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
                |fsm a {
                |  const u8 N = 8'd2;
                |  void main() {
-               |    $$display("", $expr);
+               |    @display("", $expr);
                |    fence;
                |  }
                |}""".stripMargin
@@ -152,7 +154,7 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
                      |fsm a {
                      |  const u8 N = 8'd2;
                      |  void main() {
-                     |    $$display("", $expr);
+                     |    @display("", $expr);
                      |    fence;
                      |  }
                      |}""".stripMargin
@@ -200,7 +202,7 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
                      |fsm a {
                      |  const u8 N = 8'd2;
                      |  void main() {
-                     |    $$display("", $expr);
+                     |    @display("", $expr);
                      |    fence;
                      |  }
                      |}""".stripMargin
@@ -220,7 +222,7 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
                      |fsm a {
                      |  in u32 i;
                      |  void main() {
-                     |    $$display("", i'(2'd0));
+                     |    @display("", i'(2'd0));
                      |    fence;
                      |  }
                      |}""".stripMargin
@@ -240,7 +242,7 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
                      |fsm a {
                      |  in u32 i;
                      |  void main() {
-                     |    $$display("", $lhs'(2'd0));
+                     |    @display("", $lhs'(2'd0));
                      |    fence;
                      |  }
                      |}""".stripMargin
@@ -260,7 +262,7 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
                   s"""
                      |fsm a {
                      |  void main() {
-                     |    $$display("", 32'($rhs));
+                     |    @display("", 32'($rhs));
                      |    fence;
                      |  }
                      |}""".stripMargin
@@ -278,7 +280,7 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
               s"""
                  |fsm a {
                  |  void main() {
-                 |    $$display("", 1'(2'd0));
+                 |    @display("", 1'(2'd0));
                  |    fence;
                  |  }
                  |}""".stripMargin
@@ -293,7 +295,7 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
               """
                 |fsm a {
                 |  void main() {
-                |    $display("", 1'2);
+                |    @display("", 1'2);
                 |    fence;
                 |  }
                 |}""".stripMargin
@@ -308,7 +310,7 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
               """
                 |fsm a {
                 |  void main() {
-                |    $display("", 1'-2s);
+                |    @display("", 1'-2s);
                 |    fence;
                 |  }
                 |}""".stripMargin
@@ -347,7 +349,7 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
                 s"""
                    |fsm a {
                    |  void main() {
-                   |    $$display("", $expr);
+                   |    @display("", $expr);
                    |    fence;
                    |  }
                    |}""".stripMargin
@@ -386,7 +388,7 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
                   s"""
                      |fsm a {
                      |  void main() {
-                     |    $$display("", $expr);
+                     |    @display("", $expr);
                      |    fence;
                      |  }
                      |}""".stripMargin
@@ -417,7 +419,7 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
                  |fsm a {
                  |  const u8 N = 8'd2;
                  |  void main() {
-                 |    $$display("", $expr);
+                 |    @display("", $expr);
                  |    fence;
                  |  }
                  |}""".stripMargin
@@ -490,7 +492,7 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
                |  i2[1][2] b;
                |  i2[1][2] c[4];
                |  void main() {
-               |    $$display("", $expr);
+               |    @display("", $expr);
                |    fence;
                |  }
                |}""".stripMargin
@@ -540,7 +542,7 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
                  |  i3[1][2] b;
                  |  i3[1][2] c[4];
                  |  void main() {
-                 |    $$display("", $expr);
+                 |    @display("", $expr);
                  |    fence;
                  |  }
                  |}""".stripMargin
@@ -680,7 +682,7 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
                |  i3[2][2] b;
                |  i3[2][2] c[4];
                |  void main() {
-               |    $$display("", $expr);
+               |    @display("", $expr);
                |    fence;
                |  }
                |}""".stripMargin
@@ -694,20 +696,48 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
       for {
         (text, kind, msg) <- List[(String, PartialFunction[Any, Unit], String)](
           // format: off
-          ("d.x", { case TypeSInt(w) if w == 8 => }, ""),
-          ("e.y", { case TypeRecord(a, List(x)) if a.name == "a" && x.name == "x" => }, ""),
-          ("e.y.x", { case TypeSInt(w) if w == 8 => }, ""),
-          ("d.z", { case TypeError => }, "No member named 'z' in value of type 'struct a'"),
-          ("e.z", { case TypeError => }, "No member named 'z' in value of type 'struct b'"),
-          ("e.y.z", { case TypeError => }, "No member named 'z' in value of type 'struct a'"),
-          ("f.x", { case TypeSInt(w) if w == 8 => }, ""),
-          ("g.y", { case TypeRecord(a, List(x)) if a.name == "a" && x.name == "x" => }, ""),
-          ("g.y.x", { case TypeSInt(w) if w == 8 => }, ""),
-          ("f.valid", { case TypeUInt(w) if w == 1 => }, ""),
-          ("g.valid", { case TypeUInt(w) if w == 1 => }, ""),
-          ("a.x", { case TypeNone(TypeSInt(w)) if w == 8 => }, ""),
-          ("b.y", { case TypeNone(TypeRecord(a, List(x))) if a.name == "a" && x.name == "x" => }, ""),
-          ("b.y.x", { case TypeNone(TypeSInt(w)) if w == 8 => }, "")
+          ("d.x", {
+            case TypeSInt(w) if w == 8 =>
+          }, ""),
+          ("e.y", {
+            case TypeRecord(a, List(x)) if a.name == "a" && x.name == "x" =>
+          }, ""),
+          ("e.y.x", {
+            case TypeSInt(w) if w == 8 =>
+          }, ""),
+          ("d.z", {
+            case TypeError =>
+          }, "No member named 'z' in value of type 'struct a'"),
+          ("e.z", {
+            case TypeError =>
+          }, "No member named 'z' in value of type 'struct b'"),
+          ("e.y.z", {
+            case TypeError =>
+          }, "No member named 'z' in value of type 'struct a'"),
+          ("f.x", {
+            case TypeSInt(w) if w == 8 =>
+          }, ""),
+          ("g.y", {
+            case TypeRecord(a, List(x)) if a.name == "a" && x.name == "x" =>
+          }, ""),
+          ("g.y.x", {
+            case TypeSInt(w) if w == 8 =>
+          }, ""),
+          ("f.valid", {
+            case TypeUInt(w) if w == 1 =>
+          }, ""),
+          ("g.valid", {
+            case TypeUInt(w) if w == 1 =>
+          }, ""),
+          ("a.x", {
+            case TypeNone(TypeSInt(w)) if w == 8 =>
+          }, ""),
+          ("b.y", {
+            case TypeNone(TypeRecord(a, List(x))) if a.name == "a" && x.name == "x" =>
+          }, ""),
+          ("b.y.x", {
+            case TypeNone(TypeSInt(w)) if w == 8 =>
+          }, "")
           // format: on
         )
       } {
@@ -728,7 +758,7 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
                |  in sync a f;
                |  out sync b g;
                |  void main() {
-               |    $$display("", @bits($text));
+               |    @display("", @bits($text));
                |    fence;
                |  }
                |}""".stripMargin
@@ -820,7 +850,7 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
                |fsm c {
                |  out sync u2 a;
                |  void main() {
-               |    $$display("", $text);
+               |    @display("", $text);
                |    fence;
                |  }
                |}""".stripMargin
@@ -857,7 +887,7 @@ final class TypeCheckerExprSpec extends AnyFreeSpec with AlogicTest {
                |fsm c {
                |  out sync u2 a;
                |  void main() {
-               |    $$display("", $text);
+               |    @display("", $text);
                |    fence;
                |  }
                |}""".stripMargin

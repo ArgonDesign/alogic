@@ -1,0 +1,31 @@
+fsm display_04 {
+  in u32 i;
+
+  void main() {
+    wait i % 13 == 0;
+    if (i % 5 == 0) {
+      @display("The number %2d is divisible by 5 and 13", i);
+    }
+    fence;
+  }
+}
+
+// @sim/test {{{
+//  reg [31:0] tick;
+//
+//  always @(posedge clk) begin
+//    if (rst) begin
+//      tick <= 32'd0;
+//    end else begin
+//      tick <= tick + 32'd1;
+//    end
+//  end
+//
+//  wire [31:0] i = tick;
+// }}}
+//
+// @sim/expect {{{
+//  The number  0 is divisible by 5 and 13
+//  The number 65 is divisible by 5 and 13
+//  TIMEOUT at 100ns
+// }}}

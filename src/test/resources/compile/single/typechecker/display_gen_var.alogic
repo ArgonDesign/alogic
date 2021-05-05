@@ -1,7 +1,7 @@
 fsm display_gen_var {
   void main() {
     gen for (uint b = 0; b < 2; b++) {
-      $display("%d", b);
+      @display("%d", b);
     }
     fence;
   }

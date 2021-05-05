@@ -6,7 +6,7 @@ fsm foreign_func_04 {
     yay();
     yay();
     yay();
-    $finish();
+    @finish();
     fence;
   }
 }

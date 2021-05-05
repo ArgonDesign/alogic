@@ -476,8 +476,7 @@ final class SyntaxCheckSpec extends AnyFreeSpec with AlogicTest {
           "binary +" -> "a+b",
           "ternary" -> "a ? b : c",
           "rep" -> "{2{a}}",
-          "@ call" -> "@bits(a)",
-          "$ call" -> "$display(a)",
+          "built-in call" -> "@bits(a)",
           "integer literal" -> "1",
           "string literal" -> """ "hello" """
         )
