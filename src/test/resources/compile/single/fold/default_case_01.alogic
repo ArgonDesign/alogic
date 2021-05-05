@@ -1,0 +1,25 @@
+fsm default_case_01 {
+  in       u2 i;
+  out wire u2 o;
+
+  void main() {
+    case (i) {
+      0: o = 2'd0;
+      1: o = 2'd0;
+      2: o = 2'd0;
+      3: o = 2'd1;
+      default: unreachable;
+    }
+    fence;
+  }
+}
+
+// @fec/golden {{{
+//  module default_case_01(
+//    input  wire [1:0] i,
+//    output wire [1:0] o
+//  );
+//    assign o[1] = 1'd0;
+//    assign o[0] = &i;
+//  endmodule
+// }}}

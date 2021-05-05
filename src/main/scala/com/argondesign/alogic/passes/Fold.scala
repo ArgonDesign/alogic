@@ -94,10 +94,27 @@ final class Fold(implicit cc: CompilerContext) extends StatelessTreeTransformer 
         case _ => None
       }
 
-    // Fold 'case' with known conditions
-    case StmtCase(expr, cases) =>
+    // Fold 'case' with known conditions or full case
+    case stmt @ StmtCase(expr, cases) =>
       expr.valueOption match {
-        case None => None
+        case None =>
+          Option.when(stmt.hasDefault && stmt.coversAllWithoutDefault) {
+            val newCases = cases.filter {
+              case kase @ CaseDefault(stmts) =>
+                stmts.filterNot(_.isInstanceOf[StmtComment]) match {
+                  case StmtSplice(_: AssertionUnreachable) :: Nil =>
+                  // Branch marked with simple unreachable statement, no warning
+                  case _ =>
+                    cc.warning(
+                      kase,
+                      "'default' branch is unreachable (all possible values are covered explicitly)"
+                    )
+                }
+                false
+              case _ => true
+            }
+            TypeAssigner(stmt.copy(cases = newCases) withLocOf tree)
+          }
         case Some(v) =>
           @tailrec
           def loop(remaining: List[Case]): Option[Tree] = remaining match {

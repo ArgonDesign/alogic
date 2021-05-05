@@ -143,7 +143,7 @@ object NormalizeControlTransform extends StatelessTreeTransformer {
       TypeAssigner(stmt.copy(elseStmts = fence :: Nil) withLoc tree.loc)
 
     case stmt: StmtCase
-        if stmt.tpe.isCtrlStmt && !(stmt.cases exists { _.isInstanceOf[CaseDefault] }) =>
+        if stmt.tpe.isCtrlStmt && !stmt.hasDefault && !stmt.coversAllWithoutDefault =>
       val fence = TypeAssigner(StmtFence() withLoc tree.loc)
       val default = TypeAssigner(CaseDefault(fence :: Nil) withLoc stmt.loc)
       TypeAssigner(stmt.copy(cases = stmt.cases appended default) withLoc stmt.loc)
