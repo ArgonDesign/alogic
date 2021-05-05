@@ -17,6 +17,7 @@ import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.util.BigIntOps._
+import com.argondesign.alogic.util.unreachable
 
 import scala.collection.mutable
 
@@ -25,10 +26,13 @@ final class InlineKnownVars(combOnly: Boolean = true) extends StatelessTreeTrans
   private var stmtBindings: Map[Int, Bindings] = _
   private var endOfCycleBindings: Bindings = _
   private var temporariesToDrop: Set[Symbol] = _
+  private var extractableSymbol: Set[Symbol] = _
 
   private var constantFlops: Map[Symbol, ExprInt] = Map.empty
 
   private val bindings = mutable.Stack[Bindings]()
+
+  private val extractedAssignments = mutable.Stack[Stmt]()
 
   def computeEvaluation(stmt: Stmt): Unit = {
     val evaluation = StaticEvaluation(stmt, Bindings.empty)
@@ -38,6 +42,13 @@ final class InlineKnownVars(combOnly: Boolean = true) extends StatelessTreeTrans
     val readCount = evaluation._4
     temporariesToDrop = Set from { // Drop temporaries read once
       readCount.iterator.collect { case (symbol, 1) if symbol.attr.tmp.isSet => symbol }
+    }
+    extractableSymbol = Set.empty
+    if (!combOnly) {
+      val writeCount = evaluation._3
+      extractableSymbol = Set from { // We may extract symbols written once
+        writeCount.iterator.collect { case (symbol, 1) => symbol }
+      }
     }
   }
 
@@ -120,9 +131,20 @@ final class InlineKnownVars(combOnly: Boolean = true) extends StatelessTreeTrans
     // Don't fold constants on the lhs of assignment TODO: fold the read ones...
     case stmt @ StmtAssign(_, rhs) =>
       Some {
+        def extractable(expr: Expr): Boolean = expr match {
+          case _: ExprInt => true
+          case expr =>
+            expr.forall { case ExprSym(symbol) => symbol.kind.isIn || symbol.attr.flop.isSet }
+        }
         bindings.push(stmtBindings.getOrElse(stmt.id, Bindings.empty))
-        TypeAssigner(stmt.copy(rhs = walk(rhs).asInstanceOf[Expr]) withLoc tree.loc) tap { _ =>
+        TypeAssigner(stmt.copy(rhs = walkSame(rhs)) withLoc tree.loc) tap { _ =>
           bindings.pop()
+        } match { // Extract single assignments
+          case stmt @ StmtAssign(ExprSym(symbol), rhs)
+              if extractableSymbol(symbol) && extractable(rhs) =>
+            extractedAssignments.push(stmt)
+            Stump
+          case other => other
         }
       }
 
@@ -131,7 +153,7 @@ final class InlineKnownVars(combOnly: Boolean = true) extends StatelessTreeTrans
         bindings.push(stmtBindings.getOrElse(stmt.id, Bindings.empty))
         TypeAssigner(
           stmt.copy(
-            func = walk(func).asInstanceOf[Expr],
+            func = walkSame(func),
             inputs = walk(inputs).asInstanceOf[List[Expr]]
           ) withLoc tree.loc
         ) tap { _ =>
@@ -225,7 +247,7 @@ final class InlineKnownVars(combOnly: Boolean = true) extends StatelessTreeTrans
     case _ => None
   }
 
-  // true if any sub-exprssion has a non-numeric type, or if the whole
+  // true if any sub-expression has a non-numeric type, or if the whole
   // expression is a call to a builtin. Builtin calls (eg $signed/$unsigned)
   // are ignored because they yield even more temporaries when indexed/sliced,
   // so we are better off not inlining them.
@@ -278,6 +300,13 @@ final class InlineKnownVars(combOnly: Boolean = true) extends StatelessTreeTrans
     case _: Stmt =>
       bindings.pop()
       tree
+
+    case defn: DefnEntity if extractedAssignments.nonEmpty =>
+      val newBody = defn.body concat extractedAssignments.iterator.map {
+        case s @ StmtAssign(lhs, rhs) => TypeAssigner(EntAssign(lhs, rhs) withLocOf s)
+        case _                        => unreachable
+      }
+      TypeAssigner(defn.copy(body = newBody) withLocOf tree)
 
     case _ => tree
   }

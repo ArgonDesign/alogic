@@ -1,0 +1,16 @@
+fsm extract_assignments_00 {
+  out wire bool o;
+
+  void main() {
+    o = true;
+    fence;
+  }
+}
+
+// @fec/golden {{{
+//  module extract_assignments_00(
+//    output wire o
+//  );
+//    assign o = 1'd1;
+//  endmodule
+// }}}
