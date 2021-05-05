@@ -10,7 +10,7 @@
 package com.argondesign.alogic.frontend
 
 import com.argondesign.alogic.analysis.WrittenSyms
-import com.argondesign.alogic.ast.StatefulTreeTransformer
+import com.argondesign.alogic.ast.StatelessTreeTransformer
 import com.argondesign.alogic.ast.Trees._
 import com.argondesign.alogic.core.CompilerContext
 import com.argondesign.alogic.core.FlowControlTypes.FlowControlTypeNone
@@ -22,13 +22,14 @@ import com.argondesign.alogic.core.Messages.Error
 import com.argondesign.alogic.core.Messages.Ice
 import com.argondesign.alogic.core.Messages.Message
 import com.argondesign.alogic.core.Messages.Note
+import com.argondesign.alogic.core.Symbol
 import com.argondesign.alogic.core.TypeAssigner
 import com.argondesign.alogic.core.TypeCompound
 import com.argondesign.alogic.core.Types._
 import com.argondesign.alogic.lib.Math.clog2
 import com.argondesign.alogic.util.unreachable
-import com.argondesign.alogic.util.BooleanOps._
 import com.argondesign.alogic.util.BigIntOps._
+import com.argondesign.alogic.util.BooleanOps._
 
 import scala.annotation.tailrec
 import scala.collection.immutable.Set
@@ -37,7 +38,7 @@ import scala.collection.mutable.ListBuffer
 import scala.concurrent.blocking
 
 final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe: Frontend)
-    extends StatefulTreeTransformer {
+    extends StatelessTreeTransformer {
   override val typed: Boolean = false
 
   private val comparisonBinaryOps = Set(">", ">=", "<", "<=", "==", "!=")
@@ -53,6 +54,28 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
 
   // Predicate: Have we already encountered an error during the traversal?
   private def hadError: Boolean = mAcc.nonEmpty
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Enclosing function tracker
+  //////////////////////////////////////////////////////////////////////////////
+
+  private object EnclosingFunction {
+    private val stack = mutable.Stack[(Symbol, Int)]()
+
+    def push(desc: DescFunc): Unit = {
+      stack.push((desc.symbol, desc.id))
+    }
+
+    def pop(node: Tree): Unit = {
+      if (stack.headOption.exists(_._2 == node.id)) {
+        stack.pop()
+      }
+    }
+
+    def top: Symbol = stack.top._1
+
+    def get: Option[Symbol] = stack.headOption.map(_._1)
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   // Unary ' context tracker
@@ -488,8 +511,11 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
           tree
         }
     } tap {
-      case Some(_) => UnaryTickContext.pop(tree)
-      case None    => assert(!tree.hasTpe, tree.tpe)
+      case Some(_) =>
+        UnaryTickContext.pop(tree)
+        EnclosingFunction.pop(tree)
+      case None =>
+        assert(!tree.hasTpe, tree.tpe)
     }
   }
 
@@ -553,6 +579,8 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
       assert((!alreadyHadError && hadError) |-> tree.tpe.isError)
       // Track the unary ' context
       UnaryTickContext.pop(tree)
+      // Track function context
+      EnclosingFunction.pop(tree)
       // Assign type if it has not been assigned by now
       if (!tree.hasTpe) {
         TypeAssigner(tree)
@@ -639,8 +667,9 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
       }
 
       desc match {
-        case DescFunc(_, _, variant, _, _, body) =>
+        case d @ DescFunc(_, _, variant, _, _, body) =>
           setTypeOfAmbiguousUnreachableStatements(body, variant == FuncVariant.Ctrl)
+          EnclosingFunction.push(d)
         case _ =>
       }
 
@@ -730,7 +759,7 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
       }
 
     case _: StmtReturn =>
-      enclosingSymbols.headOption foreach {
+      EnclosingFunction.get foreach {
         _.kind match {
           case TypeCallable(_, retType, _) if retType != TypeVoid =>
             UnaryTickContext.pushType(tree, retType)
@@ -1039,7 +1068,7 @@ final private class TypeChecker(val root: Tree)(implicit cc: CompilerContext, fe
     ////////////////////////////////////////////////////////////////////////////
 
     case StmtReturn(_, exprOpt) =>
-      enclosingSymbols.iterator.dropWhile(_.kind.isScope).next().kind match {
+      EnclosingFunction.top.kind match {
         case TypeCallable(symbol, TypeVoid, _) =>
           exprOpt match {
             case Some(expr) => error(expr, s"void function '${symbol.name}' cannot return a value")
