@@ -18,6 +18,7 @@ object Builtins {
     AtBits,
     AtEx,
     AtMax,
+    AtMin,
     AtMsb,
     AtUnknownI,
     AtUnknownU,

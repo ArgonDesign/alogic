@@ -147,6 +147,20 @@ Sign extending an unsigned value is defined as extension by the MSB.
 
 `@sx(N, a)` is the same as `@ex(@msb(a), N, a)`
 
+##### Built-in `@max`
+
+The built-in `@max` function accepts 1 or more `int` or `uint` arguments, and
+returns the maximum of the arguments. The return type is `int` if all arguments
+are of type `int`, otherwise if any argument is of type `uint`, the return type
+is `uint`.
+
+##### Built-in `@min`
+
+The built-in `@min` function accepts 1 or more `int` or `uint` arguments, and
+returns the minimum of the arguments. The return type is `uint` if all arguments
+are of type `uint`, otherwise if any argument is of type `int`, the return type
+is `int`.
+
 <p align="center">
 <a href="assert.md">Previous</a> |
 <a href="index.md">Index</a> |

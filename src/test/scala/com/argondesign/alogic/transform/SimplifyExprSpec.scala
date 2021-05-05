@@ -2305,6 +2305,21 @@ final class SimplifyExprSpec extends AnyFreeSpec with AlogicTest {
         )
       }
 
+      "@min" - {
+        checkExact(
+          ("@min(1s)", ExprNum(true, 1)),
+          ("@min(1)", ExprNum(false, 1)),
+          ("@min(1s, 2s)", ExprNum(true, 1)),
+          ("@min(1s, 2)", ExprNum(true, 1)),
+          ("@min(1, 2s)", ExprNum(true, 1)),
+          ("@min(1, 2)", ExprNum(false, 1)),
+          ("@min(0s, 1s)", ExprNum(true, 0)),
+          ("@min(-2s, -1s)", ExprNum(true, -2)),
+          ("@min(-2s, 1)", ExprNum(true, -2)),
+          ("@min(0, 1, 2, 3, 4, 5)", ExprNum(false, 0))
+        )
+      }
+
       // TODO: @ex
 
       // TODO: @msb
