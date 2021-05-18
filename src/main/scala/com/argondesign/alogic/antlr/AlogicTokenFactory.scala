@@ -55,7 +55,9 @@ class AlogicTokenFactory(val alogicSource: Source, mb: MessageBuffer) extends To
       line: Int,
       charPositionInLine: Int
     ): Token = {
-    require(channel == Token.DEFAULT_CHANNEL || channel == Token.HIDDEN_CHANNEL)
+    require(
+      channel == Token.DEFAULT_CHANNEL || channel == Token.HIDDEN_CHANNEL || channel == AlogicLexer.COMMENT
+    )
     require(source.getItem1.isInstanceOf[AlogicLexer])
 
     def mkToken(channel: Int): AlogicToken = {
@@ -69,15 +71,15 @@ class AlogicTokenFactory(val alogicSource: Source, mb: MessageBuffer) extends To
       token
     }
     // Creates normal token passed to the parser
-    def normalToken: AlogicToken = mkToken(Token.DEFAULT_CHANNEL)
+    def normalToken: AlogicToken = mkToken(channel)
     // Creates hidden token not passed to the parser
     def hiddenToken: AlogicToken = mkToken(Token.HIDDEN_CHANNEL)
 
     if (channel == Token.HIDDEN_CHANNEL) {
       // Hidden tokens, nothing special
       hiddenToken
-    } else if (kind == Token.EOF) {
-      // Pass through EOF
+    } else if (kind == Token.EOF || channel == AlogicLexer.COMMENT) {
+      // Pass through EOF and comments
       normalToken
     } else {
       // #line state machine
