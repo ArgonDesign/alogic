@@ -24,7 +24,7 @@ PREFIX=$(readlink -f install)
 # Install yosys
 git clone https://github.com/YosysHQ/yosys.git yosys
 pushd yosys
-git checkout aafaeb66
+git checkout d8c5d681
 make PREFIX=$PREFIX -j$(nproc)
 make PREFIX=$PREFIX install
 popd
@@ -33,7 +33,7 @@ rm -rf yosys
 # Install SymbiYosys
 git clone https://github.com/YosysHQ/SymbiYosys.git SymbiYosys
 pushd SymbiYosys
-git checkout ca9c188
+git checkout f5f1d993
 make PREFIX=$PREFIX install
 popd
 rm -rf SymbiYosys
