@@ -9,9 +9,13 @@
 
 lexer grammar AlogicLexer;
 
-fragment LCMT: '//' ~[\n]*   ;          // Line comment
-fragment BCMT: '/*'  .*? '*/';          // Block comment
-CMT: (LCMT | BCMT) -> channel(HIDDEN) ; // Any comment
+channels {
+	COMMENT
+}
+
+fragment LCMT: '//' ~[\n]*   ;           // Line comment
+fragment BCMT: '/*'  .*? '*/';           // Block comment
+CMT: (LCMT | BCMT) -> channel(COMMENT) ; // Any comment
 
 UINTTYPE: 'u' [0-9]+;
 
